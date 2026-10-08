@@ -1,58 +1,56 @@
 @page
 @model WeddingRsvp.Pages.Admin.ImportModel
-@{
-    ViewData["Title"] = "ייבוא רשימה";
-}
-<h1>ייבוא רשימת מוזמנים</h1>
+@{ ViewData["Title"] = Ui.T("ייבוא רשימה", "Import list"); }
+<header class="page-head"><h1>@Ui.T("ייבוא רשימת מוזמנים", "Import the guest list")</h1></header>
 
-<p>
-    קובץ CSV מאקסל עם העמודות: <b>שם</b>, <b>טלפון</b>, ואופציונלית <b>מוזמנים</b> (כמה אנשים בהזמנה, ברירת מחדל 1).
-    מספרים שכבר קיימים ברשימה יידלגו.
-</p>
-
-<form method="post" enctype="multipart/form-data">
-    <input type="file" name="File" accept=".csv,text/csv" />
-    <button type="submit">ייבוא</button>
-</form>
-
-@if (Model.Error is not null)
-{
-    <p class="error">@Model.Error</p>
-}
+<section class="card">
+    <p>@Ui.T("קובץ CSV מאקסל עם העמודות:", "A CSV file from Excel with the columns:")
+        <b>@Ui.T("שם", "Name")</b>, <b>@Ui.T("טלפון", "Phone")</b>,
+        @Ui.T("ואופציונלית", "and optionally") <b>@Ui.T("מוזמנים", "Invited")</b>
+        (@Ui.T("כמה אנשים בהזמנה, ברירת מחדל 1", "how many people the invitation covers, default 1")).
+        @Ui.T("מספרים שכבר קיימים ברשימה יידלגו.", "Numbers already on the list are skipped.")</p>
+    <form method="post" enctype="multipart/form-data" class="row">
+        <input type="file" name="File" accept=".csv,text/csv" />
+        <button type="submit" class="btn primary">@Ui.T("ייבוא", "Import")</button>
+    </form>
+    @if (Model.Error is not null)
+    {
+        <p class="error">@Model.Error</p>
+    }
+</section>
 
 @if (Model.Report is { } r)
 {
-    <section>
-        <h2>תוצאה</h2>
-        <p>@r.Rows שורות, נוספו @r.Added אורחים.</p>
+    <section class="card">
+        <h2>@Ui.T("תוצאה", "Result")</h2>
+        <p>@Ui.T($"{r.Rows} שורות, נוספו {r.Added} אורחים.", $"{r.Rows} rows, {r.Added} guests added.")</p>
 
         @if (r.InvalidPhones.Count > 0)
         {
-            <h3>נוספו עם מספר לא תקין (@r.InvalidPhones.Count): צריך לתקן לפני השליחה</h3>
-            <table>
-                <thead><tr><th>שורה</th><th>שם</th><th>טלפון</th><th>בעיה</th></tr></thead>
+            <h3>@Ui.T($"נוספו עם מספר לא תקין ({r.InvalidPhones.Count}): צריך לתקן לפני השליחה", $"Added with an invalid number ({r.InvalidPhones.Count}): fix before sending")</h3>
+            <div class="tablewrap"><table>
+                <thead><tr><th>@Ui.T("שורה", "Row")</th><th>@Ui.T("שם", "Name")</th><th>@Ui.T("טלפון", "Phone")</th><th>@Ui.T("בעיה", "Problem")</th></tr></thead>
                 <tbody>
                 @foreach (var i in r.InvalidPhones)
                 {
-                    <tr><td>@i.Line</td><td>@i.Name</td><td dir="ltr">@i.Phone</td><td>@i.Problem</td></tr>
+                    <tr><td>@i.Line</td><td>@i.Name</td><td class="ltr">@i.Phone</td><td>@Labels.Problem(i.Problem)</td></tr>
                 }
                 </tbody>
-            </table>
+            </table></div>
         }
-
         @if (r.Skipped.Count > 0)
         {
-            <h3>לא יובאו (@r.Skipped.Count)</h3>
-            <table>
-                <thead><tr><th>שורה</th><th>שם</th><th>טלפון</th><th>סיבה</th></tr></thead>
+            <h3>@Ui.T($"לא יובאו ({r.Skipped.Count})", $"Not imported ({r.Skipped.Count})")</h3>
+            <div class="tablewrap"><table>
+                <thead><tr><th>@Ui.T("שורה", "Row")</th><th>@Ui.T("שם", "Name")</th><th>@Ui.T("טלפון", "Phone")</th><th>@Ui.T("סיבה", "Reason")</th></tr></thead>
                 <tbody>
                 @foreach (var i in r.Skipped)
                 {
-                    <tr><td>@i.Line</td><td>@i.Name</td><td dir="ltr">@i.Phone</td><td>@i.Problem</td></tr>
+                    <tr><td>@i.Line</td><td>@i.Name</td><td class="ltr">@i.Phone</td><td>@Labels.Problem(i.Problem)</td></tr>
                 }
                 </tbody>
-            </table>
+            </table></div>
         }
-        <p><a href="/admin/guests">לרשימת האורחים</a></p>
+        <p><a class="link" href="/admin/guests">@Ui.T("לרשימת האורחים", "To the guest list")</a></p>
     </section>
 }

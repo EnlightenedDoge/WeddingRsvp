@@ -1,4 +1,4 @@
-@* Site-admin shell. Replace with the Claude Design site-admin layout. *@
+@using WeddingRsvp.Auth
 <!DOCTYPE html>
 <html lang="@Ui.Lang" dir="@Ui.Dir">
 <head>
@@ -6,21 +6,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
     <title>@ViewData["Title"] · @Ui.T("ניהול האתר", "Site admin")</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap" />
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
 </head>
 <body>
-    <nav class="admin-nav">
-        <a href="/admin/site/couples">@Ui.T("זוגות", "Couples")</a>
-        <a href="/admin/site/security">@Ui.T("אבטחה", "Security")</a>
-        <a href="/lang/@(Ui.IsHebrew ? "en" : "he")?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)">@(Ui.IsHebrew ? "English" : "עברית")</a>
-        <form method="post" action="/signout" class="inline"><button type="submit">@Ui.T("יציאה", "Sign out")</button></form>
-    </nav>
-    <main class="admin-main">
-        @if (TempData["Flash"] is string flash)
-        {
-            <p class="flash">@flash</p>
-        }
-        @RenderBody()
-    </main>
+    <div class="shell site">
+        <aside class="side">
+            <div class="brand"><span class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></span>@Ui.T("ניהול האתר", "Site admin")</div>
+            <nav class="nav">
+            <a href="/admin/site/couples" class="@(Context.Request.Path.StartsWithSegments("/admin/site/couples") ? "active" : "")"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>@Ui.T("זוגות", "Couples")</a>
+            <a href="/admin/site/security" class="@(Context.Request.Path.StartsWithSegments("/admin/site/security") ? "active" : "")"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg>@Ui.T("אבטחה", "Security")</a>
+            </nav>
+            <div class="side-foot">
+                <div class="langsw">
+                    <a href="/lang/he?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)" class="@(Ui.IsHebrew ? "on" : "")">עברית</a>
+                    <a href="/lang/en?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)" class="@(Ui.IsHebrew ? "" : "on")">English</a>
+                </div>
+                <form method="post" action="/signout" asp-antiforgery="true"><button type="submit">@Ui.T("יציאה", "Sign out")</button></form>
+            </div>
+        </aside>
+        <main class="main">
+            @if (TempData["Flash"] is string flash)
+            {
+                <p class="flash" role="status">@flash</p>
+            }
+            @RenderBody()
+        </main>
+    </div>
 </body>
 </html>

@@ -1,79 +1,85 @@
 @page
 @model WeddingRsvp.Pages.Admin.MessagesModel
 @{
-    ViewData["Title"] = "הודעות";
+    ViewData["Title"] = Ui.T("הודעות", "Messages");
     int C(MessageStatus s) => Model.Counts.TryGetValue(s, out var n) ? n : 0;
+    var blocked = Model.MissingForInvite.Count > 0;
 }
-<h1>הודעות</h1>
+<header class="page-head">
+    <div><h1>@Ui.T("הודעות", "Messages")</h1></div>
+    <div class="row">
+        <span class="status-on @(Model.Event.SendingPaused ? "off" : "")"><i></i>@(Model.Event.SendingPaused ? Ui.T("השליחה מושהית", "Sending is paused") : Ui.T("השליחה פעילה", "Sending is active"))</span>
+        <form method="post" asp-page-handler="TogglePause">
+            <button type="submit" class="btn">@(Model.Event.SendingPaused ? Ui.T("חידוש השליחה", "Resume sending") : Ui.T("השהיית שליחה", "Pause sending"))</button>
+        </form>
+    </div>
+</header>
 
-<section class="sending-state">
-    @if (Model.Event.SendingPaused)
-    {
-        <p class="error">השליחה מושהית. שום הודעה לא יוצאת עד שתחדשו.</p>
-    }
-    else if (!Model.InSendingWindow)
-    {
-        <p>מחוץ לשעות השליחה (לילה או שבת). הודעות בתור ייצאו כשהחלון ייפתח.</p>
-    }
-    <form method="post" asp-page-handler="TogglePause">
-        <button type="submit">@(Model.Event.SendingPaused ? "חידוש השליחה" : "השהיית כל השליחה")</button>
-    </form>
-</section>
+@if (!Model.Event.SendingPaused && !Model.InSendingWindow)
+{
+    <p class="banner">@Ui.T("מחוץ לשעות השליחה (לילה או שבת). הודעות בתור ייצאו כשהחלון ייפתח.", "Outside the sending hours (night or Saturday). Queued messages go out when the window opens.")</p>
+}
 
-<section>
-    <h2>הזמנות</h2>
-    <p>@Model.ReadyToInvite אורחים עם מספר תקין עוד לא קיבלו הזמנה.</p>
-    @if (Model.MissingForInvite.Count > 0)
+<div class="grid2">
+<section class="card wide">
+    <h2>@Ui.T("הזמנות", "Invitations")</h2>
+    <p>@Ui.T($"{Model.ReadyToInvite} אורחים עם מספר תקין עוד לא קיבלו הזמנה.", $"{Model.ReadyToInvite} guests with a valid number haven't been invited yet.")</p>
+    @if (blocked)
     {
-        <div class="error" role="alert">
-            <p>עדיין אי אפשר לשלוח הזמנות. ההודעה משתמשת בשדות שלא הוגדרו בפרטי האירוע:</p>
-            <p dir="ltr">@string.Join("  ", Model.MissingForInvite)</p>
-            <a href="/admin/event">השלמת פרטי האירוע</a>
+        <div class="banner err" role="alert">
+            <p><b>@Ui.T("עדיין אי אפשר לשלוח הזמנות.", "Invitations can't be sent yet.")</b></p>
+            <p>@Ui.T("ההודעה משתמשת בשדות שלא הוגדרו בפרטי האירוע:", "The message uses fields that are not set in the event details:")</p>
+            <p class="ltr">@string.Join("  ", Model.MissingForInvite)</p>
+            <a class="link" href="/admin/event">@Ui.T("השלמת פרטי האירוע", "Complete the event details")</a>
         </div>
     }
-    <form method="post" asp-page-handler="QueueInvites" onsubmit="return confirm('לשלוח הזמנות לכל מי שעוד לא קיבל?')">
-        <button type="submit" disabled="@(Model.ReadyToInvite == 0 || Model.MissingForInvite.Count > 0)">שליחת הזמנות</button>
+    <form method="post" asp-page-handler="QueueInvites" onsubmit="return confirm('@Ui.T("לשלוח הזמנות לכל מי שעוד לא קיבל?", "Send invitations to everyone not yet invited?")')" style="margin-block-start: 16px">
+        <button type="submit" class="btn primary" disabled="@(Model.ReadyToInvite == 0 || blocked)">@Ui.T("שליחת הזמנות", "Send invitations")</button>
     </form>
 </section>
 
-<section>
-    <h2>הודעת בדיקה</h2>
+<div class="narrow">
+<section class="card">
+    <h2>@Ui.T("הודעת בדיקה", "Test message")</h2>
     <form method="post" asp-page-handler="Test">
-        <input name="TestPhone" dir="ltr" inputmode="tel" placeholder="050-0000000" />
-        <select name="TestTemplate">
-            <option value="@MessageKind.Invite">הזמנה</option>
-            <option value="@MessageKind.Reminder">תזכורת</option>
-            <option value="@MessageKind.ThankYou">תודה</option>
-        </select>
-        <button type="submit">שליחה</button>
+        <label class="field"><span>@Ui.T("טלפון", "Phone")</span><input name="TestPhone" class="ltr" inputmode="tel" placeholder="050-0000000" /></label>
+        <label class="field"><span>@Ui.T("סוג", "Type")</span>
+            <select name="TestTemplate">
+                <option value="@MessageKind.Invite">@Ui.T("הזמנה", "Invitation")</option>
+                <option value="@MessageKind.Reminder">@Ui.T("תזכורת", "Reminder")</option>
+                <option value="@MessageKind.ThankYou">@Ui.T("תודה", "Thank-you")</option>
+            </select></label>
+        <button type="submit" class="btn">@Ui.T("שליחה", "Send")</button>
     </form>
 </section>
+</div>
+</div>
 
-<section>
-    <h2>סטטוס</h2>
-    <p>
-        בתור: @C(MessageStatus.Queued) · נשלחו: @C(MessageStatus.Sent) · התקבלו: @C(MessageStatus.Delivered)
-        · נכשלו: @C(MessageStatus.Failed) · בוטלו: @C(MessageStatus.Cancelled)
-    </p>
+<section class="card">
+    <h2>@Ui.T("סטטוס", "Status")</h2>
+    <div class="row" style="gap: 28px; margin-block-end: 8px">
+        <div><b style="font-size: 26px">@C(MessageStatus.Queued)</b><div class="muted">@Ui.T("בתור", "Queued")</div></div>
+        <div><b style="font-size: 26px">@C(MessageStatus.Sent)</b><div class="muted">@Ui.T("נשלחו", "Sent")</div></div>
+        <div><b style="font-size: 26px">@C(MessageStatus.Delivered)</b><div class="muted">@Ui.T("התקבלו", "Delivered")</div></div>
+        <div><b style="font-size: 26px; color: @(C(MessageStatus.Failed) > 0 ? "var(--danger)" : "inherit")">@C(MessageStatus.Failed)</b><div class="muted">@Ui.T("נכשלו", "Failed")</div></div>
+        <div><b style="font-size: 26px">@C(MessageStatus.Cancelled)</b><div class="muted">@Ui.T("בוטלו", "Cancelled")</div></div>
+    </div>
     @if (C(MessageStatus.Failed) > 0)
     {
         <form method="post" asp-page-handler="RequeueFailed">
-            <button type="submit">ניסיון חוזר לכל ההודעות שנכשלו</button>
+            <button type="submit" class="btn">@Ui.T("ניסיון חוזר לכל ההודעות שנכשלו", "Retry all failed messages")</button>
         </form>
     }
-
+    <div class="tablewrap">
     <table>
-        <thead><tr><th>אורח</th><th>סוג</th><th>סטטוס</th><th>נוצרה</th><th>נשלחה</th><th>שגיאה</th></tr></thead>
+        <thead><tr><th>@Ui.T("אורח", "Guest")</th><th>@Ui.T("סוג", "Type")</th><th>@Ui.T("סטטוס", "Status")</th><th>@Ui.T("נוצרה", "Created")</th><th>@Ui.T("נשלחה", "Sent")</th><th>@Ui.T("שגיאה", "Error")</th></tr></thead>
         <tbody>
         @foreach (var m in Model.Recent)
         {
             <tr>
-                <td>
-                    @if (m.Guest is { } g) { <a href="/admin/guests/edit/@g.Id">@g.Name</a> }
-                    else { <span dir="ltr">@m.ToE164</span> }
-                </td>
+                <td>@if (m.Guest is { } g) { <a href="/admin/guests/edit/@g.Id">@g.Name</a> } else { <span class="ltr">@m.ToE164</span> }</td>
                 <td>@Labels.Kind(m.Kind)</td>
-                <td>@Labels.Delivery(m.Status)</td>
+                <td><span class="pill @Labels.DeliveryPill(m.Status)">@Labels.Delivery(m.Status)</span></td>
                 <td>@Labels.Local(m.CreatedAtUtc)</td>
                 <td>@Labels.Local(m.SentAtUtc)</td>
                 <td>@m.Error</td>
@@ -81,4 +87,5 @@
         }
         </tbody>
     </table>
+    </div>
 </section>

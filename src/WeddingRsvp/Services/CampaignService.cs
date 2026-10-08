@@ -66,7 +66,7 @@ public sealed class CampaignService(
         {
             Kind = MessageKind.Test,
             ToE164 = p.E164!,
-            Body = MessageTemplates.Render(MessageTemplates.TemplateFor(s, template), "ישראל ישראלי", s, link),
+            Body = MessageTemplates.Body(s, template, s.LanguageMode == LanguageMode.EnglishOnly ? "Israel Israeli" : "ישראל ישראלי", link),
             CreatedAtUtc = clock.UtcNow,
             NotBeforeUtc = clock.UtcNow,
         });
@@ -162,7 +162,7 @@ public sealed class CampaignService(
             GuestId = g.Id,
             Kind = kind,
             ToE164 = g.PhoneE164!,
-            Body = MessageTemplates.Render(MessageTemplates.TemplateFor(s, kind), g.Name, s, link),
+            Body = MessageTemplates.Body(s, kind, g.Name, link),
             CreatedAtUtc = clock.UtcNow,
             NotBeforeUtc = clock.UtcNow,
         });

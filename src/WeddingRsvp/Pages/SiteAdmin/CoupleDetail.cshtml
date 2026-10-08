@@ -1,27 +1,41 @@
 @page "/admin/site/couples/{id:int}"
 @model WeddingRsvp.Pages.SiteAdmin.CoupleDetailModel
 @{ ViewData["Title"] = Model.Couple.DisplayName; }
-<h1>@Model.Couple.DisplayName</h1>
-<p dir="ltr">@Model.Email</p>
-<p>@(Model.Couple.Suspended ? Ui.T("מושעה", "Suspended") : Ui.T("פעיל", "Active")) ·
-   @(Model.HasPassword ? Ui.T("הסיסמה הוגדרה", "Password set") : Ui.T("ממתין להגדרת סיסמה", "Awaiting password"))</p>
+<header class="page-head">
+    <div><h1>@Model.Couple.DisplayName</h1>
+        <div class="sub ltr">@Model.Email</div></div>
+    <div class="row">
+        @if (Model.Couple.Suspended) { <span class="pill no">@Ui.T("מושעה", "Suspended")</span> }
+        else { <span class="pill ok">@Ui.T("פעיל", "Active")</span> }
+        <span class="pill @(Model.HasPassword ? "ok" : "wait")">@(Model.HasPassword ? Ui.T("הסיסמה הוגדרה", "Password set") : Ui.T("ממתין להגדרת סיסמה", "Awaiting password"))</span>
+    </div>
+</header>
 
 @if (Model.Link is not null)
 {
-    <section>
+    <section class="card" style="border-color: var(--accent)">
         <h2>@Ui.T("קישור חד-פעמי להגדרת סיסמה", "One-time set-password link")</h2>
-        <p>@Ui.T("העתיקו ושלחו לזוג בעצמכם. הקישור תקף 7 ימים ומציג רק פעם אחת.",
+        <p>@Ui.T("העתיקו ושלחו לזוג בעצמכם. הקישור תקף 7 ימים ומוצג רק עכשיו.",
             "Copy it and send it to the couple yourself. Valid for 7 days. Shown only now.")</p>
         <input class="copy-box" readonly value="@Model.Link" onfocus="this.select()" />
     </section>
 }
 
-<section>
-    <form method="post" asp-page-handler="NewLink" class="inline">
-        <button type="submit">@Ui.T("יצירת קישור חדש (מבטל את הקודם)", "Generate a new link (invalidates the old one)")</button>
-    </form>
-    <form method="post" asp-page-handler="@(Model.Couple.Suspended ? "Resume" : "Suspend")" class="inline">
-        <button type="submit">@(Model.Couple.Suspended ? Ui.T("הפעלה מחדש", "Reactivate") : Ui.T("השעיה", "Suspend"))</button>
-    </form>
+<section class="card">
+    <h2>@Ui.T("פעולות", "Actions")</h2>
+    <div class="row">
+        @if (!Model.Couple.Suspended)
+        {
+            <form method="post" asp-page-handler="Open">
+                <button type="submit" class="btn primary">@Ui.T("פתיחה כזוג (נרשם ביומן)", "Open as this couple (audited)")</button>
+            </form>
+        }
+        <form method="post" asp-page-handler="NewLink">
+            <button type="submit" class="btn">@Ui.T("קישור חדש (מבטל את הקודם)", "New link (invalidates the old one)")</button>
+        </form>
+        <form method="post" asp-page-handler="@(Model.Couple.Suspended ? "Resume" : "Suspend")">
+            <button type="submit" class="btn @(Model.Couple.Suspended ? "" : "danger")">@(Model.Couple.Suspended ? Ui.T("הפעלה מחדש", "Reactivate") : Ui.T("השעיה", "Suspend"))</button>
+        </form>
+    </div>
 </section>
-<p><a href="/admin/site/couples">@Ui.T("חזרה לרשימה", "Back to the list")</a></p>
+<p><a class="link" href="/admin/site/couples">← @Ui.T("חזרה לרשימה", "Back to the list")</a></p>

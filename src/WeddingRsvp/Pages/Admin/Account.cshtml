@@ -1,43 +1,43 @@
 @page "/admin/account"
 @model WeddingRsvp.Pages.Admin.AccountModel
 @{ ViewData["Title"] = Ui.T("החשבון שלי", "My account"); }
-<h1>@Ui.T("החשבון שלי", "My account")</h1>
+<header class="page-head"><h1>@Ui.T("החשבון שלי", "My account")</h1></header>
 
-<section>
+<div class="grid2">
+<div class="wide" style="display: flex; flex-direction: column; gap: 24px">
+<section class="card">
     <h2>@Ui.T("פרטי כניסה", "Sign-in details")</h2>
-    <p>@Ui.T("אימייל", "Email"): <span dir="ltr">@Model.Email</span>
-       (@Ui.T("לא ניתן לשינוי", "can't be changed"))</p>
+    <p>@Ui.T("אימייל", "Email"): <b class="ltr">@Model.Email</b></p>
+    <p class="faint">@Ui.T("את האימייל אי אפשר לשנות. לשינוי פנו למנהל האתר.", "The email can't be changed. Ask the site admin if it must change.")</p>
 </section>
 
-<section>
+<section class="card">
     <h2>@Ui.T("החלפת סיסמה", "Change password")</h2>
-    @if (Model.PasswordError is not null)
-    {
-        <p class="error" role="alert">@Model.PasswordError</p>
-    }
+    @if (Model.PasswordError is not null) { <p class="banner err" role="alert">@Model.PasswordError</p> }
     <form method="post" asp-page-handler="Password">
-        <label>@Ui.T("סיסמה נוכחית", "Current password")
-            <input name="Current" type="password" autocomplete="current-password" required /></label>
-        <label>@Ui.T("סיסמה חדשה (לפחות 10 תווים)", "New password (at least 10 characters)")
-            <input name="New" type="password" autocomplete="new-password" minlength="10" required /></label>
-        <button type="submit">@Ui.T("שמירה", "Save")</button>
+        <div class="fields">
+            <label class="field"><span>@Ui.T("סיסמה נוכחית", "Current password")</span>
+                <input name="Current" type="password" autocomplete="current-password" required /></label>
+            <label class="field"><span>@Ui.T("סיסמה חדשה (לפחות 10 תווים)", "New password (at least 10 characters)")</span>
+                <input name="New" type="password" autocomplete="new-password" minlength="10" required /></label>
+        </div>
+        <button type="submit" class="btn primary">@Ui.T("שמירה", "Save")</button>
     </form>
 </section>
+</div>
 
-<section>
+<section class="card narrow" style="border-color: #E3B5AC">
     <h2>@Ui.T("מחיקת כל המידע", "Delete all information")</h2>
     <p>@Ui.T("מוחק לצמיתות את כל האורחים, ההודעות, ההגדרות והתמונות, ואת החשבון עצמו. אי אפשר לבטל.",
         "Permanently deletes all guests, messages, settings and images, and the account itself. This can't be undone.")</p>
-    <p><a href="/admin/export.csv">@Ui.T("הורדת רשימת האורחים (CSV) לפני המחיקה", "Download the guest list (CSV) first")</a></p>
-    @if (Model.DeleteError is not null)
-    {
-        <p class="error" role="alert">@Model.DeleteError</p>
-    }
+    <p><a class="link" href="/admin/export.csv">@Ui.T("הורדת רשימת האורחים (CSV) לפני המחיקה", "Download the guest list (CSV) first")</a></p>
+    @if (Model.DeleteError is not null) { <p class="banner err" role="alert">@Model.DeleteError</p> }
     <form method="post" asp-page-handler="DeleteAll">
-        <label>@Ui.T("סיסמה", "Password")
+        <label class="field"><span>@Ui.T("סיסמה", "Password")</span>
             <input name="DeletePassword" type="password" autocomplete="current-password" required /></label>
-        <label><input type="checkbox" name="Confirm" value="yes" required />
+        <label class="checks"><input type="checkbox" name="Confirm" value="yes" required />
             @Ui.T("אני מבין/ה שכל המידע יימחק לצמיתות", "I understand all information will be permanently deleted")</label>
-        <button type="submit">@Ui.T("מחיקת כל המידע והחשבון", "Delete all information and the account")</button>
+        <button type="submit" class="btn danger">@Ui.T("מחיקת כל המידע והחשבון", "Delete all information and the account")</button>
     </form>
 </section>
+</div>

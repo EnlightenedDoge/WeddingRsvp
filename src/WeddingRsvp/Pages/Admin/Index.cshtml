@@ -1,49 +1,95 @@
 @page
 @model WeddingRsvp.Pages.Admin.IndexModel
 @{
-    ViewData["Title"] = "לוח בקרה";
+    ViewData["Title"] = Ui.T("לוח בקרה", "Dashboard");
     var s = Model.Stats;
+    int total = Math.Max(1, s.Invitations);
+    string W(int n) => (n * 100.0 / total).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%";
 }
-<h1>לוח בקרה</h1>
-
-<section class="stats">
-    <div class="stat headline">
-        <strong>@s.AttendingPeople / @s.InvitedPeople</strong>
-        <span>אורחים אישרו מתוך המוזמנים</span>
+<header class="page-head">
+    <div>
+        <h1>@Ui.T("לוח בקרה", "Dashboard")</h1>
+        @if (Model.Event.StartsAtLocal is { } start)
+        {
+            <div class="sub">@start.ToString(Ui.IsHebrew ? "dddd, d בMMMM yyyy · HH:mm" : "dddd, d MMMM yyyy · HH:mm")@(string.IsNullOrWhiteSpace(Model.Event.VenueName) ? "" : " · " + Model.Event.VenueName)</div>
+        }
+        else
+        {
+            <div class="sub"><a class="link" href="/admin/event">@Ui.T("עוד לא הוגדר תאריך לאירוע", "No event date set yet")</a></div>
+        }
     </div>
-    <div class="stat"><strong>@s.Responded / @s.Invitations</strong><span>הזמנות שענו</span></div>
-    <div class="stat"><strong>@s.AttendingInvitations</strong><span>הזמנות מגיעות</span></div>
-    <div class="stat"><strong>@s.Declined</strong><span>לא מגיעים</span></div>
-    <div class="stat"><strong>@s.Pending</strong><span>טרם ענו (@s.PendingButOpened פתחו את הקישור)</span></div>
+    <div class="row">
+        <span class="status-on @(Model.Event.SendingPaused ? "off" : "")"><i></i>@(Model.Event.SendingPaused ? Ui.T("השליחה מושהית", "Sending is paused") : Ui.T("השליחה פעילה", "Sending is active"))</span>
+        <a class="btn" href="/admin/messages">@Ui.T("הודעות", "Messages")</a>
+    </div>
+</header>
+
+<section class="card hero">
+    <div style="flex: 0 1 220px">
+        <div class="muted">@Ui.T("אישרו הגעה", "Confirmed attending")</div>
+        <div style="display: flex; align-items: baseline; gap: 10px; margin-block-start: 6px">
+            <span class="big">@s.AttendingPeople</span>
+            <span class="muted">@Ui.T($"מתוך {s.InvitedPeople} מוזמנים", $"of {s.InvitedPeople} invited")</span>
+        </div>
+    </div>
+    <div style="flex: 1 1 300px; min-width: 0">
+        <div class="bar">
+            <div style="width: @W(s.AttendingInvitations); background: var(--accent)"></div>
+            <div style="width: @W(s.Declined); background: var(--danger)"></div>
+            <div style="width: @W(s.Pending); background: #D6C79A"></div>
+        </div>
+        <div class="legend">
+            <span><i style="background: var(--accent)"></i>@Ui.T("מגיעים", "Attending") · @s.AttendingInvitations</span>
+            <span><i style="background: var(--danger)"></i>@Ui.T("לא מגיעים", "Declined") · @s.Declined</span>
+            <span><i style="background: #D6C79A"></i>@Ui.T("ממתינים", "Awaiting") · @s.Pending</span>
+        </div>
+    </div>
+</section>
+
+<section class="tiles">
+    <div class="tile"><b>@s.Responded / @s.Invitations</b><span>@Ui.T("הזמנות שענו", "Invitations answered")</span></div>
+    <div class="tile"><b>@s.AttendingInvitations</b><span>@Ui.T("הזמנות שאושרו", "Invitations confirmed")</span></div>
+    <div class="tile"><b>@s.Pending</b><span>@Ui.T("ממתינים לתשובה", "Awaiting an answer")</span></div>
+    <div class="tile"><b>@s.PendingButOpened</b><span>@Ui.T("פתחו ועוד לא ענו", "Opened, not answered")</span></div>
 </section>
 
 @if (s.InvalidPhones > 0 || s.InvitesNotSent > 0 || s.FailedMessages > 0)
 {
-    <section class="attention">
-        <h2>דורש טיפול</h2>
-        <ul>
-            @if (s.InvalidPhones > 0) { <li><a href="/admin/guests?filter=invalid">@s.InvalidPhones מספרים לא תקינים</a></li> }
-            @if (s.InvitesNotSent > 0) { <li><a href="/admin/guests?filter=uninvited">@s.InvitesNotSent לא קיבלו הזמנה עדיין</a></li> }
-            @if (s.FailedMessages > 0) { <li><a href="/admin/messages">@s.FailedMessages הודעות נכשלו</a></li> }
-        </ul>
+    <section class="banner">
+        <p><b>@Ui.T("דורש טיפול", "Needs attention")</b></p>
+        @if (s.InvalidPhones > 0) { <p><a class="link" href="/admin/guests?filter=invalid">@Ui.T($"{s.InvalidPhones} מספרים לא תקינים", $"{s.InvalidPhones} invalid phone numbers")</a></p> }
+        @if (s.InvitesNotSent > 0) { <p><a class="link" href="/admin/guests?filter=uninvited">@Ui.T($"{s.InvitesNotSent} עוד לא קיבלו הזמנה", $"{s.InvitesNotSent} not invited yet")</a></p> }
+        @if (s.FailedMessages > 0) { <p><a class="link" href="/admin/messages">@Ui.T($"{s.FailedMessages} הודעות נכשלו", $"{s.FailedMessages} messages failed")</a></p> }
     </section>
 }
 
-<section>
-    <h2>מאשרי הגעה (@s.AttendingInvitations)</h2>
-    <a href="/admin/export.csv">ייצוא לאקסל</a>
-    <table>
-        <thead><tr><th>שם</th><th>מגיעים</th><th>מתוך</th><th>אישרו ב-</th></tr></thead>
-        <tbody>
+<div class="grid2">
+    <section class="card wide">
+        <div class="row" style="justify-content: space-between; margin-block-end: 8px">
+            <h2 style="margin: 0">@Ui.T($"מאשרי הגעה ({s.AttendingInvitations})", $"Confirmed ({s.AttendingInvitations})")</h2>
+            <span class="row"><a class="link" href="/admin/export.csv">@Ui.T("ייצוא CSV", "Export CSV")</a>
+                <a class="link" href="/admin/guests">@Ui.T("לכל האורחים", "All guests")</a></span>
+        </div>
         @foreach (var g in s.Attending)
         {
-            <tr>
-                <td><a href="/admin/guests/edit/@g.Id">@g.Name</a></td>
-                <td>@g.AttendingCount</td>
-                <td>@g.InvitedCount</td>
-                <td>@Labels.Local(g.RespondedAtUtc)</td>
-            </tr>
+            <div class="list-row">
+                <div><a href="/admin/guests/edit/@g.Id"><b>@g.Name</b></a>
+                    <div class="faint">@Labels.Local(g.RespondedAtUtc)</div></div>
+                <span class="pill ok">@Ui.T("מגיעים", "Attending") · @g.AttendingCount / @g.InvitedCount</span>
+            </div>
         }
-        </tbody>
-    </table>
-</section>
+        @if (s.Attending.Count == 0)
+        {
+            <p class="muted">@Ui.T("עדיין אין אישורי הגעה.", "No confirmations yet.")</p>
+        }
+    </section>
+    <div class="narrow">
+        <section class="card">
+            <h2>@Ui.T("מצב ההודעות", "Message status")</h2>
+            <div class="row" style="gap: 24px">
+                <div><b style="font-size: 26px">@s.QueuedMessages</b><div class="muted">@Ui.T("בתור", "Queued")</div></div>
+                <div><b style="font-size: 26px; color: @(s.FailedMessages > 0 ? "var(--danger)" : "inherit")">@s.FailedMessages</b><div class="muted">@Ui.T("נכשלו", "Failed")</div></div>
+            </div>
+        </section>
+    </div>
+</div>

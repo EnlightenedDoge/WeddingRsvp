@@ -1,31 +1,31 @@
 @page "/admin/site/couples/new"
 @model WeddingRsvp.Pages.SiteAdmin.NewCoupleModel
 @{ ViewData["Title"] = Ui.T("יצירת חשבון לזוג", "Create a couple's account"); }
-<h1>@Ui.T("יצירת חשבון לזוג", "Create a couple's account")</h1>
-@if (Model.Error is not null)
-{
-    <p class="error" role="alert">@Model.Error</p>
-}
+<header class="page-head"><div><h1>@Ui.T("יצירת חשבון לזוג", "Create a couple's account")</h1>
+    <div class="sub"><a class="link" href="/admin/site/couples">← @Ui.T("לרשימת הזוגות", "Back to couples")</a></div></div></header>
+@if (Model.Error is not null) { <p class="banner err" role="alert">@Model.Error</p> }
 <form method="post">
-    <fieldset>
-        <legend>@Ui.T("חשבון", "Account")</legend>
-        <label>@Ui.T("שם לתצוגה ברשימה", "Display name in the list")
+<section class="card">
+    <h2>@Ui.T("חשבון", "Account")</h2>
+    <div class="fields">
+        <label class="field"><span>@Ui.T("שם לתצוגה ברשימה", "Display name in the list")</span>
             <input name="DisplayName" value="@Model.Input.DisplayName" required maxlength="200" /></label>
-        <label>@Ui.T("אימייל כניסה (לא ניתן לשינוי)", "Sign-in email (can't be changed later)")
-            <input name="Email" type="email" dir="ltr" value="@Model.Input.Email" required /></label>
-    </fieldset>
-    <fieldset>
-        <legend>@Ui.T("פרטי האירוע (אופציונלי, הזוג יכול למלא בעצמו)", "Event details (optional, the couple can fill these in)")</legend>
-        <label>@Ui.T("שמות בני הזוג", "Couple names")
-            <input name="CoupleNames" value="@Model.Input.CoupleNames" /></label>
-        <label>@Ui.T("תאריך ושעה", "Date and time")
-            <input name="StartsAtLocal" type="datetime-local" value="@Model.StartsAtValue" /></label>
-        <label>@Ui.T("שם האולם", "Venue name")
-            <input name="VenueName" value="@Model.Input.VenueName" /></label>
-        <label>@Ui.T("כתובת", "Address")
-            <input name="VenueAddress" value="@Model.Input.VenueAddress" /></label>
-        <label>@Ui.T("שם שולח ב-SMS", "SMS sender name")
-            <input name="SmsSenderName" value="@Model.Input.SmsSenderName" /></label>
-    </fieldset>
-    <button type="submit">@Ui.T("יצירה", "Create")</button>
+        <label class="field"><span>@Ui.T("אימייל כניסה (לא ניתן לשינוי)", "Sign-in email (can't be changed later)")</span>
+            <input name="Email" type="email" class="ltr" value="@Model.Input.Email" required /></label>
+    </div>
+    <p class="faint">@Ui.T("לא נשלח מייל. אחרי היצירה תקבלו קישור חד-פעמי להגדרת סיסמה, שאותו תעבירו לזוג בעצמכם.",
+        "No email is sent. After creating, you get a one-time set-password link to pass on to the couple yourself.")</p>
+</section>
+<section class="card">
+    <h2>@Ui.T("פרטי האירוע", "Event details")</h2>
+    <p class="muted">@Ui.T("אופציונלי. הזוג יכול למלא בעצמו. עד שימולאו, שום הודעה לא תישלח.", "Optional. The couple can fill these in. No message is sent until they are.")</p>
+    <div class="fields">
+        <label class="field"><span>@Ui.T("שמות בני הזוג", "Couple names")</span><input name="CoupleNames" value="@Model.Input.CoupleNames" /></label>
+        <label class="field"><span>@Ui.T("תאריך ושעה", "Date and time")</span><input name="StartsAtLocal" type="datetime-local" value="@Model.StartsAtValue" /></label>
+        <label class="field"><span>@Ui.T("שם האולם", "Venue name")</span><input name="VenueName" value="@Model.Input.VenueName" /></label>
+        <label class="field"><span>@Ui.T("כתובת", "Address")</span><input name="VenueAddress" value="@Model.Input.VenueAddress" /></label>
+        <label class="field"><span>@Ui.T("שם שולח ב-SMS", "SMS sender name")</span><input name="SmsSenderName" value="@Model.Input.SmsSenderName" class="ltr" maxlength="11" /></label>
+    </div>
+</section>
+<div><button type="submit" class="btn primary">@Ui.T("יצירה", "Create")</button></div>
 </form>

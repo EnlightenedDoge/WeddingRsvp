@@ -7,13 +7,13 @@
 <h1>@Ui.T("כניסה", "Sign in")</h1>
 @if (Model.Error is not null)
 {
-    <p class="error" role="alert">@Model.Error</p>
+    <p class="banner err" role="alert">@Model.Error</p>
 }
 <form method="post">
     <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
-    <label>@Ui.T("אימייל", "Email")
-        <input name="Email" type="email" value="@Model.Email" autocomplete="username" required autofocus /></label>
-    <label>@Ui.T("סיסמה", "Password")
+    <label class="field"><span>@Ui.T("אימייל", "Email")</span>
+        <input name="Email" type="email" class="ltr" value="@Model.Email" autocomplete="username" required autofocus /></label>
+    <label class="field"><span>@Ui.T("סיסמה", "Password")</span>
         <input name="Password" type="password" autocomplete="current-password" required /></label>
-    <button type="submit">@Ui.T("כניסה", "Sign in")</button>
+    <button type="submit" class="btn primary">@Ui.T("כניסה", "Sign in")</button>
 </form>

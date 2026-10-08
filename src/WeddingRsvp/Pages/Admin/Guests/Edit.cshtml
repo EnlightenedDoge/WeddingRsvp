@@ -1,70 +1,69 @@
 @page "{id:int?}"
 @model WeddingRsvp.Pages.Admin.Guests.EditModel
 @{
-    ViewData["Title"] = Model.Existing?.Name ?? "אורח חדש";
+    var title = Model.Existing?.Name ?? Ui.T("אורח חדש", "New guest");
+    ViewData["Title"] = title;
 }
-<h1>@(Model.Existing?.Name ?? "אורח חדש")</h1>
+<header class="page-head">
+    <div><h1>@title</h1><div class="sub"><a class="link" href="/admin/guests">← @Ui.T("לרשימת האורחים", "Back to guests")</a></div></div>
+</header>
 
-<form method="post">
-    <div asp-validation-summary="ModelOnly"></div>
-    <label>שם <input asp-for="Input.Name" /></label>
-    <span asp-validation-for="Input.Name"></span>
-
-    <label>טלפון <input asp-for="Input.Phone" dir="ltr" inputmode="tel" /></label>
-    <span asp-validation-for="Input.Phone"></span>
-    @if (Model.Existing?.PhoneError is { } err) { <small class="error">@err</small> }
-
-    <label>מספר מוזמנים <input asp-for="Input.InvitedCount" type="number" min="1" /></label>
-    <span asp-validation-for="Input.InvitedCount"></span>
-
-    <label>סטטוס
-        <select asp-for="Input.Status">
-            <option value="@RsvpStatus.Pending">@Labels.Status(RsvpStatus.Pending)</option>
-            <option value="@RsvpStatus.Attending">@Labels.Status(RsvpStatus.Attending)</option>
-            <option value="@RsvpStatus.Declined">@Labels.Status(RsvpStatus.Declined)</option>
-        </select>
-    </label>
-    <label>מגיעים <input asp-for="Input.AttendingCount" type="number" min="0" /></label>
-    <span asp-validation-for="Input.AttendingCount"></span>
-
-    <label>הערות <textarea asp-for="Input.Notes" rows="2"></textarea></label>
-
-    <button type="submit">שמירה</button>
-</form>
+<div class="grid2">
+<section class="card wide">
+    <form method="post">
+        <div asp-validation-summary="ModelOnly" class="error"></div>
+        <div class="fields">
+            <label class="field"><span>@Ui.T("שם", "Name")</span><input asp-for="Input.Name" />
+                <span asp-validation-for="Input.Name" class="field-validation-error"></span></label>
+            <label class="field"><span>@Ui.T("טלפון", "Phone")</span><input asp-for="Input.Phone" class="ltr" inputmode="tel" />
+                <span asp-validation-for="Input.Phone" class="field-validation-error"></span>
+                @if (Model.Existing?.PhoneError is { } err) { <small class="error">@Labels.Problem(err)</small> }</label>
+            <label class="field"><span>@Ui.T("מספר מוזמנים", "People invited")</span><input asp-for="Input.InvitedCount" type="number" min="1" />
+                <span asp-validation-for="Input.InvitedCount" class="field-validation-error"></span></label>
+            <label class="field"><span>@Ui.T("סטטוס", "Status")</span>
+                <select asp-for="Input.Status">
+                    <option value="@RsvpStatus.Pending">@Labels.Status(RsvpStatus.Pending)</option>
+                    <option value="@RsvpStatus.Attending">@Labels.Status(RsvpStatus.Attending)</option>
+                    <option value="@RsvpStatus.Declined">@Labels.Status(RsvpStatus.Declined)</option>
+                </select></label>
+            <label class="field"><span>@Ui.T("מגיעים", "Attending")</span><input asp-for="Input.AttendingCount" type="number" min="0" />
+                <span asp-validation-for="Input.AttendingCount" class="field-validation-error"></span></label>
+        </div>
+        <label class="field"><span>@Ui.T("הערות", "Notes")</span><textarea asp-for="Input.Notes" rows="2"></textarea></label>
+        <button type="submit" class="btn primary">@Ui.T("שמירה", "Save")</button>
+    </form>
+</section>
 
 @if (Model.Existing is { } g)
 {
-    <section>
-        <h2>קישור אישי</h2>
-        <p dir="ltr"><a href="@Model.RsvpLink" target="_blank">@Model.RsvpLink</a></p>
-        <p>
-            @(g.Source == RsvpSource.Manual ? "התשובה עודכנה ידנית." : g.Source == RsvpSource.Web ? "האורח ענה דרך הקישור." : "")
-            פתחו את הקישור: @Labels.Local(g.FirstOpenedAtUtc)
+    <div class="narrow">
+    <section class="card">
+        <h2>@Ui.T("קישור אישי", "Personal link")</h2>
+        <p class="ltr"><a class="link" href="@Model.RsvpLink" target="_blank">@Model.RsvpLink</a></p>
+        <p class="muted">
+            @(g.Source == RsvpSource.Manual ? Ui.T("התשובה עודכנה ידנית.", "The answer was entered manually.") : g.Source == RsvpSource.Web ? Ui.T("האורח ענה דרך הקישור.", "The guest answered through the link.") : "")
+            @Ui.T("פתחו את הקישור:", "Opened the link:") @Labels.Local(g.FirstOpenedAtUtc)
         </p>
-        <form method="post" asp-page-handler="SendInvite" asp-route-id="@g.Id">
-            <button type="submit">@(g.InviteSentAtUtc is null ? "שליחת הזמנה" : "שליחת ההזמנה שוב")</button>
-        </form>
-        <form method="post" asp-page-handler="Delete" asp-route-id="@g.Id"
-              onsubmit="return confirm('למחוק את האורח?')">
-            <button type="submit" class="danger">מחיקה</button>
-        </form>
+        <div class="row">
+            <form method="post" asp-page-handler="SendInvite" asp-route-id="@g.Id">
+                <button type="submit" class="btn">@(g.InviteSentAtUtc is null ? Ui.T("שליחת הזמנה", "Send invitation") : Ui.T("שליחת ההזמנה שוב", "Send the invitation again"))</button>
+            </form>
+            <form method="post" asp-page-handler="Delete" asp-route-id="@g.Id" onsubmit="return confirm('@Ui.T("למחוק את האורח?", "Delete this guest?")')">
+                <button type="submit" class="btn danger">@Ui.T("מחיקה", "Delete")</button>
+            </form>
+        </div>
     </section>
-
-    <section>
-        <h2>הודעות</h2>
-        <table>
-            <thead><tr><th>סוג</th><th>סטטוס</th><th>נשלחה</th><th>שגיאה</th></tr></thead>
-            <tbody>
-            @foreach (var m in Model.Messages)
-            {
-                <tr>
-                    <td>@Labels.Kind(m.Kind)</td>
-                    <td>@Labels.Delivery(m.Status)</td>
-                    <td>@Labels.Local(m.SentAtUtc)</td>
-                    <td>@m.Error</td>
-                </tr>
-            }
-            </tbody>
-        </table>
+    <section class="card">
+        <h2>@Ui.T("הודעות", "Messages")</h2>
+        @foreach (var m in Model.Messages)
+        {
+            <div class="list-row">
+                <div><b>@Labels.Kind(m.Kind)</b><div class="faint">@Labels.Local(m.SentAtUtc)@(m.Error is null ? "" : " · " + m.Error)</div></div>
+                <span class="pill @Labels.DeliveryPill(m.Status)">@Labels.Delivery(m.Status)</span>
+            </div>
+        }
+        @if (Model.Messages.Count == 0) { <p class="muted">@Ui.T("עוד לא נשלחו הודעות.", "No messages yet.")</p> }
     </section>
+    </div>
 }
+</div>

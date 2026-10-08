@@ -1,4 +1,4 @@
-@* Admin shell. Replace with the Claude Design output. *@
+@using WeddingRsvp.Auth
 <!DOCTYPE html>
 <html lang="@Ui.Lang" dir="@Ui.Dir">
 <head>
@@ -6,25 +6,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
     <title>@ViewData["Title"] · @Ui.T("ניהול", "Admin")</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap" />
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
 </head>
 <body>
-    <nav class="admin-nav">
-        <a href="/admin">@Ui.T("לוח בקרה", "Dashboard")</a>
-        <a href="/admin/guests">@Ui.T("אורחים", "Guests")</a>
-        <a href="/admin/import">@Ui.T("ייבוא רשימה", "Import")</a>
-        <a href="/admin/messages">@Ui.T("הודעות", "Messages")</a>
-        <a href="/admin/event">@Ui.T("פרטי האירוע", "Event details")</a>
-        <a href="/admin/account">@Ui.T("החשבון שלי", "My account")</a>
-        <a href="/lang/@(Ui.IsHebrew ? "en" : "he")?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)">@(Ui.IsHebrew ? "English" : "עברית")</a>
-        <form method="post" action="/signout" class="inline"><button type="submit">@Ui.T("יציאה", "Sign out")</button></form>
-    </nav>
-    <main class="admin-main">
-        @if (TempData["Flash"] is string flash)
-        {
-            <p class="flash">@flash</p>
-        }
-        @RenderBody()
-    </main>
+    @if (User.IsActingAsCouple())
+    {
+        <div class="acting-banner" role="status">
+            <span>@Ui.T("אתם מנהלים את חשבון הזוג כמנהל האתר. כל הפעולות נרשמות.", "You are working inside this couple's account as the site admin. Actions are logged.")</span>
+            <form method="post" action="/admin/exit-couple" class="inline" asp-antiforgery="true"><button type="submit">@Ui.T("חזרה לניהול האתר", "Back to site admin")</button></form>
+        </div>
+    }
+    <div class="shell">
+        <aside class="side">
+            <div class="brand"><span class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></span>@Ui.T("RSVP חתונה", "Wedding RSVP")</div>
+            <nav class="nav">
+            <a href="/admin" class="@(Context.Request.Path.Value == "/admin" ? "active" : "")"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>@Ui.T("לוח בקרה", "Dashboard")</a>
+            <a href="/admin/guests" class="@(Context.Request.Path.StartsWithSegments("/admin/guests") ? "active" : "")"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4"/><path d="M18 14.8c2 .6 3.2 2.3 3.5 5.2"/></svg>@Ui.T("אורחים", "Guests")</a>
+            <a href="/admin/import" class="@(Context.Request.Path.StartsWithSegments("/admin/import") ? "active" : "")"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>@Ui.T("ייבוא רשימה", "Import list")</a>
+            <a href="/admin/messages" class="@(Context.Request.Path.StartsWithSegments("/admin/messages") ? "active" : "")"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H10l-5 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg>@Ui.T("הודעות", "Messages")</a>
+            <a href="/admin/event" class="@(Context.Request.Path.StartsWithSegments("/admin/event") ? "active" : "")"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h2"/><path d="M10 17h10"/><circle cx="8" cy="17" r="2"/></svg>@Ui.T("פרטי האירוע", "Event details")</a>
+            @if (!User.IsActingAsCouple())
+            {
+                <a href="/admin/account" class="@(Context.Request.Path.StartsWithSegments("/admin/account") ? "active" : "")"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4.2 4-6.5 8-6.5s7.2 2.3 8 6.5"/></svg>@Ui.T("החשבון שלי", "My account")</a>
+            }
+            </nav>
+            <div class="side-foot">
+                <div class="langsw">
+                    <a href="/lang/he?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)" class="@(Ui.IsHebrew ? "on" : "")">עברית</a>
+                    <a href="/lang/en?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)" class="@(Ui.IsHebrew ? "" : "on")">English</a>
+                </div>
+                <form method="post" action="/signout" asp-antiforgery="true"><button type="submit">@Ui.T("יציאה", "Sign out")</button></form>
+            </div>
+        </aside>
+        <main class="main">
+            @if (TempData["Flash"] is string flash)
+            {
+                <p class="flash" role="status">@flash</p>
+            }
+            @RenderBody()
+        </main>
+    </div>
 </body>
 </html>

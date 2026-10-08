@@ -4,7 +4,7 @@ using WeddingRsvp.Services;
 
 namespace WeddingRsvp.Pages.Admin;
 
-public class ImportModel(ImportService importer) : PageModel
+public class ImportModel(ImportService importer, Ui ui) : PageModel
 {
     [BindProperty] public IFormFile? File { get; set; }
     public ImportReport? Report { get; private set; }
@@ -16,12 +16,12 @@ public class ImportModel(ImportService importer) : PageModel
     {
         if (File is null || File.Length == 0)
         {
-            Error = "בחרו קובץ CSV";
+            Error = ui.T("בחרו קובץ CSV", "Choose a CSV file");
             return Page();
         }
         if (File.Length > 2_000_000)
         {
-            Error = "הקובץ גדול מדי";
+            Error = ui.T("הקובץ גדול מדי", "The file is too large");
             return Page();
         }
 

@@ -1,70 +1,133 @@
 @page
 @model WeddingRsvp.Pages.Admin.EventModel
+@using WeddingRsvp.Services
 @{
-    ViewData["Title"] = "פרטי האירוע";
+    ViewData["Title"] = Ui.T("פרטי האירוע", "Event details");
+    var s = Model.Settings;
+    string SegText(SegmentInfo i) => Ui.IsHebrew
+        ? $"{i.Length} תווים · {i.Segments} מקטעים"
+        : $"{i.Length} characters · {i.Segments} segment{(i.Segments == 1 ? "" : "s")}";
+    var presets = new[] { "#FFFFFF", "#F6F1E7", "#FBE9E7", "#E7F0EC", "#E8EEF6", "#1B2A2F", "#2B2237" };
 }
-<h1>פרטי האירוע</h1>
+<header class="page-head">
+    <div><h1>@Ui.T("פרטי האירוע", "Event details")</h1>
+        <div class="sub">@Ui.T("הכול כאן ריק עד שתמלאו. שום הודעה לא יוצאת עם שדה חסר.", "Everything here starts empty. No message is sent with a missing field.")</div></div>
+</header>
 
-<form method="post">
-    <div asp-validation-summary="All"></div>
+<form method="post" id="main">
+<div asp-validation-summary="All" class="banner err"></div>
 
-    <fieldset>
-        <legend>האירוע</legend>
-        <label>שמות הזוג <input asp-for="Settings.CoupleNames" /></label>
-        <label>כותרת <input asp-for="Settings.Title" /></label>
-        <label>התחלה <input asp-for="Settings.StartsAtLocal" /></label>
-        <label>סיום <input asp-for="Settings.EndsAtLocal" /></label>
-        <label>אולם <input asp-for="Settings.VenueName" /></label>
-        <label>כתובת <input asp-for="Settings.VenueAddress" /></label>
-        <label>קו רוחב (לניווט) <input asp-for="Settings.Latitude" dir="ltr" placeholder="31.7683" /></label>
-        <label>קו אורך (לניווט) <input asp-for="Settings.Longitude" dir="ltr" placeholder="35.2137" /></label>
-    </fieldset>
+<section class="card">
+    <h2>@Ui.T("האירוע", "The event")</h2>
+    <div class="fields">
+        <label class="field"><span>@Ui.T("שמות בני הזוג", "Couple names")</span><input asp-for="Settings.CoupleNames" /></label>
+        <label class="field"><span>@Ui.T("שמות בני הזוג (באנגלית)", "Couple names (English)")</span><input asp-for="Settings.CoupleNamesEn" class="ltr" />
+            <small>@Ui.T("אופציונלי. אחרת ייעשה שימוש בשמות הרגילים.", "Optional. Otherwise the main names are used.")</small></label>
+        <label class="field"><span>@Ui.T("כותרת הדף", "Page title")</span><input asp-for="Settings.Title" /></label>
+        <label class="field"><span>@Ui.T("התחלה", "Starts")</span><input asp-for="Settings.StartsAtLocal" /></label>
+        <label class="field"><span>@Ui.T("סיום", "Ends")</span><input asp-for="Settings.EndsAtLocal" /></label>
+        <label class="field"><span>@Ui.T("אולם", "Venue")</span><input asp-for="Settings.VenueName" /></label>
+        <label class="field"><span>@Ui.T("אולם (באנגלית)", "Venue (English)")</span><input asp-for="Settings.VenueNameEn" class="ltr" /></label>
+        <label class="field"><span>@Ui.T("כתובת", "Address")</span><input asp-for="Settings.VenueAddress" /></label>
+        <label class="field"><span>@Ui.T("כתובת (באנגלית)", "Address (English)")</span><input asp-for="Settings.VenueAddressEn" class="ltr" /></label>
+        <label class="field"><span>@Ui.T("קו רוחב (לניווט)", "Latitude (for navigation)")</span><input asp-for="Settings.Latitude" class="ltr" placeholder="31.7683" /></label>
+        <label class="field"><span>@Ui.T("קו אורך (לניווט)", "Longitude (for navigation)")</span><input asp-for="Settings.Longitude" class="ltr" placeholder="35.2137" /></label>
+    </div>
+</section>
 
-    <fieldset>
-        <legend>הודעות</legend>
-        <p>אפשר להשתמש ב: <code dir="ltr">@MessageTemplates.Placeholders</code>. כל עברית בהודעה מגבילה כל מקטע ל-70 תווים.</p>
-        <label>שם השולח <input asp-for="Settings.SmsSenderName" dir="ltr" maxlength="11" /></label>
+<section class="card">
+    <h2>@Ui.T("שפה", "Language")</h2>
+    <p class="muted">@Ui.T("באיזו שפה האורחים מקבלים את ההודעה ואת הדף. בשתי השפות ההודעה כוללת את שני הטקסטים והדף כולל מתג שפה.",
+        "Which language guests get in the message and on the page. With both, the SMS carries both texts and the page has a language toggle.")</p>
+    <div class="fields">
+        <label class="field"><span>@Ui.T("שפת האורחים", "Guest language")</span>
+            <select asp-for="Settings.LanguageMode">
+                <option value="@LanguageMode.HebrewOnly">@Ui.T("עברית בלבד", "Hebrew only")</option>
+                <option value="@LanguageMode.EnglishOnly">@Ui.T("אנגלית בלבד", "English only")</option>
+                <option value="@LanguageMode.Both">@Ui.T("עברית ואנגלית", "Hebrew and English")</option>
+            </select></label>
+        <label class="field"><span>@Ui.T("שפת ברירת מחדל בדף (כששתיהן)", "Default page language (when both)")</span>
+            <select asp-for="Settings.DefaultGuestLanguage">
+                <option value="he">עברית</option>
+                <option value="en">English</option>
+            </select></label>
+    </div>
+</section>
 
-        <label>הזמנה <textarea asp-for="Settings.InviteTemplate" rows="3"></textarea></label>
-        <small>@Model.InviteSegments.Length תווים · @Model.InviteSegments.Segments מקטעים</small>
+<section class="card">
+    <h2>@Ui.T("ההודעות", "Messages")</h2>
+    <p class="muted">@Ui.T("אפשר להשתמש ב:", "You can use:") <code class="ltr">@MessageTemplates.Placeholders</code>.
+        @Ui.T("כל עברית בהודעה מגבילה כל מקטע ל-70 תווים (באנגלית בלבד: 160).", "Any Hebrew makes each segment 70 characters (English only: 160).")</p>
+    <label class="field"><span>@Ui.T("שם השולח", "Sender name")</span><input asp-for="Settings.SmsSenderName" class="ltr" maxlength="11" /></label>
+    <div class="fields">
+        <div>
+            <h3>עברית</h3>
+            <label class="field"><span>@Ui.T("הזמנה", "Invitation")</span><textarea asp-for="Settings.InviteTemplate" rows="3"></textarea><small>@SegText(Model.InviteSegments)</small></label>
+            <label class="field"><span>@Ui.T("תזכורת", "Reminder")</span><textarea asp-for="Settings.ReminderTemplate" rows="3"></textarea><small>@SegText(Model.ReminderSegments)</small></label>
+            <label class="field"><span>@Ui.T("תודה", "Thank-you")</span><textarea asp-for="Settings.ThankYouTemplate" rows="2"></textarea><small>@SegText(Model.ThankYouSegments)</small></label>
+        </div>
+        <div>
+            <h3>English</h3>
+            <label class="field"><span>@Ui.T("הזמנה", "Invitation")</span><textarea asp-for="Settings.InviteTemplateEn" rows="3" class="ltr"></textarea><small>@SegText(Model.InviteSegmentsEn)</small></label>
+            <label class="field"><span>@Ui.T("תזכורת", "Reminder")</span><textarea asp-for="Settings.ReminderTemplateEn" rows="3" class="ltr"></textarea><small>@SegText(Model.ReminderSegmentsEn)</small></label>
+            <label class="field"><span>@Ui.T("תודה", "Thank-you")</span><textarea asp-for="Settings.ThankYouTemplateEn" rows="2" class="ltr"></textarea><small>@SegText(Model.ThankYouSegmentsEn)</small></label>
+        </div>
+    </div>
+    <h3>@Ui.T("תצוגה מקדימה של ההזמנה", "Invitation preview")</h3>
+    <pre class="sms-preview">@Model.PreviewBody</pre>
+    <p class="faint">@SegText(Model.PreviewSegments) · @Ui.T("מתעדכן אחרי שמירה", "updates after saving")</p>
+</section>
 
-        <label>תזכורת <textarea asp-for="Settings.ReminderTemplate" rows="3"></textarea></label>
-        <small>@Model.ReminderSegments.Length תווים · @Model.ReminderSegments.Segments מקטעים</small>
+<section class="card">
+    <h2>@Ui.T("עיצוב דף האורחים", "Guest page look")</h2>
+    <p class="muted">@Ui.T("הצבעים חלים על הדף שהאורחים רואים. הכרטיסים נשארים לבנים.", "These apply to the page guests see. The cards stay white.")</p>
+    <div class="fields">
+        <div class="field"><span>@Ui.T("צבע רקע", "Background colour")</span>
+            <input asp-for="Settings.PageBackgroundColor" class="ltr" placeholder="#F6F1E7" maxlength="7" />
+            <div class="swatches">@foreach (var c in presets) { <button type="button" class="swatch" style="background: @c" data-target="Settings_PageBackgroundColor" data-color="@c" aria-label="@c"></button> }</div></div>
+        <div class="field"><span>@Ui.T("צבע כפתור", "Button colour")</span>
+            <input asp-for="Settings.PageAccentColor" class="ltr" placeholder="#1F6F5F" maxlength="7" />
+            <div class="swatches">@foreach (var c in new[] { "#1F6F5F", "#2F5D8A", "#7A4E8C", "#A8553A", "#1B2A2F" }) { <button type="button" class="swatch" style="background: @c" data-target="Settings_PageAccentColor" data-color="@c" aria-label="@c"></button> }</div></div>
+    </div>
+</section>
 
-        <label>תודה <textarea asp-for="Settings.ThankYouTemplate" rows="2"></textarea></label>
-        <small>@Model.ThankYouSegments.Length תווים · @Model.ThankYouSegments.Segments מקטעים</small>
-    </fieldset>
-
-    <fieldset>
-        <legend>תזמון</legend>
-        <label>שליחת הזמנות אוטומטית ב- <input asp-for="Settings.AutoInviteAtLocal" /></label>
-        <small>השאירו ריק כדי לשלוח ידנית מעמוד ההודעות.</small>
-
-        <label><input asp-for="Settings.RemindersEnabled" /> תזכורות למי שלא ענו</label>
-        <label>כל כמה ימים <input asp-for="Settings.ReminderIntervalDays" type="number" min="1" /></label>
-        <label>מקסימום תזכורות <input asp-for="Settings.MaxReminders" type="number" min="0" /></label>
-
-        <label><input asp-for="Settings.ThankYouEnabled" /> הודעת תודה יום אחרי האירוע</label>
-        <label>בשעה <input asp-for="Settings.ThankYouHourLocal" type="number" min="0" max="23" /></label>
-        <label>למי
+<section class="card">
+    <h2>@Ui.T("תזמון", "Schedule")</h2>
+    <div class="fields">
+        <label class="field"><span>@Ui.T("שליחת הזמנות אוטומטית ב-", "Send invitations automatically at")</span><input asp-for="Settings.AutoInviteAtLocal" />
+            <small>@Ui.T("השאירו ריק כדי לשלוח ידנית מעמוד ההודעות.", "Leave empty to send manually from the Messages page.")</small></label>
+    </div>
+    <label class="checks"><input asp-for="Settings.RemindersEnabled" /> @Ui.T("תזכורות למי שלא ענו", "Remind guests who haven't answered")</label>
+    <div class="fields">
+        <label class="field"><span>@Ui.T("כל כמה ימים", "Every how many days")</span><input asp-for="Settings.ReminderIntervalDays" type="number" min="1" /></label>
+        <label class="field"><span>@Ui.T("מקסימום תזכורות", "Maximum reminders")</span><input asp-for="Settings.MaxReminders" type="number" min="0" /></label>
+    </div>
+    <label class="checks"><input asp-for="Settings.ThankYouEnabled" /> @Ui.T("הודעת תודה יום אחרי האירוע", "Thank-you message the day after the event")</label>
+    <div class="fields">
+        <label class="field"><span>@Ui.T("בשעה", "At hour")</span><input asp-for="Settings.ThankYouHourLocal" type="number" min="0" max="23" /></label>
+        <label class="field"><span>@Ui.T("למי", "To whom")</span>
             <select asp-for="Settings.ThankYouAudience">
-                <option value="@ThankYouAudience.AttendingOnly">רק למי שאישרו הגעה</option>
-                <option value="@ThankYouAudience.EveryoneInvited">לכל המוזמנים</option>
-            </select>
-        </label>
-    </fieldset>
+                <option value="@ThankYouAudience.AttendingOnly">@Ui.T("רק למי שאישרו הגעה", "Only guests who confirmed")</option>
+                <option value="@ThankYouAudience.EveryoneInvited">@Ui.T("לכל המוזמנים", "Everyone invited")</option>
+            </select></label>
+    </div>
+</section>
 
-    <button type="submit">שמירה</button>
+<div><button type="submit" class="btn primary">@Ui.T("שמירה", "Save")</button></div>
 </form>
 
-<section>
-    <h2>תמונת ההזמנה</h2>
-    @if (Model.HasImage)
-    {
-        <img src="/admin/media/invitation?v=@(Model.Settings.InvitationImageUpdatedAtUtc?.Ticks)" alt="ההזמנה" style="max-width: 240px" />
-    }
-    <form method="post" asp-page-handler="Image" enctype="multipart/form-data">
-        <input type="file" name="Image" accept="image/jpeg,image/png,image/webp" />
-        <button type="submit">העלאה</button>
-    </form>
+<section class="card">
+    <h2>@Ui.T("תמונות", "Images")</h2>
+    <p class="muted">@Ui.T("תמונת ההזמנה היא עיקר דף האורחים. אפשר להעלות אחת לכל שפה; אם חסרה, תוצג השנייה.", "The invitation image is the heart of the guest page. Upload one per language; if one is missing the other is shown.")</p>
+    <div class="steps">
+        <partial name="_ImageSlot" model='new ImageSlot("he", Ui.T("הזמנה בעברית", "Hebrew invitation"), Model.HasImage, s.InvitationImageUpdatedAtUtc?.Ticks, "he")' />
+        <partial name="_ImageSlot" model='new ImageSlot("en", Ui.T("הזמנה באנגלית", "English invitation"), Model.HasImageEn, s.InvitationImageEnUpdatedAtUtc?.Ticks, "en")' />
+        <partial name="_ImageSlot" model='new ImageSlot("bg", Ui.T("תמונת רקע לדף (אופציונלי)", "Page background photo (optional)"), Model.HasBackground, s.PageBackgroundImageUpdatedAtUtc?.Ticks, null)' />
+    </div>
 </section>
+
+<script>
+    document.querySelectorAll('.swatch').forEach(function (b) {
+        b.addEventListener('click', function () { document.getElementById(b.dataset.target).value = b.dataset.color; });
+    });
+</script>

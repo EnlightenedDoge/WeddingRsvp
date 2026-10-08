@@ -1,32 +1,32 @@
 @page "/admin/site/security"
 @model WeddingRsvp.Pages.SiteAdmin.SecurityModel
 @{ ViewData["Title"] = Ui.T("אבטחה", "Security"); }
-<h1>@Ui.T("אבטחה", "Security")</h1>
+<header class="page-head"><h1>@Ui.T("אבטחה", "Security")</h1></header>
 
-<section>
+<section class="card">
     <h2>@Ui.T("אימות דו-שלבי (TOTP)", "Two-factor authentication (TOTP)")</h2>
     @if (Model.Enabled)
     {
         <p>@Ui.T("פעיל.", "Enabled.")</p>
         <form method="post" asp-page-handler="Disable">
-            <label>@Ui.T("סיסמה", "Password") <input name="Password" type="password" required autocomplete="current-password" /></label>
-            <button type="submit">@Ui.T("ביטול", "Disable")</button>
+            <label class="field"><span>@Ui.T("סיסמה", "Password")</span><input name="Password" type="password" required autocomplete="current-password" /></label>
+            <button type="submit" class="btn primary">@Ui.T("ביטול", "Disable")</button>
         </form>
     }
     else
     {
         <p>@Ui.T("הוסיפו את המפתח באפליקציית אימות (Google Authenticator, Authy, 1Password…), ואז הזינו את הקוד.",
             "Add this key to an authenticator app (Google Authenticator, Authy, 1Password…), then enter the code.")</p>
-        <p>@Ui.T("מפתח", "Key"): <code dir="ltr">@Model.SharedKey</code></p>
+        <p>@Ui.T("מפתח", "Key"): <code class="ltr">@Model.SharedKey</code></p>
         <p>@Ui.T("או הדביקו את הקישור באפליקציה", "Or paste this URI into the app"):</p>
         <input class="copy-box" readonly value="@Model.Uri" onfocus="this.select()" />
         @if (Model.Error is not null)
         {
-            <p class="error" role="alert">@Model.Error</p>
+            <p class="banner err" role="alert">@Model.Error</p>
         }
         <form method="post" asp-page-handler="Enable">
-            <label>@Ui.T("קוד", "Code") <input name="Code" inputmode="numeric" required dir="ltr" autocomplete="off" /></label>
-            <button type="submit">@Ui.T("הפעלה", "Enable")</button>
+            <label class="field"><span>@Ui.T("קוד", "Code")</span><input name="Code" inputmode="numeric" required class="ltr" autocomplete="off" /></label>
+            <button type="submit" class="btn primary">@Ui.T("הפעלה", "Enable")</button>
         </form>
     }
 </section>

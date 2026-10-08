@@ -99,7 +99,9 @@ builder.Services.ConfigureApplicationCookie(o =>
 });
 builder.Services.AddAuthorization(o =>
 {
-    o.AddPolicy("Couple", p => p.RequireRole(Roles.Couple));
+    o.AddPolicy("Couple", p => p.RequireAssertion(c =>
+        c.User.IsInRole(Roles.Couple)
+        || (c.User.IsInRole(Roles.SiteAdmin) && c.User.IsActingAsCouple() && c.User.CoupleId() is not null)));
     o.AddPolicy("SiteAdmin", p => p.RequireRole(Roles.SiteAdmin));
 });
 builder.Services.AddAntiforgery(o =>
@@ -223,20 +225,41 @@ app.MapGet("/{token:length(10)}/event.ics", async (
     return Results.File(Encoding.UTF8.GetBytes(ics), "text/calendar; charset=utf-8", "wedding.ics");
 });
 
-app.MapGet("/{token:length(10)}/invitation", async (string token, RsvpService rsvp, SettingsService settings) =>
+app.MapGet("/{token:length(10)}/invitation", async (string token, string? lang, RsvpService rsvp, SettingsService settings) =>
 {
     if (await rsvp.FindAsync(token) is null) return Results.NotFound();
-    return InvitationFile(await settings.GetAsync());
+    return InvitationFile(await settings.GetAsync(), lang);
+});
+
+app.MapGet("/{token:length(10)}/background", async (string token, RsvpService rsvp, SettingsService settings) =>
+{
+    if (await rsvp.FindAsync(token) is null) return Results.NotFound();
+    var s = await settings.GetAsync();
+    return MediaFile(s.CoupleId, s.PageBackgroundImageFile);
 });
 
 // The couple's own preview of their uploaded image.
-app.MapGet("/admin/media/invitation", async (SettingsService settings) => InvitationFile(await settings.GetAsync()))
-    .RequireAuthorization("Couple");
-
-IResult InvitationFile(EventSettings s)
+app.MapGet("/admin/media/invitation", async (string? lang, SettingsService settings) =>
+    InvitationFile(await settings.GetAsync(), lang, exact: true)).RequireAuthorization("Couple");
+app.MapGet("/admin/media/background", async (SettingsService settings) =>
 {
-    if (s.InvitationImageFile is null) return Results.NotFound();
-    var path = MediaPaths.Invitation(dataDir, s.CoupleId, s.InvitationImageFile);
+    var s = await settings.GetAsync();
+    return MediaFile(s.CoupleId, s.PageBackgroundImageFile);
+}).RequireAuthorization("Couple");
+
+// The image for the requested language; for guests, a missing one falls back to the other language.
+IResult InvitationFile(EventSettings s, string? lang, bool exact = false)
+{
+    var he = s.InvitationImageFile;
+    var en = s.InvitationImageFileEn;
+    var file = lang == "en" ? (exact ? en : en ?? he) : (exact ? he : he ?? en);
+    return MediaFile(s.CoupleId, file);
+}
+
+IResult MediaFile(int coupleId, string? file)
+{
+    if (file is null) return Results.NotFound();
+    var path = MediaPaths.Invitation(dataDir, coupleId, file);
     if (!File.Exists(path)) return Results.NotFound();
     var contentType = Path.GetExtension(path).ToLowerInvariant() switch
     {

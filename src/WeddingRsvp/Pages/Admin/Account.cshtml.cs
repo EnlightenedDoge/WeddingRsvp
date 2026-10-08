@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using WeddingRsvp.Auth;
 using WeddingRsvp.Domain;
 using WeddingRsvp.Services;
 
@@ -13,10 +14,16 @@ public class AccountModel(
     public string? PasswordError { get; private set; }
     public string? DeleteError { get; private set; }
 
-    public async Task OnGetAsync() => Email = (await users.GetUserAsync(User))?.Email;
+    public async Task<IActionResult> OnGetAsync()
+    {
+        if (User.IsActingAsCouple()) return Redirect("/admin");
+        Email = (await users.GetUserAsync(User))?.Email;
+        return Page();
+    }
 
     public async Task<IActionResult> OnPostPasswordAsync(string? current, string? @new)
     {
+        if (User.IsActingAsCouple()) return Forbid();
         var user = (await users.GetUserAsync(User))!;
         Email = user.Email;
         var r = await users.ChangePasswordAsync(user, current ?? "", @new ?? "");
@@ -36,6 +43,7 @@ public class AccountModel(
 
     public async Task<IActionResult> OnPostDeleteAllAsync(string? deletePassword, string? confirm)
     {
+        if (User.IsActingAsCouple()) return Forbid();
         var user = (await users.GetUserAsync(User))!;
         Email = user.Email;
         if (confirm != "yes" || !await users.CheckPasswordAsync(user, deletePassword ?? ""))

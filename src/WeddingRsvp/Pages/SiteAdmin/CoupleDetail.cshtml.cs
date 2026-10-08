@@ -8,7 +8,8 @@ using WeddingRsvp.Services;
 
 namespace WeddingRsvp.Pages.SiteAdmin;
 
-public class CoupleDetailModel(AppDbContext db, CoupleAdminService couples, UserManager<AppUser> users) : PageModel
+public class CoupleDetailModel(AppDbContext db, CoupleAdminService couples, UserManager<AppUser> users,
+    SignInManager<AppUser> signIn, AuditLog audit) : PageModel
 {
     public Couple Couple { get; private set; } = null!;
     public string? Email { get; private set; }
@@ -32,6 +33,23 @@ public class CoupleDetailModel(AppDbContext db, CoupleAdminService couples, User
 
     public Task<IActionResult> OnPostSuspendAsync(int id) => SetSuspended(id, true);
     public Task<IActionResult> OnPostResumeAsync(int id) => SetSuspended(id, false);
+
+    /// <summary>
+    /// Re-issues the site admin's cookie with the couple's id and an "acting" marker. The tenant filter then
+    /// applies exactly as for the couple; nothing is loosened. Opening and leaving are audited.
+    /// </summary>
+    public async Task<IActionResult> OnPostOpenAsync(int id)
+    {
+        if (!await LoadAsync(id) || Couple.Suspended) return NotFound();
+        var admin = (await users.GetUserAsync(User))!;
+        await signIn.SignInWithClaimsAsync(admin, false, new[]
+        {
+            new System.Security.Claims.Claim(Auth.Roles.CoupleIdClaim, id.ToString()),
+            new System.Security.Claims.Claim(Auth.Roles.ActingClaim, "1"),
+        });
+        await audit.WriteAsync("couple.opened-as", admin, id);
+        return Redirect("/admin");
+    }
 
     private async Task<IActionResult> SetSuspended(int id, bool suspended)
     {

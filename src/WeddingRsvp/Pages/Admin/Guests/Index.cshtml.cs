@@ -7,7 +7,7 @@ using WeddingRsvp.Domain;
 
 namespace WeddingRsvp.Pages.Admin.Guests;
 
-public class IndexModel(AppDbContext db) : PageModel
+public class IndexModel(AppDbContext db, Services.Ui ui) : PageModel
 {
     /// <summary>all | pending | attending | declined | invalid | uninvited | opened</summary>
     [BindProperty(SupportsGet = true)] public string Filter { get; set; } = "all";
@@ -15,13 +15,12 @@ public class IndexModel(AppDbContext db) : PageModel
 
     public List<Guest> Guests { get; private set; } = new();
 
-    public List<SelectListItem> FilterOptions => Filters;
-
-    private static readonly List<SelectListItem> Filters =
+    public List<SelectListItem> FilterOptions =>
     [
-        new("הכול", "all"), new("טרם ענו", "pending"), new("פתחו ולא ענו", "opened"),
-        new("מגיעים", "attending"), new("לא מגיעים", "declined"),
-        new("לא נשלחה הזמנה", "uninvited"), new("מספר לא תקין", "invalid"),
+        new(ui.T("הכול", "All"), "all"), new(ui.T("טרם ענו", "Awaiting"), "pending"),
+        new(ui.T("פתחו ולא ענו", "Opened, not answered"), "opened"),
+        new(ui.T("מגיעים", "Attending"), "attending"), new(ui.T("לא מגיעים", "Declined"), "declined"),
+        new(ui.T("לא נשלחה הזמנה", "Not invited yet"), "uninvited"), new(ui.T("מספר לא תקין", "Invalid number"), "invalid"),
     ];
 
     public async Task OnGetAsync()

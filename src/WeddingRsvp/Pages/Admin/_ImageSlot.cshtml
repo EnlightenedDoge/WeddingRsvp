@@ -1,0 +1,17 @@
+@model WeddingRsvp.Pages.Admin.ImageSlot
+<div class="img-slot">
+    <b>@Model.Title</b>
+    @if (Model.Has)
+    {
+        <img src="/admin/media/@(Model.Kind == "bg" ? "background" : "invitation")?@(Model.Lang is null ? "" : "lang=" + Model.Lang + "&")v=@Model.Ticks" alt="@Model.Title" />
+        <form method="post" asp-page="/Admin/Event" asp-page-handler="RemoveImage" asp-route-kind="@Model.Kind"><button type="submit" class="btn danger">@Ui.T("הסרה", "Remove")</button></form>
+    }
+    else
+    {
+        <div class="img-empty muted">@Ui.T("לא הועלתה תמונה", "No image uploaded")</div>
+    }
+    <form method="post" asp-page="/Admin/Event" asp-page-handler="Image" asp-route-kind="@Model.Kind" enctype="multipart/form-data" class="row">
+        <input type="file" name="Image" accept="image/jpeg,image/png,image/webp" />
+        <button type="submit" class="btn">@Ui.T("העלאה", "Upload")</button>
+    </form>
+</div>

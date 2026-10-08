@@ -10,3 +10,6 @@ public enum MessageKind { Invite = 0, Reminder = 1, ThankYou = 2, Test = 3 }
 public enum MessageStatus { Queued = 0, Sent = 1, Delivered = 2, Failed = 3, Cancelled = 4 }
 
 public enum ThankYouAudience { AttendingOnly = 0, EveryoneInvited = 1 }
+
+/// <summary>Which language(s) guests get: Hebrew only, English only, or both texts in one SMS and a toggle on the page.</summary>
+public enum LanguageMode { HebrewOnly = 0, EnglishOnly = 1, Both = 2 }

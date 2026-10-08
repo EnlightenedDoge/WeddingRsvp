@@ -1,16 +1,24 @@
-@* Guest-facing shell. Replace with the Claude Design output (keep dir="rtl" and lang="he"). *@
+@using WeddingRsvp.Domain
+@{
+    var lang = ViewData["Lang"] as string ?? "he";
+    var bg = ViewData["Bg"] as string ?? "#F5F4F0";
+    var accent = ViewData["Accent"] as string ?? "#2E5E4E";
+    var dark = ViewData["Dark"] as bool? ?? false;
+    var bgImage = ViewData["BgImage"] as string;
+}
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="@lang" dir="@(lang == "en" ? "ltr" : "rtl")">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="robots" content="noindex, nofollow" />
     <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap" />
     <link rel="stylesheet" href="~/css/public.css" asp-append-version="true" />
 </head>
-<body>
-    <main class="page">
-        @RenderBody()
-    </main>
+@* bg/accent come from HexColor-validated values only; bgImage is a server-built path. *@
+<body class="@(dark ? "dark" : "")" style="--bg: @bg; --accent: @accent;@(bgImage is null ? "" : $" --bg-image: url('{bgImage}');")">
+    @RenderBody()
 </body>
 </html>

@@ -1,6 +1,11 @@
 @page "/"
 @{
-    ViewData["Title"] = "אישור הגעה";
+    Layout = "_PublicLayout";
+    ViewData["Title"] = Ui.T("אישור הגעה", "RSVP");
 }
-<h1>אישור הגעה</h1>
-<p>כדי לאשר הגעה, פתחו את הקישור האישי שקיבלתם בהודעה.</p>
+<div class="center">
+    <div class="card">
+        <h1 style="font-size: 22px">@Ui.T("אישור הגעה", "RSVP")</h1>
+        <div>@Ui.T("כדי לאשר הגעה, פתחו את הקישור האישי שקיבלתם בהודעה.", "To RSVP, open the personal link you received in your message.")</div>
+    </div>
+</div>

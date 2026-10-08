@@ -8,7 +8,7 @@ using WeddingRsvp.Services;
 namespace WeddingRsvp.Pages.Admin;
 
 public class MessagesModel(
-    AppDbContext db, CampaignService campaign, SettingsService settings, SendingWindow window, IsraelClock clock) : PageModel
+    AppDbContext db, CampaignService campaign, SettingsService settings, SendingWindow window, IsraelClock clock, Ui ui) : PageModel
 {
     public EventSettings Event { get; private set; } = null!;
     public bool InSendingWindow { get; private set; }
@@ -39,11 +39,11 @@ public class MessagesModel(
         var missing = await campaign.MissingFieldsAsync(MessageKind.Invite);
         if (missing.Count > 0)
         {
-            TempData["Flash"] = "אי אפשר לשלוח הזמנות: חסרים פרטים באירוע (" + string.Join(" ", missing) + ")";
+            TempData["Flash"] = ui.T("אי אפשר לשלוח הזמנות: חסרים פרטים באירוע (", "Can't send invitations: event details are missing (") + string.Join(" ", missing) + ")";
             return RedirectToPage();
         }
         var n = await campaign.QueueInvitesAsync();
-        TempData["Flash"] = n == 0 ? "אין הזמנות חדשות לשליחה" : $"{n} הזמנות נכנסו לתור";
+        TempData["Flash"] = n == 0 ? ui.T("אין הזמנות חדשות לשליחה", "No new invitations to send") : ui.T($"{n} הזמנות נכנסו לתור", $"{n} invitations queued");
         return RedirectToPage();
     }
 
@@ -52,22 +52,22 @@ public class MessagesModel(
         var s = await settings.GetAsync();
         s.SendingPaused = !s.SendingPaused;
         await db.SaveChangesAsync();
-        TempData["Flash"] = s.SendingPaused ? "השליחה הושהתה" : "השליחה חודשה";
+        TempData["Flash"] = s.SendingPaused ? ui.T("השליחה הושהתה", "Sending paused") : ui.T("השליחה חודשה", "Sending resumed");
         return RedirectToPage();
     }
 
     public async Task<IActionResult> OnPostRequeueFailedAsync()
     {
         var n = await campaign.RequeueFailedAsync();
-        TempData["Flash"] = $"{n} הודעות הוחזרו לתור";
+        TempData["Flash"] = ui.T($"{n} הודעות הוחזרו לתור", $"{n} messages re-queued");
         return RedirectToPage();
     }
 
     public async Task<IActionResult> OnPostTestAsync()
     {
         TempData["Flash"] = await campaign.QueueTestAsync(TestPhone ?? "", TestTemplate)
-            ? "הודעת בדיקה נכנסה לתור"
-            : "מספר לא תקין";
+            ? ui.T("הודעת בדיקה נכנסה לתור", "Test message queued")
+            : ui.T("מספר לא תקין", "Invalid number");
         return RedirectToPage();
     }
 }

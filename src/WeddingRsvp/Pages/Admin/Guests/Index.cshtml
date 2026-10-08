@@ -1,38 +1,46 @@
 @page
 @model WeddingRsvp.Pages.Admin.Guests.IndexModel
-@{
-    ViewData["Title"] = "אורחים";
-}
-<h1>אורחים (@Model.Guests.Count)</h1>
+@{ ViewData["Title"] = Ui.T("אורחים", "Guests"); }
+<header class="page-head">
+    <div><h1>@Ui.T("אורחים", "Guests")</h1><div class="sub">@Model.Guests.Count @Ui.T("הזמנות", "invitations")</div></div>
+    <div class="row">
+        <a class="btn" href="/admin/export.csv">@Ui.T("ייצוא CSV", "Export CSV")</a>
+        <a class="btn" href="/admin/import">@Ui.T("ייבוא רשימה", "Import list")</a>
+        <a class="btn primary" href="/admin/guests/edit">@Ui.T("הוספת אורח", "Add guest")</a>
+    </div>
+</header>
 
-<form method="get" class="toolbar">
-    <select asp-for="Filter" asp-items="Model.FilterOptions"></select>
-    <input type="search" name="q" value="@Model.Q" placeholder="חיפוש לפי שם או טלפון" />
-    <button type="submit">סינון</button>
-    <a href="/admin/guests/edit">הוספת אורח</a>
-    <a href="/admin/export.csv">ייצוא לאקסל</a>
-</form>
-
-<table>
-    <thead>
-    <tr>
-        <th>שם</th><th>טלפון</th><th>מוזמנים</th><th>סטטוס</th><th>מגיעים</th>
-        <th>הזמנה נשלחה</th><th>תזכורות</th><th>פתחו קישור</th>
-    </tr>
-    </thead>
-    <tbody>
-    @foreach (var g in Model.Guests)
+<section class="card">
+    <form method="get" class="toolbar">
+        <select asp-for="Filter" asp-items="Model.FilterOptions" style="flex: 0 1 220px"></select>
+        <input type="search" name="q" value="@Model.Q" placeholder="@Ui.T("חיפוש לפי שם או טלפון", "Search by name or phone")" />
+        <button type="submit" class="btn">@Ui.T("סינון", "Filter")</button>
+    </form>
+    <div class="tablewrap">
+    <table>
+        <thead><tr>
+            <th>@Ui.T("שם", "Name")</th><th>@Ui.T("טלפון", "Phone")</th><th>@Ui.T("מוזמנים", "Invited")</th>
+            <th>@Ui.T("סטטוס", "Status")</th><th>@Ui.T("הזמנה נשלחה", "Invite sent")</th>
+            <th>@Ui.T("תזכורות", "Reminders")</th><th>@Ui.T("פתחו קישור", "Opened link")</th>
+        </tr></thead>
+        <tbody>
+        @foreach (var g in Model.Guests)
+        {
+            <tr class="@(g.PhoneE164 is null ? "bad" : "")">
+                <td><a href="/admin/guests/edit/@g.Id"><b>@g.Name</b></a></td>
+                <td class="ltr">@g.PhoneRaw @if (g.PhoneError is not null) { <div class="faint">@Labels.Problem(g.PhoneError)</div> }</td>
+                <td>@g.InvitedCount</td>
+                <td><span class="pill @Labels.StatusPill(g.Status)">@Labels.Status(g.Status)@(g.Status == RsvpStatus.Attending ? " · " + g.AttendingCount : "")</span></td>
+                <td>@Labels.Local(g.InviteSentAtUtc)</td>
+                <td>@g.RemindersSent</td>
+                <td>@Labels.Local(g.FirstOpenedAtUtc)</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    </div>
+    @if (Model.Guests.Count == 0)
     {
-        <tr class="status-@g.Status.ToString().ToLowerInvariant() @(g.PhoneE164 is null ? "invalid-phone" : "")">
-            <td><a href="/admin/guests/edit/@g.Id">@g.Name</a></td>
-            <td dir="ltr">@g.PhoneRaw @if (g.PhoneError is not null) { <small>(@g.PhoneError)</small> }</td>
-            <td>@g.InvitedCount</td>
-            <td>@Labels.Status(g.Status)</td>
-            <td>@(g.Status == RsvpStatus.Attending ? g.AttendingCount.ToString() : "")</td>
-            <td>@Labels.Local(g.InviteSentAtUtc)</td>
-            <td>@g.RemindersSent</td>
-            <td>@Labels.Local(g.FirstOpenedAtUtc)</td>
-        </tr>
+        <p class="muted">@Ui.T("אין אורחים להצגה.", "No guests to show.")</p>
     }
-    </tbody>
-</table>
+</section>

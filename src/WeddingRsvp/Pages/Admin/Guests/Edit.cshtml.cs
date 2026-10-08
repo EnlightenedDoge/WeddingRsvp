@@ -10,15 +10,15 @@ using WeddingRsvp.Services;
 
 namespace WeddingRsvp.Pages.Admin.Guests;
 
-public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock clock, IOptions<AppOptions> app) : PageModel
+public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock clock, IOptions<AppOptions> app, Ui ui) : PageModel
 {
     public sealed class GuestInput
     {
-        [Required(ErrorMessage = "חסר שם")] public string Name { get; set; } = "";
+        public string Name { get; set; } = "";
         public string? Phone { get; set; }
-        [Range(1, 50, ErrorMessage = "בין 1 ל-50")] public int InvitedCount { get; set; } = 1;
+        public int InvitedCount { get; set; } = 1;
         public RsvpStatus Status { get; set; }
-        [Range(0, 50)] public int AttendingCount { get; set; }
+        public int AttendingCount { get; set; }
         public string? Notes { get; set; }
     }
 
@@ -55,12 +55,16 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
             g = Existing!;
         }
 
+        if (string.IsNullOrWhiteSpace(Input.Name))
+            ModelState.AddModelError("Input.Name", ui.T("חסר שם", "Name is required"));
+        if (Input.InvitedCount is < 1 or > 50)
+            ModelState.AddModelError("Input.InvitedCount", ui.T("בין 1 ל-50", "Between 1 and 50"));
         if (Input.Status == RsvpStatus.Attending && (Input.AttendingCount < 1 || Input.AttendingCount > Input.InvitedCount))
-            ModelState.AddModelError("Input.AttendingCount", "מספר המגיעים צריך להיות בין 1 למספר המוזמנים");
+            ModelState.AddModelError("Input.AttendingCount", ui.T("מספר המגיעים צריך להיות בין 1 למספר המוזמנים", "Attending must be between 1 and the number invited"));
 
         var phone = PhoneNormalizer.Normalize(Input.Phone);
         if (phone.IsValid && await db.Guests.AnyAsync(x => x.PhoneE164 == phone.E164 && x.Id != g.Id))
-            ModelState.AddModelError("Input.Phone", "המספר כבר שייך לאורח אחר");
+            ModelState.AddModelError("Input.Phone", ui.T("המספר כבר שייך לאורח אחר", "This number already belongs to another guest"));
 
         if (!ModelState.IsValid) return Page();
 
@@ -82,7 +86,7 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         }
 
         await db.SaveChangesAsync();
-        TempData["Flash"] = "נשמר";
+        TempData["Flash"] = ui.T("נשמר", "Saved");
         return RedirectToPage(new { id = g.Id });
     }
 
@@ -90,10 +94,10 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
     {
         var missing = await campaign.MissingFieldsAsync(MessageKind.Invite);
         TempData["Flash"] = missing.Count > 0
-            ? "אי אפשר לשלוח: חסרים פרטים באירוע (" + string.Join(" ", missing) + ")"
+            ? ui.T("אי אפשר לשלוח: חסרים פרטים באירוע (", "Can't send: event details are missing (") + string.Join(" ", missing) + ")"
             : await campaign.QueueInviteAsync(id)
-                ? "ההזמנה נכנסה לתור השליחה"
-                : "אי אפשר לשלוח: מספר לא תקין";
+                ? ui.T("ההזמנה נכנסה לתור השליחה", "The invitation was queued")
+                : ui.T("אי אפשר לשלוח: מספר לא תקין", "Can't send: invalid phone number");
         return RedirectToPage(new { id });
     }
 
@@ -105,7 +109,7 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
             db.Guests.Remove(g);
             await db.SaveChangesAsync();
         }
-        TempData["Flash"] = "האורח נמחק";
+        TempData["Flash"] = ui.T("האורח נמחק", "Guest deleted");
         return RedirectToPage("Index");
     }
 

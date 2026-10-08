@@ -15,9 +15,12 @@ Read `SPEC.md` too: where the two disagree, SPEC.md is newer and wins.
   pages (`/admin/site/couples`, `/new`, `/{id}`, `/security` with TOTP), `/signin`, `/signin/2fa`, `/set-password`,
   `/admin/account` (change password, delete all information), per-couple worker, per-guest `/{token}/event.ics` and
   `/{token}/invitation`. UI strings use `@Ui.T("עברית", "English")` and `/lang/{he|en}` (culture cookie).
-- **Not built yet from Phase M:** "open as couple" for the site admin, a TOTP-required banner, data backfill (no real
-  data exists yet: delete `data/rsvp.db`), the first EF migration. SMS allocations/provider layer, language mode,
-  page-look fields and porting the canvas visuals are still open (see TODOs).
+- **Frontend is ported:** design-system `admin.css`, sidebar layouts (`_AdminLayout`, `_SiteLayout`, `_AuthLayout`), every
+  couple/site/sign-in page bilingual, "open as couple" (cookie re-issued with `couple_id` + `acting_as_couple`, banner,
+  audited, account page blocked while acting), guest portal (`Rsvp.cshtml`, `public.css`, he/en toggle, couple-chosen look),
+  Event page with language mode, per-language templates/images and page look. Language mode renders SMS via `MessageTemplates.Body`.
+- **Still open:** TOTP-required banner, audit-log viewer, SMS allocations + provider layer (deferred by the user), data backfill
+  (delete `data/rsvp.db`), first EF migration, per-language email-less polish, visual QA at 320/360/390 in a real browser.
 - Not done yet: first EF migration (`dotnet-ef` is not installed here; and the multi-tenant change reshapes the
   schema, so migrate after it), a manual run of the whole flow, `HttpSmsSender`.
 - Git repo exists. Admin and sign-in share the admin port (8081); Identity is the real protection, not the NPM Access List.
@@ -186,13 +189,13 @@ Don't move logic into views; if a design needs data the model doesn't expose, ad
 ## Open TODOs
 
 - [x] Multi-tenant foundation + auth + site-admin pages (SPEC.md §10, Phase M) — core done; remaining: "open as couple", TOTP banner, audit-log viewer.
-- [ ] Bilingual UI plumbing (SPEC.md §11, Phase L).
-- [ ] Port the canvas designs (admin, site admin, sign-in, guest portal) into the Razor pages.
-- [ ] Add `PageBackgroundColor` / `PageBackgroundImageFile` / `PageAccentColor` to `EventSettings` + the "Guest page look" section on the Event page.
-- [ ] Sign-out / account entry in the couple sidebars (not in the canvas yet).
+- [x] Bilingual UI plumbing (SPEC.md §11, Phase L): `Ui.T`, `/lang/{code}`, `Labels`.
+- [x] Canvas designs ported to Razor (needs visual QA in a browser). Site-couple page lacks the SMS-allocation card (provider phase).
+- [x] Added `PageBackgroundColor` / `PageBackgroundImageFile` / `PageAccentColor` to `EventSettings` + the "Guest page look" section on the Event page.
+- [x] Sign-out / account entry in the couple sidebars (not in the canvas yet).
 - [ ] First EF migration (after the multi-tenant schema), then delete `src/WeddingRsvp/data/rsvp.db` once.
 - [ ] SMS provider layer (`ISmsProvider`, failure kinds, circuit breaker), then `Sms4FreeProvider` (SPEC.md §6) with per-couple allocations.
-- [ ] Couple language mode + per-language images/templates + guest-page toggle (SPEC.md §11).
+- [x] Couple language mode + per-language images/templates + guest-page toggle (SPEC.md §11).
 - [x] "Delete all information" + audit log + site-admin TOTP are built (no UI to browse the audit log yet).
 - [ ] Jewish holidays aren't in `SendingWindow`; couples use the pause switch. Could add a holiday list.
 - [ ] Optional: "send me this on WhatsApp" share link on the guest page.
