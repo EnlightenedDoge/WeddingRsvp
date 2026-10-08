@@ -1,0 +1,8 @@
+/* Placeholder only — replaced by the Claude Design guest portal. Keep it boring. */
+body { margin: 0; font-family: system-ui, sans-serif; line-height: 1.5; }
+.page { max-width: 34rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.invitation { display: block; max-width: 100%; height: auto; margin: 1rem 0; }
+.rsvp-form fieldset { border: 0; padding: 0; margin: 0 0 1rem; }
+.rsvp-form label, .count { display: block; margin: .5rem 0; }
+.error { color: #b00020; }
+.event-actions { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }

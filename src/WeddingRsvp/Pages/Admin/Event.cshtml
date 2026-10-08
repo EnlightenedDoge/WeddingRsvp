@@ -1,0 +1,70 @@
+@page
+@model WeddingRsvp.Pages.Admin.EventModel
+@{
+    ViewData["Title"] = "פרטי האירוע";
+}
+<h1>פרטי האירוע</h1>
+
+<form method="post">
+    <div asp-validation-summary="All"></div>
+
+    <fieldset>
+        <legend>האירוע</legend>
+        <label>שמות הזוג <input asp-for="Settings.CoupleNames" /></label>
+        <label>כותרת <input asp-for="Settings.Title" /></label>
+        <label>התחלה <input asp-for="Settings.StartsAtLocal" /></label>
+        <label>סיום <input asp-for="Settings.EndsAtLocal" /></label>
+        <label>אולם <input asp-for="Settings.VenueName" /></label>
+        <label>כתובת <input asp-for="Settings.VenueAddress" /></label>
+        <label>קו רוחב (לניווט) <input asp-for="Settings.Latitude" dir="ltr" placeholder="31.7683" /></label>
+        <label>קו אורך (לניווט) <input asp-for="Settings.Longitude" dir="ltr" placeholder="35.2137" /></label>
+    </fieldset>
+
+    <fieldset>
+        <legend>הודעות</legend>
+        <p>אפשר להשתמש ב: <code dir="ltr">@MessageTemplates.Placeholders</code>. כל עברית בהודעה מגבילה כל מקטע ל-70 תווים.</p>
+        <label>שם השולח <input asp-for="Settings.SmsSenderName" dir="ltr" maxlength="11" /></label>
+
+        <label>הזמנה <textarea asp-for="Settings.InviteTemplate" rows="3"></textarea></label>
+        <small>@Model.InviteSegments.Length תווים · @Model.InviteSegments.Segments מקטעים</small>
+
+        <label>תזכורת <textarea asp-for="Settings.ReminderTemplate" rows="3"></textarea></label>
+        <small>@Model.ReminderSegments.Length תווים · @Model.ReminderSegments.Segments מקטעים</small>
+
+        <label>תודה <textarea asp-for="Settings.ThankYouTemplate" rows="2"></textarea></label>
+        <small>@Model.ThankYouSegments.Length תווים · @Model.ThankYouSegments.Segments מקטעים</small>
+    </fieldset>
+
+    <fieldset>
+        <legend>תזמון</legend>
+        <label>שליחת הזמנות אוטומטית ב- <input asp-for="Settings.AutoInviteAtLocal" /></label>
+        <small>השאירו ריק כדי לשלוח ידנית מעמוד ההודעות.</small>
+
+        <label><input asp-for="Settings.RemindersEnabled" /> תזכורות למי שלא ענו</label>
+        <label>כל כמה ימים <input asp-for="Settings.ReminderIntervalDays" type="number" min="1" /></label>
+        <label>מקסימום תזכורות <input asp-for="Settings.MaxReminders" type="number" min="0" /></label>
+
+        <label><input asp-for="Settings.ThankYouEnabled" /> הודעת תודה יום אחרי האירוע</label>
+        <label>בשעה <input asp-for="Settings.ThankYouHourLocal" type="number" min="0" max="23" /></label>
+        <label>למי
+            <select asp-for="Settings.ThankYouAudience">
+                <option value="@ThankYouAudience.AttendingOnly">רק למי שאישרו הגעה</option>
+                <option value="@ThankYouAudience.EveryoneInvited">לכל המוזמנים</option>
+            </select>
+        </label>
+    </fieldset>
+
+    <button type="submit">שמירה</button>
+</form>
+
+<section>
+    <h2>תמונת ההזמנה</h2>
+    @if (Model.HasImage)
+    {
+        <img src="/media/invitation?v=@(Model.Settings.InvitationImageUpdatedAtUtc?.Ticks)" alt="ההזמנה" style="max-width: 240px" />
+    }
+    <form method="post" asp-page-handler="Image" enctype="multipart/form-data">
+        <input type="file" name="Image" accept="image/jpeg,image/png,image/webp" />
+        <button type="submit">העלאה</button>
+    </form>
+</section>

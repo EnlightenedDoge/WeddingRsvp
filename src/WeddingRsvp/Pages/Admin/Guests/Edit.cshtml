@@ -1,0 +1,70 @@
+@page "{id:int?}"
+@model WeddingRsvp.Pages.Admin.Guests.EditModel
+@{
+    ViewData["Title"] = Model.Existing?.Name ?? "אורח חדש";
+}
+<h1>@(Model.Existing?.Name ?? "אורח חדש")</h1>
+
+<form method="post">
+    <div asp-validation-summary="ModelOnly"></div>
+    <label>שם <input asp-for="Input.Name" /></label>
+    <span asp-validation-for="Input.Name"></span>
+
+    <label>טלפון <input asp-for="Input.Phone" dir="ltr" inputmode="tel" /></label>
+    <span asp-validation-for="Input.Phone"></span>
+    @if (Model.Existing?.PhoneError is { } err) { <small class="error">@err</small> }
+
+    <label>מספר מוזמנים <input asp-for="Input.InvitedCount" type="number" min="1" /></label>
+    <span asp-validation-for="Input.InvitedCount"></span>
+
+    <label>סטטוס
+        <select asp-for="Input.Status">
+            <option value="@RsvpStatus.Pending">@Labels.Status(RsvpStatus.Pending)</option>
+            <option value="@RsvpStatus.Attending">@Labels.Status(RsvpStatus.Attending)</option>
+            <option value="@RsvpStatus.Declined">@Labels.Status(RsvpStatus.Declined)</option>
+        </select>
+    </label>
+    <label>מגיעים <input asp-for="Input.AttendingCount" type="number" min="0" /></label>
+    <span asp-validation-for="Input.AttendingCount"></span>
+
+    <label>הערות <textarea asp-for="Input.Notes" rows="2"></textarea></label>
+
+    <button type="submit">שמירה</button>
+</form>
+
+@if (Model.Existing is { } g)
+{
+    <section>
+        <h2>קישור אישי</h2>
+        <p dir="ltr"><a href="@Model.RsvpLink" target="_blank">@Model.RsvpLink</a></p>
+        <p>
+            @(g.Source == RsvpSource.Manual ? "התשובה עודכנה ידנית." : g.Source == RsvpSource.Web ? "האורח ענה דרך הקישור." : "")
+            פתחו את הקישור: @Labels.Local(g.FirstOpenedAtUtc)
+        </p>
+        <form method="post" asp-page-handler="SendInvite" asp-route-id="@g.Id">
+            <button type="submit">@(g.InviteSentAtUtc is null ? "שליחת הזמנה" : "שליחת ההזמנה שוב")</button>
+        </form>
+        <form method="post" asp-page-handler="Delete" asp-route-id="@g.Id"
+              onsubmit="return confirm('למחוק את האורח?')">
+            <button type="submit" class="danger">מחיקה</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>הודעות</h2>
+        <table>
+            <thead><tr><th>סוג</th><th>סטטוס</th><th>נשלחה</th><th>שגיאה</th></tr></thead>
+            <tbody>
+            @foreach (var m in Model.Messages)
+            {
+                <tr>
+                    <td>@Labels.Kind(m.Kind)</td>
+                    <td>@Labels.Delivery(m.Status)</td>
+                    <td>@Labels.Local(m.SentAtUtc)</td>
+                    <td>@m.Error</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </section>
+}

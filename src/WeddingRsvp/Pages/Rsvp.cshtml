@@ -1,0 +1,88 @@
+@page "/{token:length(10)}"
+@model RsvpModel
+@{
+    ViewData["Title"] = Model.Event.Title;
+    var g = Model.Guest;
+}
+@* Placeholder markup: structure and behavior are final, visuals come from Claude Design. *@
+
+<header class="rsvp-header">
+    <p class="greeting">שלום @g.Name</p>
+    <h1>@Model.Event.Title</h1>
+    @if (Model.Event.StartsAtLocal is { } startsAt)
+    {
+        <p class="when">@startsAt.ToString("dddd, d בMMMM yyyy · HH:mm")</p>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.Event.VenueDisplay))
+    {
+        <p class="where">@Model.Event.VenueDisplay</p>
+    }
+</header>
+
+@if (Model.ImageUrl is not null)
+{
+    <img class="invitation" src="@Model.ImageUrl" alt="ההזמנה לחתונה של @Model.Event.CoupleNames" />
+}
+
+<section class="rsvp-answer">
+    @if (Model.JustSaved)
+    {
+        <p class="confirmation" role="status">
+            @(g.Status == RsvpStatus.Attending
+                ? $"תודה! רשמנו {g.AttendingCount} אורחים. נתראה בשמחה!"
+                : "תודה שעדכנתם. נשמח לחגוג איתכם בהזדמנות אחרת.")
+        </p>
+    }
+    else if (g.Status != RsvpStatus.Pending)
+    {
+        <p class="current-answer">
+            התשובה שלכם: @Labels.Status(g.Status)@(g.Status == RsvpStatus.Attending ? $" ({g.AttendingCount})" : "")
+        </p>
+    }
+
+    @if (Model.Error is not null)
+    {
+        <p class="error" role="alert">@Model.Error</p>
+    }
+
+    @if (Model.IsClosed)
+    {
+        <p>אישורי ההגעה נסגרו.</p>
+    }
+    else
+    {
+        <form method="post" class="rsvp-form">
+            <fieldset>
+                <legend>מגיעים?</legend>
+                <label>
+                    <input type="radio" name="Attending" value="true" checked="@(Model.Attending == true)" />
+                    מגיעים
+                </label>
+                <label>
+                    <input type="radio" name="Attending" value="false" checked="@(Model.Attending == false)" />
+                    לא מגיעים
+                </label>
+            </fieldset>
+
+            <label class="count">
+                כמה תהיו?
+                <input type="number" name="Count" min="1" max="@g.InvitedCount" value="@Model.Count" inputmode="numeric" />
+                <span class="hint">עד @g.InvitedCount</span>
+            </label>
+
+            <button type="submit">@(g.Status == RsvpStatus.Pending ? "שליחת תשובה" : "עדכון תשובה")</button>
+        </form>
+    }
+</section>
+
+<section class="event-actions">
+    @if (Model.Event.HasStartDate)
+    {
+        <a class="calendar-ics" href="/event.ics">הוספה ליומן</a>
+        <a class="calendar-google" href="@Model.GoogleCalendarUrl" target="_blank" rel="noopener">הוספה ל-Google Calendar</a>
+    }
+    @if (Model.WazeUrl is not null)
+    {
+        <a class="waze" href="@Model.WazeUrl" target="_blank" rel="noopener">ניווט ב-Waze</a>
+    }
+</section>

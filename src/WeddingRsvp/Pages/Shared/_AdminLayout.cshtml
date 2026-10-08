@@ -1,0 +1,27 @@
+@* Admin shell. Replace with the Claude Design output. *@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>@ViewData["Title"] · ניהול</title>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+</head>
+<body>
+    <nav class="admin-nav">
+        <a href="/admin">לוח בקרה</a>
+        <a href="/admin/guests">אורחים</a>
+        <a href="/admin/import">ייבוא רשימה</a>
+        <a href="/admin/messages">הודעות</a>
+        <a href="/admin/event">פרטי האירוע</a>
+    </nav>
+    <main class="admin-main">
+        @if (TempData["Flash"] is string flash)
+        {
+            <p class="flash">@flash</p>
+        }
+        @RenderBody()
+    </main>
+</body>
+</html>

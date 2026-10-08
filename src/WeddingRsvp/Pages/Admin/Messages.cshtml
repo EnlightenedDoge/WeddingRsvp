@@ -1,0 +1,84 @@
+@page
+@model WeddingRsvp.Pages.Admin.MessagesModel
+@{
+    ViewData["Title"] = "הודעות";
+    int C(MessageStatus s) => Model.Counts.TryGetValue(s, out var n) ? n : 0;
+}
+<h1>הודעות</h1>
+
+<section class="sending-state">
+    @if (Model.Event.SendingPaused)
+    {
+        <p class="error">השליחה מושהית. שום הודעה לא יוצאת עד שתחדשו.</p>
+    }
+    else if (!Model.InSendingWindow)
+    {
+        <p>מחוץ לשעות השליחה (לילה או שבת). הודעות בתור ייצאו כשהחלון ייפתח.</p>
+    }
+    <form method="post" asp-page-handler="TogglePause">
+        <button type="submit">@(Model.Event.SendingPaused ? "חידוש השליחה" : "השהיית כל השליחה")</button>
+    </form>
+</section>
+
+<section>
+    <h2>הזמנות</h2>
+    <p>@Model.ReadyToInvite אורחים עם מספר תקין עוד לא קיבלו הזמנה.</p>
+    @if (Model.MissingForInvite.Count > 0)
+    {
+        <div class="error" role="alert">
+            <p>עדיין אי אפשר לשלוח הזמנות. ההודעה משתמשת בשדות שלא הוגדרו בפרטי האירוע:</p>
+            <p dir="ltr">@string.Join("  ", Model.MissingForInvite)</p>
+            <a href="/admin/event">השלמת פרטי האירוע</a>
+        </div>
+    }
+    <form method="post" asp-page-handler="QueueInvites" onsubmit="return confirm('לשלוח הזמנות לכל מי שעוד לא קיבל?')">
+        <button type="submit" disabled="@(Model.ReadyToInvite == 0 || Model.MissingForInvite.Count > 0)">שליחת הזמנות</button>
+    </form>
+</section>
+
+<section>
+    <h2>הודעת בדיקה</h2>
+    <form method="post" asp-page-handler="Test">
+        <input name="TestPhone" dir="ltr" inputmode="tel" placeholder="050-0000000" />
+        <select name="TestTemplate">
+            <option value="@MessageKind.Invite">הזמנה</option>
+            <option value="@MessageKind.Reminder">תזכורת</option>
+            <option value="@MessageKind.ThankYou">תודה</option>
+        </select>
+        <button type="submit">שליחה</button>
+    </form>
+</section>
+
+<section>
+    <h2>סטטוס</h2>
+    <p>
+        בתור: @C(MessageStatus.Queued) · נשלחו: @C(MessageStatus.Sent) · התקבלו: @C(MessageStatus.Delivered)
+        · נכשלו: @C(MessageStatus.Failed) · בוטלו: @C(MessageStatus.Cancelled)
+    </p>
+    @if (C(MessageStatus.Failed) > 0)
+    {
+        <form method="post" asp-page-handler="RequeueFailed">
+            <button type="submit">ניסיון חוזר לכל ההודעות שנכשלו</button>
+        </form>
+    }
+
+    <table>
+        <thead><tr><th>אורח</th><th>סוג</th><th>סטטוס</th><th>נוצרה</th><th>נשלחה</th><th>שגיאה</th></tr></thead>
+        <tbody>
+        @foreach (var m in Model.Recent)
+        {
+            <tr>
+                <td>
+                    @if (m.Guest is { } g) { <a href="/admin/guests/edit/@g.Id">@g.Name</a> }
+                    else { <span dir="ltr">@m.ToE164</span> }
+                </td>
+                <td>@Labels.Kind(m.Kind)</td>
+                <td>@Labels.Delivery(m.Status)</td>
+                <td>@Labels.Local(m.CreatedAtUtc)</td>
+                <td>@Labels.Local(m.SentAtUtc)</td>
+                <td>@m.Error</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</section>

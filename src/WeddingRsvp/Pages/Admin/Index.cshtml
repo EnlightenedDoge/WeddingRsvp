@@ -1,0 +1,49 @@
+@page
+@model WeddingRsvp.Pages.Admin.IndexModel
+@{
+    ViewData["Title"] = "לוח בקרה";
+    var s = Model.Stats;
+}
+<h1>לוח בקרה</h1>
+
+<section class="stats">
+    <div class="stat headline">
+        <strong>@s.AttendingPeople / @s.InvitedPeople</strong>
+        <span>אורחים אישרו מתוך המוזמנים</span>
+    </div>
+    <div class="stat"><strong>@s.Responded / @s.Invitations</strong><span>הזמנות שענו</span></div>
+    <div class="stat"><strong>@s.AttendingInvitations</strong><span>הזמנות מגיעות</span></div>
+    <div class="stat"><strong>@s.Declined</strong><span>לא מגיעים</span></div>
+    <div class="stat"><strong>@s.Pending</strong><span>טרם ענו (@s.PendingButOpened פתחו את הקישור)</span></div>
+</section>
+
+@if (s.InvalidPhones > 0 || s.InvitesNotSent > 0 || s.FailedMessages > 0)
+{
+    <section class="attention">
+        <h2>דורש טיפול</h2>
+        <ul>
+            @if (s.InvalidPhones > 0) { <li><a href="/admin/guests?filter=invalid">@s.InvalidPhones מספרים לא תקינים</a></li> }
+            @if (s.InvitesNotSent > 0) { <li><a href="/admin/guests?filter=uninvited">@s.InvitesNotSent לא קיבלו הזמנה עדיין</a></li> }
+            @if (s.FailedMessages > 0) { <li><a href="/admin/messages">@s.FailedMessages הודעות נכשלו</a></li> }
+        </ul>
+    </section>
+}
+
+<section>
+    <h2>מאשרי הגעה (@s.AttendingInvitations)</h2>
+    <a href="/admin/export.csv">ייצוא לאקסל</a>
+    <table>
+        <thead><tr><th>שם</th><th>מגיעים</th><th>מתוך</th><th>אישרו ב-</th></tr></thead>
+        <tbody>
+        @foreach (var g in s.Attending)
+        {
+            <tr>
+                <td><a href="/admin/guests/edit/@g.Id">@g.Name</a></td>
+                <td>@g.AttendingCount</td>
+                <td>@g.InvitedCount</td>
+                <td>@Labels.Local(g.RespondedAtUtc)</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</section>

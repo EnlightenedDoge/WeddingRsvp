@@ -1,0 +1,38 @@
+@page
+@model WeddingRsvp.Pages.Admin.Guests.IndexModel
+@{
+    ViewData["Title"] = "אורחים";
+}
+<h1>אורחים (@Model.Guests.Count)</h1>
+
+<form method="get" class="toolbar">
+    <select asp-for="Filter" asp-items="Model.FilterOptions"></select>
+    <input type="search" name="q" value="@Model.Q" placeholder="חיפוש לפי שם או טלפון" />
+    <button type="submit">סינון</button>
+    <a href="/admin/guests/edit">הוספת אורח</a>
+    <a href="/admin/export.csv">ייצוא לאקסל</a>
+</form>
+
+<table>
+    <thead>
+    <tr>
+        <th>שם</th><th>טלפון</th><th>מוזמנים</th><th>סטטוס</th><th>מגיעים</th>
+        <th>הזמנה נשלחה</th><th>תזכורות</th><th>פתחו קישור</th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var g in Model.Guests)
+    {
+        <tr class="status-@g.Status.ToString().ToLowerInvariant() @(g.PhoneE164 is null ? "invalid-phone" : "")">
+            <td><a href="/admin/guests/edit/@g.Id">@g.Name</a></td>
+            <td dir="ltr">@g.PhoneRaw @if (g.PhoneError is not null) { <small>(@g.PhoneError)</small> }</td>
+            <td>@g.InvitedCount</td>
+            <td>@Labels.Status(g.Status)</td>
+            <td>@(g.Status == RsvpStatus.Attending ? g.AttendingCount.ToString() : "")</td>
+            <td>@Labels.Local(g.InviteSentAtUtc)</td>
+            <td>@g.RemindersSent</td>
+            <td>@Labels.Local(g.FirstOpenedAtUtc)</td>
+        </tr>
+    }
+    </tbody>
+</table>

@@ -1,0 +1,58 @@
+@page
+@model WeddingRsvp.Pages.Admin.ImportModel
+@{
+    ViewData["Title"] = "ייבוא רשימה";
+}
+<h1>ייבוא רשימת מוזמנים</h1>
+
+<p>
+    קובץ CSV מאקסל עם העמודות: <b>שם</b>, <b>טלפון</b>, ואופציונלית <b>מוזמנים</b> (כמה אנשים בהזמנה, ברירת מחדל 1).
+    מספרים שכבר קיימים ברשימה יידלגו.
+</p>
+
+<form method="post" enctype="multipart/form-data">
+    <input type="file" name="File" accept=".csv,text/csv" />
+    <button type="submit">ייבוא</button>
+</form>
+
+@if (Model.Error is not null)
+{
+    <p class="error">@Model.Error</p>
+}
+
+@if (Model.Report is { } r)
+{
+    <section>
+        <h2>תוצאה</h2>
+        <p>@r.Rows שורות, נוספו @r.Added אורחים.</p>
+
+        @if (r.InvalidPhones.Count > 0)
+        {
+            <h3>נוספו עם מספר לא תקין (@r.InvalidPhones.Count): צריך לתקן לפני השליחה</h3>
+            <table>
+                <thead><tr><th>שורה</th><th>שם</th><th>טלפון</th><th>בעיה</th></tr></thead>
+                <tbody>
+                @foreach (var i in r.InvalidPhones)
+                {
+                    <tr><td>@i.Line</td><td>@i.Name</td><td dir="ltr">@i.Phone</td><td>@i.Problem</td></tr>
+                }
+                </tbody>
+            </table>
+        }
+
+        @if (r.Skipped.Count > 0)
+        {
+            <h3>לא יובאו (@r.Skipped.Count)</h3>
+            <table>
+                <thead><tr><th>שורה</th><th>שם</th><th>טלפון</th><th>סיבה</th></tr></thead>
+                <tbody>
+                @foreach (var i in r.Skipped)
+                {
+                    <tr><td>@i.Line</td><td>@i.Name</td><td dir="ltr">@i.Phone</td><td>@i.Problem</td></tr>
+                }
+                </tbody>
+            </table>
+        }
+        <p><a href="/admin/guests">לרשימת האורחים</a></p>
+    </section>
+}

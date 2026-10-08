@@ -1,0 +1,12 @@
+/* Placeholder only — replaced by the Claude Design admin portal. */
+body { margin: 0; font-family: system-ui, sans-serif; line-height: 1.5; }
+.admin-nav { display: flex; flex-wrap: wrap; gap: 1rem; padding: .75rem 1rem; border-bottom: 1px solid #ccc; }
+.admin-main { padding: 1rem; }
+.stats { display: flex; flex-wrap: wrap; gap: 1.5rem; }
+.stat strong { display: block; font-size: 1.5rem; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { text-align: start; padding: .3rem .5rem; border-bottom: 1px solid #ddd; }
+form label { display: block; margin: .4rem 0; }
+fieldset { margin: 1rem 0; }
+.flash { background: #eef; padding: .5rem; }
+.error, .field-validation-error { color: #b00020; }

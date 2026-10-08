@@ -1,0 +1,21 @@
+# The app joins NPM's Docker network; no ports are published on the host.
+# NPM proxy hosts:
+#   rsvp.example.com  -> http://wedding-rsvp:8080   (public)
+#   admin.example.com -> http://wedding-rsvp:8081   (attach an Access List!)
+services:
+  wedding-rsvp:
+    build: .
+    container_name: wedding-rsvp
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      App__PublicBaseUrl: https://rsvp.example.com
+    volumes:
+      - ./data:/data
+    networks:
+      - npm
+
+networks:
+  npm:
+    external: true
+    name: ${NPM_NETWORK:-npm_default}
