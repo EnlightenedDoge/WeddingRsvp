@@ -3,9 +3,10 @@ namespace WeddingRsvp.Domain;
 /// <summary>
 /// Doubles as the outbox: rows start Queued, the dispatcher sends them and records the outcome.
 /// </summary>
-public class MessageLog
+public class MessageLog : ITenantOwned
 {
     public int Id { get; set; }
+    public int CoupleId { get; set; }
     public int? GuestId { get; set; }
     public Guest? Guest { get; set; }
 

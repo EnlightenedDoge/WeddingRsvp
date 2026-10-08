@@ -1,0 +1,26 @@
+@* Site-admin shell. Replace with the Claude Design site-admin layout. *@
+<!DOCTYPE html>
+<html lang="@Ui.Lang" dir="@Ui.Dir">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>@ViewData["Title"] · @Ui.T("ניהול האתר", "Site admin")</title>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+</head>
+<body>
+    <nav class="admin-nav">
+        <a href="/admin/site/couples">@Ui.T("זוגות", "Couples")</a>
+        <a href="/admin/site/security">@Ui.T("אבטחה", "Security")</a>
+        <a href="/lang/@(Ui.IsHebrew ? "en" : "he")?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)">@(Ui.IsHebrew ? "English" : "עברית")</a>
+        <form method="post" action="/signout" class="inline"><button type="submit">@Ui.T("יציאה", "Sign out")</button></form>
+    </nav>
+    <main class="admin-main">
+        @if (TempData["Flash"] is string flash)
+        {
+            <p class="flash">@flash</p>
+        }
+        @RenderBody()
+    </main>
+</body>
+</html>

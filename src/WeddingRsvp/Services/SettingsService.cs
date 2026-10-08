@@ -1,18 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using WeddingRsvp.Data;
 using WeddingRsvp.Domain;
+using WeddingRsvp.Tenancy;
 
 namespace WeddingRsvp.Services;
 
-public sealed class SettingsService(AppDbContext db)
+public sealed class SettingsService(AppDbContext db, ITenantContext tenant)
 {
-    /// <summary>Returns the tracked singleton row, creating it with defaults on first use.</summary>
+    /// <summary>Returns the current couple's tracked settings row, creating it empty on first use.</summary>
     public async Task<EventSettings> GetAsync(CancellationToken ct = default)
     {
-        var s = await db.EventSettings.FirstOrDefaultAsync(x => x.Id == EventSettings.SingletonId, ct);
+        var coupleId = tenant.CoupleId ?? throw new InvalidOperationException("No tenant is set.");
+        var s = await db.EventSettings.FirstOrDefaultAsync(ct);
         if (s is not null) return s;
 
-        s = new EventSettings();
+        s = new EventSettings { CoupleId = coupleId };
         db.EventSettings.Add(s);
         await db.SaveChangesAsync(ct);
         return s;

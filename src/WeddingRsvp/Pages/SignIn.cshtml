@@ -1,0 +1,19 @@
+@page "/signin"
+@model WeddingRsvp.Pages.SignInModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = Ui.T("כניסה", "Sign in");
+}
+<h1>@Ui.T("כניסה", "Sign in")</h1>
+@if (Model.Error is not null)
+{
+    <p class="error" role="alert">@Model.Error</p>
+}
+<form method="post">
+    <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+    <label>@Ui.T("אימייל", "Email")
+        <input name="Email" type="email" value="@Model.Email" autocomplete="username" required autofocus /></label>
+    <label>@Ui.T("סיסמה", "Password")
+        <input name="Password" type="password" autocomplete="current-password" required /></label>
+    <button type="submit">@Ui.T("כניסה", "Sign in")</button>
+</form>

@@ -1,0 +1,43 @@
+@page "/admin/account"
+@model WeddingRsvp.Pages.Admin.AccountModel
+@{ ViewData["Title"] = Ui.T("החשבון שלי", "My account"); }
+<h1>@Ui.T("החשבון שלי", "My account")</h1>
+
+<section>
+    <h2>@Ui.T("פרטי כניסה", "Sign-in details")</h2>
+    <p>@Ui.T("אימייל", "Email"): <span dir="ltr">@Model.Email</span>
+       (@Ui.T("לא ניתן לשינוי", "can't be changed"))</p>
+</section>
+
+<section>
+    <h2>@Ui.T("החלפת סיסמה", "Change password")</h2>
+    @if (Model.PasswordError is not null)
+    {
+        <p class="error" role="alert">@Model.PasswordError</p>
+    }
+    <form method="post" asp-page-handler="Password">
+        <label>@Ui.T("סיסמה נוכחית", "Current password")
+            <input name="Current" type="password" autocomplete="current-password" required /></label>
+        <label>@Ui.T("סיסמה חדשה (לפחות 10 תווים)", "New password (at least 10 characters)")
+            <input name="New" type="password" autocomplete="new-password" minlength="10" required /></label>
+        <button type="submit">@Ui.T("שמירה", "Save")</button>
+    </form>
+</section>
+
+<section>
+    <h2>@Ui.T("מחיקת כל המידע", "Delete all information")</h2>
+    <p>@Ui.T("מוחק לצמיתות את כל האורחים, ההודעות, ההגדרות והתמונות, ואת החשבון עצמו. אי אפשר לבטל.",
+        "Permanently deletes all guests, messages, settings and images, and the account itself. This can't be undone.")</p>
+    <p><a href="/admin/export.csv">@Ui.T("הורדת רשימת האורחים (CSV) לפני המחיקה", "Download the guest list (CSV) first")</a></p>
+    @if (Model.DeleteError is not null)
+    {
+        <p class="error" role="alert">@Model.DeleteError</p>
+    }
+    <form method="post" asp-page-handler="DeleteAll">
+        <label>@Ui.T("סיסמה", "Password")
+            <input name="DeletePassword" type="password" autocomplete="current-password" required /></label>
+        <label><input type="checkbox" name="Confirm" value="yes" required />
+            @Ui.T("אני מבין/ה שכל המידע יימחק לצמיתות", "I understand all information will be permanently deleted")</label>
+        <button type="submit">@Ui.T("מחיקת כל המידע והחשבון", "Delete all information and the account")</button>
+    </form>
+</section>

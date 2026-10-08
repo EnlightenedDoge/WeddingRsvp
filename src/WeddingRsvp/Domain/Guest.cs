@@ -5,9 +5,10 @@ namespace WeddingRsvp.Domain;
 /// InvitedCount is how many people this invitation covers.
 /// All *Utc properties are stored and read as UTC (see AppDbContext).
 /// </summary>
-public class Guest
+public class Guest : ITenantOwned
 {
     public int Id { get; set; }
+    public int CoupleId { get; set; }
     public string Name { get; set; } = "";
 
     /// <summary>Phone as it appeared in the client's list.</summary>

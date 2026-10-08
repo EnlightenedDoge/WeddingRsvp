@@ -1,14 +1,13 @@
 namespace WeddingRsvp.Domain;
 
 /// <summary>
-/// Single-row table (Id = 1) holding everything about the event and the campaign.
+/// One row per couple holding everything about the event and the campaign.
 /// *Local times are Israel local time (Asia/Jerusalem), entered by the admin as-is.
 /// </summary>
-public class EventSettings
+public class EventSettings : ITenantOwned
 {
-    public const int SingletonId = 1;
-
-    public int Id { get; set; } = SingletonId;
+    public int Id { get; set; }
+    public int CoupleId { get; set; }
 
     // Nothing about the couple is assumed: these stay empty until the couple (or the site admin at
     // account creation) fills them in. MessageTemplates.MissingFields() blocks sending until they are set.

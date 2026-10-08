@@ -10,3 +10,7 @@ form label { display: block; margin: .4rem 0; }
 fieldset { margin: 1rem 0; }
 .flash { background: #eef; padding: .5rem; }
 .error, .field-validation-error { color: #b00020; }
+form.inline { display: inline; }
+form.inline button { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
+.auth-main { max-width: 26rem; margin: 3rem auto; padding: 0 1rem; }
+.copy-box { width: 100%; font-family: ui-monospace, monospace; direction: ltr; }

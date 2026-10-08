@@ -6,6 +6,7 @@ using WeddingRsvp.Data;
 using WeddingRsvp.Domain;
 using WeddingRsvp.Options;
 using WeddingRsvp.Services;
+using WeddingRsvp.Tenancy;
 
 namespace WeddingRsvp.Tests;
 
@@ -20,9 +21,13 @@ public sealed class CampaignMissingFieldsTests : IDisposable
     public CampaignMissingFieldsTests()
     {
         _conn.Open();
-        _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_conn).Options);
+        var tenant = new TenantContext();
+        _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_conn).Options, tenant);
         _db.Database.EnsureCreated();
-        _settings = new SettingsService(_db);
+        _db.Couples.Add(new Couple { DisplayName = "test" });
+        _db.SaveChanges();
+        tenant.Use(_db.Couples.Single().Id);
+        _settings = new SettingsService(_db, tenant);
         var clock = new IsraelClock(TimeProvider.System);
         _campaign = new CampaignService(_db, _settings, clock, Microsoft.Extensions.Options.Options.Create(new AppOptions()),
             NullLogger<CampaignService>.Instance);

@@ -1,20 +1,23 @@
 @* Admin shell. Replace with the Claude Design output. *@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="@Ui.Lang" dir="@Ui.Dir">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>@ViewData["Title"] · ניהול</title>
+    <title>@ViewData["Title"] · @Ui.T("ניהול", "Admin")</title>
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
 </head>
 <body>
     <nav class="admin-nav">
-        <a href="/admin">לוח בקרה</a>
-        <a href="/admin/guests">אורחים</a>
-        <a href="/admin/import">ייבוא רשימה</a>
-        <a href="/admin/messages">הודעות</a>
-        <a href="/admin/event">פרטי האירוע</a>
+        <a href="/admin">@Ui.T("לוח בקרה", "Dashboard")</a>
+        <a href="/admin/guests">@Ui.T("אורחים", "Guests")</a>
+        <a href="/admin/import">@Ui.T("ייבוא רשימה", "Import")</a>
+        <a href="/admin/messages">@Ui.T("הודעות", "Messages")</a>
+        <a href="/admin/event">@Ui.T("פרטי האירוע", "Event details")</a>
+        <a href="/admin/account">@Ui.T("החשבון שלי", "My account")</a>
+        <a href="/lang/@(Ui.IsHebrew ? "en" : "he")?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)">@(Ui.IsHebrew ? "English" : "עברית")</a>
+        <form method="post" action="/signout" class="inline"><button type="submit">@Ui.T("יציאה", "Sign out")</button></form>
     </nav>
     <main class="admin-main">
         @if (TempData["Flash"] is string flash)

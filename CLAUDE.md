@@ -9,11 +9,18 @@ Read `SPEC.md` too: where the two disagree, SPEC.md is newer and wins.
 
 ## Status (2026-10-08)
 
-- The scaffold **builds with 0 errors** and **38 tests pass**.
-- The scaffold is still **single-couple**. The multi-tenant and auth work (below) is **planned, not started**.
+- The solution **builds with 0 errors** and **46 tests pass**.
+- **Phase M is built (core):** `Couple`/`AppUser`, `CoupleId` on Guest/MessageLog/EventSettings, global query filter via
+  `ITenantContext`, ASP.NET Core Identity (cookie auth, lockout 5/15 min, 10-char passwords), audit log, site-admin
+  pages (`/admin/site/couples`, `/new`, `/{id}`, `/security` with TOTP), `/signin`, `/signin/2fa`, `/set-password`,
+  `/admin/account` (change password, delete all information), per-couple worker, per-guest `/{token}/event.ics` and
+  `/{token}/invitation`. UI strings use `@Ui.T("עברית", "English")` and `/lang/{he|en}` (culture cookie).
+- **Not built yet from Phase M:** "open as couple" for the site admin, a TOTP-required banner, data backfill (no real
+  data exists yet: delete `data/rsvp.db`), the first EF migration. SMS allocations/provider layer, language mode,
+  page-look fields and porting the canvas visuals are still open (see TODOs).
 - Not done yet: first EF migration (`dotnet-ef` is not installed here; and the multi-tenant change reshapes the
   schema, so migrate after it), a manual run of the whole flow, `HttpSmsSender`.
-- Git repo exists (one commit). Nothing from this session is committed yet.
+- Git repo exists. Admin and sign-in share the admin port (8081); Identity is the real protection, not the NPM Access List.
 - Only the .NET 10 runtime is installed on this machine but the projects target net8.0. Run tests with
   `DOTNET_ROLL_FORWARD=Major dotnet test`.
 
@@ -58,7 +65,7 @@ non-responders, dashboard "X of Y", thank-you the day after.
 - Two Kestrel ports: **8080 public**, **8081 admin**. Middleware in Program.cs returns 404 for `/admin*`
   on the public port.
 
-## Multi-tenancy and auth (planned — see SPEC.md §10)
+## Multi-tenancy and auth (built — see SPEC.md §10)
 
 Proposed design, confirm open decisions in SPEC.md §12 before building:
 
@@ -178,7 +185,7 @@ Don't move logic into views; if a design needs data the model doesn't expose, ad
 
 ## Open TODOs
 
-- [ ] Multi-tenant foundation + auth + site-admin pages (SPEC.md §10, Phase M).
+- [x] Multi-tenant foundation + auth + site-admin pages (SPEC.md §10, Phase M) — core done; remaining: "open as couple", TOTP banner, audit-log viewer.
 - [ ] Bilingual UI plumbing (SPEC.md §11, Phase L).
 - [ ] Port the canvas designs (admin, site admin, sign-in, guest portal) into the Razor pages.
 - [ ] Add `PageBackgroundColor` / `PageBackgroundImageFile` / `PageAccentColor` to `EventSettings` + the "Guest page look" section on the Event page.
@@ -186,7 +193,7 @@ Don't move logic into views; if a design needs data the model doesn't expose, ad
 - [ ] First EF migration (after the multi-tenant schema), then delete `src/WeddingRsvp/data/rsvp.db` once.
 - [ ] SMS provider layer (`ISmsProvider`, failure kinds, circuit breaker), then `Sms4FreeProvider` (SPEC.md §6) with per-couple allocations.
 - [ ] Couple language mode + per-language images/templates + guest-page toggle (SPEC.md §11).
-- [ ] "Delete all information" + audit log + site-admin TOTP (SPEC.md §10).
+- [x] "Delete all information" + audit log + site-admin TOTP are built (no UI to browse the audit log yet).
 - [ ] Jewish holidays aren't in `SendingWindow`; couples use the pause switch. Could add a holiday list.
 - [ ] Optional: "send me this on WhatsApp" share link on the guest page.
 - [ ] Optional: live SMS segment counter in the event-settings textareas (server-side count exists).

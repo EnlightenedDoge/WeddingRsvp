@@ -1,0 +1,25 @@
+@page "/admin/site/couples"
+@model WeddingRsvp.Pages.SiteAdmin.CouplesModel
+@{ ViewData["Title"] = Ui.T("זוגות", "Couples"); }
+<h1>@Ui.T("זוגות", "Couples")</h1>
+<p><a href="/admin/site/couples/new">@Ui.T("יצירת חשבון לזוג", "Create a couple's account")</a></p>
+<table>
+    <thead><tr>
+        <th>@Ui.T("שם", "Name")</th><th>@Ui.T("אימייל", "Email")</th>
+        <th>@Ui.T("אורחים", "Guests")</th><th>@Ui.T("מצב", "Status")</th></tr></thead>
+    <tbody>
+    @foreach (var r in Model.Rows)
+    {
+        <tr>
+            <td><a href="/admin/site/couples/@r.Id">@r.DisplayName</a></td>
+            <td dir="ltr">@r.Email</td>
+            <td>@r.Guests</td>
+            <td>@(r.Suspended ? Ui.T("מושעה", "Suspended") : r.HasPassword ? Ui.T("פעיל", "Active") : Ui.T("ממתין להגדרת סיסמה", "Awaiting password"))</td>
+        </tr>
+    }
+    </tbody>
+</table>
+@if (Model.Rows.Count == 0)
+{
+    <p>@Ui.T("עדיין אין זוגות.", "No couples yet.")</p>
+}

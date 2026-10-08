@@ -1,18 +1,26 @@
 using Microsoft.EntityFrameworkCore;
 using WeddingRsvp.Data;
 using WeddingRsvp.Domain;
+using WeddingRsvp.Tenancy;
 
 namespace WeddingRsvp.Services;
 
 public enum RsvpResult { Saved, NotFound, Closed, InvalidCount, MissingAnswer }
 
 /// <summary>Everything a guest can do through their personal link.</summary>
-public sealed class RsvpService(AppDbContext db, SettingsService settings, IsraelClock clock)
+public sealed class RsvpService(AppDbContext db, SettingsService settings, IsraelClock clock, ITenantContext tenant)
 {
-    public async Task<Guest?> FindAsync(string token, CancellationToken ct = default) =>
-        TokenGenerator.LooksValid(token)
-            ? await db.Guests.FirstOrDefaultAsync(g => g.Token == token, ct)
-            : null;
+    /// <summary>
+    /// The one place the public flow leaves tenant scope: the token is globally unique and unguessable, and it
+    /// decides which couple this request acts for. After this call all queries are scoped to that couple.
+    /// </summary>
+    public async Task<Guest?> FindAsync(string token, CancellationToken ct = default)
+    {
+        if (!TokenGenerator.LooksValid(token)) return null;
+        var g = await db.Guests.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Token == token, ct);
+        if (g is not null) tenant.Use(g.CoupleId);
+        return g;
+    }
 
     /// <summary>Loads the guest and records that the link was opened.</summary>
     public async Task<Guest?> OpenAsync(string token, CancellationToken ct = default)

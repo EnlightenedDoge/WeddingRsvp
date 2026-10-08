@@ -1,14 +1,22 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using WeddingRsvp.Auth;
 using WeddingRsvp.Data;
 using WeddingRsvp.Domain;
 using WeddingRsvp.Options;
 using WeddingRsvp.Services;
 using WeddingRsvp.Services.Sms;
+using WeddingRsvp.Tenancy;
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); // Windows-1255 CSVs from Hebrew Excel
 
@@ -36,6 +44,12 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IsraelClock>();
 builder.Services.AddSingleton<SendingWindow>();
+builder.Services.AddScoped<ITenantContext, TenantContext>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<Ui>();
+builder.Services.AddScoped<AuditLog>();
+builder.Services.AddScoped<CoupleAdminService>();
+builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<RsvpService>();
 builder.Services.AddScoped<CampaignService>();
@@ -50,8 +64,57 @@ if (smsProvider.Equals("Http", StringComparison.OrdinalIgnoreCase))
 else
     builder.Services.AddSingleton<ISmsSender, LogSmsSender>();
 
+// --- Identity: the data here is very sensitive, so accounts are locked down.
+builder.Services.AddIdentityCore<AppUser>(o =>
+    {
+        o.User.RequireUniqueEmail = true;
+        o.Password.RequiredLength = 10;
+        o.Password.RequireDigit = false;
+        o.Password.RequireNonAlphanumeric = false;
+        o.Password.RequireUppercase = false;
+        o.Password.RequireLowercase = false;
+        o.Lockout.AllowedForNewUsers = true;
+        o.Lockout.MaxFailedAccessAttempts = 5;
+        o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    })
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddSignInManager()
+    .AddClaimsPrincipalFactory<AppClaimsFactory>()
+    .AddDefaultTokenProviders();
+builder.Services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromDays(7));
+builder.Services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.FromMinutes(1));
+
+builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
+builder.Services.ConfigureApplicationCookie(o =>
+{
+    o.Cookie.Name = "wr.auth";
+    o.Cookie.HttpOnly = true;
+    o.Cookie.SameSite = SameSiteMode.Strict;
+    o.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+    o.ExpireTimeSpan = TimeSpan.FromHours(12);
+    o.SlidingExpiration = true;
+    o.LoginPath = "/signin";
+    o.AccessDeniedPath = "/signin";
+});
+builder.Services.AddAuthorization(o =>
+{
+    o.AddPolicy("Couple", p => p.RequireRole(Roles.Couple));
+    o.AddPolicy("SiteAdmin", p => p.RequireRole(Roles.SiteAdmin));
+});
+builder.Services.AddAntiforgery(o =>
+{
+    o.Cookie.SameSite = SameSiteMode.Strict;
+    o.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+});
+
 // --- Web
-builder.Services.AddRazorPages()
+builder.Services.AddRazorPages(o =>
+    {
+        o.Conventions.AuthorizeFolder("/Admin", "Couple");
+        o.Conventions.AuthorizeFolder("/SiteAdmin", "SiteAdmin"); // routes are /admin/site/**
+    })
     // Empty form fields bind as null; don't treat every non-nullable string as [Required].
     .AddMvcOptions(o => o.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true);
 
@@ -70,7 +133,11 @@ builder.Services.AddRateLimiter(o =>
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
         ctx.Connection.LocalPort == appOptions.AdminPort
-            ? RateLimitPartition.GetNoLimiter("admin")
+            ? (HttpMethods.IsPost(ctx.Request.Method) && AdminPortOnly.IsCredentialPath(ctx.Request.Path)
+                ? RateLimitPartition.GetFixedWindowLimiter(
+                    "cred:" + ctx.Connection.RemoteIpAddress,
+                    _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })
+                : RateLimitPartition.GetNoLimiter("admin"))
             : RateLimitPartition.GetFixedWindowLimiter(
                 ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions
@@ -99,14 +166,27 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+using (var scope = app.Services.CreateScope())
+    await BootstrapAdmin.EnsureAsync(scope.ServiceProvider, appOptions, app.Logger);
+
 app.UseForwardedHeaders();
+if (!app.Environment.IsDevelopment()) app.UseHsts();
+
+app.Use(async (ctx, next) =>
+{
+    var h = ctx.Response.Headers;
+    h["X-Content-Type-Options"] = "nosniff";
+    h["X-Frame-Options"] = "DENY";
+    h["Referrer-Policy"] = "same-origin";
+    await next();
+});
 
 // Admin routes exist only on the admin port. Requests reaching /admin through the public
 // proxy host get a bare 404, so the NPM access list in front of admin.* can't be bypassed.
 app.Use(async (ctx, next) =>
 {
     var onAdminPort = ctx.Connection.LocalPort == appOptions.AdminPort;
-    if (ctx.Request.Path.StartsWithSegments("/admin") && !onAdminPort)
+    if (AdminPortOnly.Matches(ctx.Request.Path) && !onAdminPort)
     {
         ctx.Response.StatusCode = StatusCodes.Status404NotFound;
         return;
@@ -119,28 +199,44 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
-app.UseRequestLocalization("he-IL");
+app.UseRequestLocalization(new RequestLocalizationOptions()
+    .SetDefaultCulture("he-IL")
+    .AddSupportedCultures("he-IL", "en")
+    .AddSupportedUICultures("he-IL", "en"));
 app.UseStatusCodePagesWithReExecute("/not-found");
 app.UseStaticFiles();
 app.UseRouting();
 app.UseRateLimiter();
+app.UseAuthentication();
+app.UseMiddleware<TenantMiddleware>();
+app.UseAuthorization();
 
 app.MapRazorPages();
 
-// --- Guest-facing endpoints
-app.MapGet("/event.ics", async (SettingsService settings, IsraelClock clock, IOptions<AppOptions> o) =>
+// --- Guest-facing endpoints. No signed-in user here: the guest token picks the couple.
+app.MapGet("/{token:length(10)}/event.ics", async (
+    string token, RsvpService rsvp, SettingsService settings, IsraelClock clock, IOptions<AppOptions> o) =>
 {
-    var s = await settings.GetAsync();
-    var ics = CalendarLinks.BuildIcs(s, o.Value.PublicBaseUrl, clock.UtcNow);
+    if (await rsvp.FindAsync(token) is null) return Results.NotFound();
+    var ics = CalendarLinks.BuildIcs(await settings.GetAsync(), o.Value.PublicBaseUrl, clock.UtcNow);
     if (ics is null) return Results.NotFound();
     return Results.File(Encoding.UTF8.GetBytes(ics), "text/calendar; charset=utf-8", "wedding.ics");
 });
 
-app.MapGet("/media/invitation", async (SettingsService settings) =>
+app.MapGet("/{token:length(10)}/invitation", async (string token, RsvpService rsvp, SettingsService settings) =>
 {
-    var s = await settings.GetAsync();
+    if (await rsvp.FindAsync(token) is null) return Results.NotFound();
+    return InvitationFile(await settings.GetAsync());
+});
+
+// The couple's own preview of their uploaded image.
+app.MapGet("/admin/media/invitation", async (SettingsService settings) => InvitationFile(await settings.GetAsync()))
+    .RequireAuthorization("Couple");
+
+IResult InvitationFile(EventSettings s)
+{
     if (s.InvitationImageFile is null) return Results.NotFound();
-    var path = Path.Combine(dataDir, "media", s.InvitationImageFile);
+    var path = MediaPaths.Invitation(dataDir, s.CoupleId, s.InvitationImageFile);
     if (!File.Exists(path)) return Results.NotFound();
     var contentType = Path.GetExtension(path).ToLowerInvariant() switch
     {
@@ -149,6 +245,17 @@ app.MapGet("/media/invitation", async (SettingsService settings) =>
         _ => "image/jpeg",
     };
     return Results.File(path, contentType);
+}
+
+app.MapGet("/lang/{code}", (string code, string? returnUrl, HttpContext ctx) =>
+{
+    var culture = code == "en" ? "en" : "he-IL";
+    ctx.Response.Cookies.Append(CookieRequestCultureProvider.DefaultCookieName,
+        CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(culture)),
+        new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), HttpOnly = true, SameSite = SameSiteMode.Lax,
+                            IsEssential = true });
+    return Results.LocalRedirect(string.IsNullOrEmpty(returnUrl) || !Uri.IsWellFormedUriString(returnUrl, UriKind.Relative)
+        || returnUrl.StartsWith("//") ? "/" : returnUrl);
 });
 
 app.MapGet("/healthz", () => Results.Text("ok"));
@@ -164,7 +271,8 @@ app.MapPost("/webhooks/sms-delivery/{secret}", async (
         !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(expected)))
         return Results.NotFound();
 
-    var m = await db.Messages.FirstOrDefaultAsync(x => x.ProviderMessageId == report.MessageId);
+    // Provider callbacks carry no couple; the provider's message id decides which row this is.
+    var m = await db.Messages.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.ProviderMessageId == report.MessageId);
     if (m is null) return Results.Ok();
 
     if (report.Delivered)
@@ -202,9 +310,27 @@ app.MapGet("/admin/export.csv", async (AppDbContext db) =>
     // UTF-8 BOM so Excel opens Hebrew correctly.
     var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
     return Results.File(bytes, "text/csv; charset=utf-8", "guests.csv");
-});
+}).RequireAuthorization("Couple");
 
 app.Run();
+
+/// <summary>Paths that exist only on the admin port: the admin area, sign-in and account setup.</summary>
+internal static class AdminPortOnly
+{
+    public static bool Matches(PathString p) =>
+        p.StartsWithSegments("/admin") || p.StartsWithSegments("/signin") || p.StartsWithSegments("/signout")
+        || p.StartsWithSegments("/set-password");
+
+    /// <summary>Endpoints that accept credentials; rate limited per IP.</summary>
+    public static bool IsCredentialPath(PathString p) =>
+        p.StartsWithSegments("/signin") || p.StartsWithSegments("/set-password");
+}
+
+internal static class MediaPaths
+{
+    public static string Invitation(string dataDir, int coupleId, string file) =>
+        Path.Combine(dataDir, "media", coupleId.ToString(), Path.GetFileName(file));
+}
 
 /// <summary>Placeholder delivery-report shape; replace with the provider's real payload.</summary>
 internal sealed record DeliveryReport(string MessageId, bool Delivered, string? Error);

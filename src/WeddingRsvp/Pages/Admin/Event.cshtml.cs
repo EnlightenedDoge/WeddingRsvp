@@ -53,7 +53,8 @@ public class EventModel(AppDbContext db, SettingsService settings, IsraelClock c
             return RedirectToPage();
         }
 
-        var mediaDir = Path.Combine(Path.GetFullPath(app.Value.DataDir), "media");
+        var mediaDir = Path.Combine(Path.GetFullPath(app.Value.DataDir), "media", current.CoupleId.ToString());
+        Directory.CreateDirectory(mediaDir);
         var fileName = "invitation" + ext;
         foreach (var old in Directory.GetFiles(mediaDir, "invitation.*")) System.IO.File.Delete(old);
         await using (var fs = System.IO.File.Create(Path.Combine(mediaDir, fileName)))

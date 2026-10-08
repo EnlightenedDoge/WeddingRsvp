@@ -78,7 +78,7 @@
 <section class="event-actions">
     @if (Model.Event.HasStartDate)
     {
-        <a class="calendar-ics" href="/event.ics">הוספה ליומן</a>
+        <a class="calendar-ics" href="/@g.Token/event.ics">הוספה ליומן</a>
         <a class="calendar-google" href="@Model.GoogleCalendarUrl" target="_blank" rel="noopener">הוספה ל-Google Calendar</a>
     }
     @if (Model.WazeUrl is not null)

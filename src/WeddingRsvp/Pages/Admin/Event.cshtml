@@ -61,7 +61,7 @@
     <h2>תמונת ההזמנה</h2>
     @if (Model.HasImage)
     {
-        <img src="/media/invitation?v=@(Model.Settings.InvitationImageUpdatedAtUtc?.Ticks)" alt="ההזמנה" style="max-width: 240px" />
+        <img src="/admin/media/invitation?v=@(Model.Settings.InvitationImageUpdatedAtUtc?.Ticks)" alt="ההזמנה" style="max-width: 240px" />
     }
     <form method="post" asp-page-handler="Image" enctype="multipart/form-data">
         <input type="file" name="Image" accept="image/jpeg,image/png,image/webp" />

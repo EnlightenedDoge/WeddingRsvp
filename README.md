@@ -32,7 +32,7 @@ dotnet run --project src/WeddingRsvp
    - `rsvp.example.com` → `http://wedding-rsvp:8080`
    - `admin.example.com` → `http://wedding-rsvp:8081`, with an **Access List** (basic auth) attached.
      Once sign-in is built this becomes a second layer; the app's own sessions are the real protection.
-   - Once sign-in is built, set `App__BootstrapAdminEmail` / `App__BootstrapAdminPassword` in `.env` for the
+   - Set `App__BootstrapAdminEmail` / `App__BootstrapAdminPassword` in `.env` for the
      first site admin.
 4. Data (SQLite DB and the invitation image) lives in `./data`. Back it up.
 

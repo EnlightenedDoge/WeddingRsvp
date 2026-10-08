@@ -1,0 +1,24 @@
+@* Sign-in / set-password shell (no navigation). Replace with the Claude Design sign-in. *@
+<!DOCTYPE html>
+<html lang="@Ui.Lang" dir="@Ui.Dir">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+</head>
+<body>
+    <main class="auth-main">
+        <p class="lang-switch">
+            <a href="/lang/he?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)">עברית</a> ·
+            <a href="/lang/en?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)">English</a>
+        </p>
+        @if (TempData["Flash"] is string flash)
+        {
+            <p class="flash">@flash</p>
+        }
+        @RenderBody()
+    </main>
+</body>
+</html>

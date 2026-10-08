@@ -4,6 +4,11 @@ public sealed class AppOptions
 {
     /// <summary>Public origin used to build guest links, e.g. https://rsvp.example.com</summary>
     public string PublicBaseUrl { get; set; } = "http://localhost:8080";
+    /// <summary>Origin of the sign-in/admin site, used for one-time set-password links.</summary>
+    public string AdminBaseUrl { get; set; } = "http://localhost:8081";
+    /// <summary>On an empty database, a site admin with these credentials is created. Remove both afterwards.</summary>
+    public string? BootstrapAdminEmail { get; set; }
+    public string? BootstrapAdminPassword { get; set; }
     /// <summary>Holds rsvp.db and media/. Mounted as a volume in Docker.</summary>
     public string DataDir { get; set; } = "data";
     /// <summary>Guest-facing port (rsvp.* proxy host points here).</summary>

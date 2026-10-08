@@ -1,0 +1,17 @@
+@page "/signin/2fa"
+@model WeddingRsvp.Pages.SignInTwoFactorModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = Ui.T("קוד אימות", "Verification code");
+}
+<h1>@Ui.T("קוד אימות", "Verification code")</h1>
+<p>@Ui.T("הזינו את הקוד בן 6 הספרות מאפליקציית האימות.", "Enter the 6-digit code from your authenticator app.")</p>
+@if (Model.Error is not null)
+{
+    <p class="error" role="alert">@Model.Error</p>
+}
+<form method="post">
+    <label>@Ui.T("קוד", "Code")
+        <input name="Code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required autofocus dir="ltr" /></label>
+    <button type="submit">@Ui.T("אישור", "Verify")</button>
+</form>

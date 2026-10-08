@@ -69,7 +69,7 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings) : PageModel
         IsClosed = await rsvp.IsClosedAsync();
         ImageUrl = Event.InvitationImageFile is null
             ? null
-            : $"/media/invitation?v={Event.InvitationImageUpdatedAtUtc?.Ticks}";
+            : $"/{g.Token}/invitation?v={Event.InvitationImageUpdatedAtUtc?.Ticks}";
         GoogleCalendarUrl = CalendarLinks.GoogleCalendarUrl(Event) ?? "";
         WazeUrl = CalendarLinks.WazeUrl(Event);
     }
