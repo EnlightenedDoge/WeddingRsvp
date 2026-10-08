@@ -1,0 +1,37 @@
+# WeddingRsvp
+
+Wedding invitations and RSVPs over SMS: each guest gets a personal link to a mobile page where they
+confirm attendance and headcount. Reminders and a thank-you message go out automatically; the couple
+follows everything on an admin dashboard.
+
+## Run locally
+
+```bash
+dotnet run --project src/WeddingRsvp
+```
+
+- Guest pages: http://localhost:8080/{token}
+- Admin: http://localhost:8081/admin
+- With `Sms:Provider=Log` (default) messages are written to the console instead of being sent.
+
+## Deploy (Docker + Nginx Proxy Manager)
+
+1. `cp .env.example .env` and fill it in. `NPM_NETWORK` is the Docker network NPM is on
+   (`docker network ls`).
+2. `docker compose up -d --build`
+3. In NPM add two proxy hosts, both with SSL:
+   - `rsvp.example.com` → `http://wedding-rsvp:8080`
+   - `admin.example.com` → `http://wedding-rsvp:8081`, with an **Access List** (basic auth) attached.
+4. Data (SQLite DB and the invitation image) lives in `./data`. Back it up.
+
+## Using it (for the couple)
+
+1. **Event details** (`/admin/event`): date, venue, coordinates for Waze, invitation image, message texts.
+2. **Import** the guest list (`/admin/import`): CSV from Excel with columns שם, טלפון, and optionally מוזמנים.
+   Fix any invalid numbers it reports.
+3. **Messages** (`/admin/messages`): send yourselves a test SMS, then send the invitations
+   (or set an automatic send time in event details).
+4. Reminders and the thank-you message go out on their own. Use **pause sending** on holidays or if anything looks wrong.
+5. Follow responses on the dashboard; record phone-call answers by editing the guest.
+
+Messages are only sent 09:00–21:00, Fridays until 13:00, and never on Saturday.
