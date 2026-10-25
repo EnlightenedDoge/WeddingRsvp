@@ -6,3 +6,4 @@ data/
 .vs/
 .idea/
 TestResults/
+.local-test/

@@ -7,9 +7,11 @@ accounts. ASP.NET Core 8 Razor Pages + EF Core SQLite, one container behind Ngin
 
 Read `SPEC.md` too: where the two disagree, SPEC.md is newer and wins.
 
-## Status (2026-10-08)
+## Status (2026-10-25)
 
-- The solution **builds with 0 errors** and **46 tests pass**.
+See `HANDOFF.md` for session context, deferred work, run recipes and pitfalls.
+
+- The solution **builds with 0 errors** and **59 tests pass**.
 - **Phase M is built (core):** `Couple`/`AppUser`, `CoupleId` on Guest/MessageLog/EventSettings, global query filter via
   `ITenantContext`, ASP.NET Core Identity (cookie auth, lockout 5/15 min, 10-char passwords), audit log, site-admin
   pages (`/admin/site/couples`, `/new`, `/{id}`, `/security` with TOTP), `/signin`, `/signin/2fa`, `/set-password`,
