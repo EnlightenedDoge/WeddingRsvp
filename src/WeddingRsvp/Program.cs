@@ -240,6 +240,13 @@ app.UseAuthorization();
 app.MapRazorPages();
 
 // --- Guest-facing endpoints. No signed-in user here: the guest token picks the couple.
+// The guest page reports back here once a person has actually looked at it (see Rsvp.cshtml). This, not the page load, is an "open".
+app.MapPost("/{token:length(10)}/seen", async (string token, RsvpService rsvp) =>
+{
+    await rsvp.SeenAsync(token);
+    return Results.NoContent();
+});
+
 app.MapGet("/{token:length(10)}/event.ics", async (
     string token, RsvpService rsvp, SettingsService settings, IsraelClock clock, IOptions<AppOptions> o) =>
 {

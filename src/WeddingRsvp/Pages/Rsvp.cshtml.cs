@@ -6,7 +6,7 @@ using WeddingRsvp.Services;
 
 namespace WeddingRsvp.Pages;
 
-public class RsvpModel(RsvpService rsvp, SettingsService settings) : PageModel
+public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpModel> log) : PageModel
 {
     public Guest Guest { get; private set; } = null!;
     public EventSettings Event { get; private set; } = null!;
@@ -26,8 +26,8 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings) : PageModel
     public CultureInfo Culture => IsHe ? new CultureInfo("he-IL") : new CultureInfo("en-US");
 
     // Couple-chosen look (colours are validated hex before they get anywhere near CSS).
-    public string Bg { get; private set; } = "#F5F4F0";
-    public string Accent { get; private set; } = "#2E5E4E";
+    public string Bg { get; private set; } = HexColor.DefaultBackground;
+    public string Accent { get; private set; } = HexColor.DefaultAccent;
     public bool Dark { get; private set; }
     public string? BackgroundUrl { get; private set; }
 
@@ -40,8 +40,11 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings) : PageModel
 
     public async Task<IActionResult> OnGetAsync(string token)
     {
-        var g = await rsvp.OpenAsync(token);
+        var g = await rsvp.FindAsync(token);
         if (g is null) return NotFound();
+        // Loading the page is not an "open" (scanners and previews do it); the page reports back once a person sees it.
+        log.LogInformation("Guest page {Method} for guest {GuestId} from {Ip}, user agent '{UserAgent}'",
+            Request.Method, g.Id, HttpContext.Connection.RemoteIpAddress, Request.Headers.UserAgent.ToString());
         await LoadAsync(g);
 
         Attending = g.Status switch

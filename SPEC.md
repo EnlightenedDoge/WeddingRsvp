@@ -240,8 +240,10 @@ A message moves Sent -> Delivered -> Opened and only forward:
   (`<PublicBaseUrl>/webhooks/sms-delivery/<App__DeliveryWebhookSecret>`); the provider POSTs `to`, `status`, `msgId` back
   (status 1 = delivered, 5 = not delivered, 6 = kosher voice call). Not delivered -> `Failed`. Off until the secret is set and the
   public URL is not localhost. `DeliveryReports.ApplyAsync` matches on `msgId` and checks the phone's last 9 digits.
-- **Opened**: the guest opened the personal link (`RsvpService.OpenAsync`). It also proves delivery, so `DeliveredAtUtc` is filled
-  if no report came first. Link-preview bots and scanners can open the link, so "Opened" can over-report.
+- **Opened**: a person actually looked at the guest page: once the page has been visible for ~2 s the browser POSTs `/{token}/seen`
+  (`RsvpService.SeenAsync`). Merely loading the page does not count: on 2026-10-28 two messages were marked Opened 0.3 s after sending,
+  by something automated (a scanner or preview; page requests are now logged with their user agent). It also proves delivery, so
+  `DeliveredAtUtc` is filled if no report came first. Scanners that run JavaScript could still trigger it.
 - **Verified live (2026-10-28):** `msgId` in the callback echoes our `usermsgid`. A real send reached Delivered about two minutes
   later through the public domain. An unmatched report is still logged as a warning with its status and phone.
 

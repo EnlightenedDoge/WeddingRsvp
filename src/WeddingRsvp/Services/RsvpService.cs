@@ -23,13 +23,15 @@ public sealed class RsvpService(AppDbContext db, SettingsService settings, Israe
     }
 
     /// <summary>
-    /// Loads the guest and records that the link was opened. An open also proves the SMS arrived, so the guest's sent or
-    /// delivered messages become Opened (and Delivered if no provider report came first). Link-preview bots can trigger this too.
+    /// A person really looked at the page: the browser ran the page and reported back (see the "seen" beacon). Loading the page
+    /// alone does not count, because link scanners, previews and checkers fetch it within a second of the SMS being sent.
+    /// This also proves the SMS arrived, so the guest's sent or delivered messages become Opened (and Delivered if no provider report
+    /// came first).
     /// </summary>
-    public async Task<Guest?> OpenAsync(string token, CancellationToken ct = default)
+    public async Task<bool> SeenAsync(string token, CancellationToken ct = default)
     {
         var g = await FindAsync(token, ct);
-        if (g is null) return null;
+        if (g is null) return false;
         g.FirstOpenedAtUtc ??= clock.UtcNow;
         g.LastOpenedAtUtc = clock.UtcNow;
         var arrived = await db.Messages
@@ -43,7 +45,7 @@ public sealed class RsvpService(AppDbContext db, SettingsService settings, Israe
             m.DeliveredAtUtc ??= clock.UtcNow;
         }
         await db.SaveChangesAsync(ct);
-        return g;
+        return true;
     }
 
     public async Task<bool> IsClosedAsync(CancellationToken ct = default) =>
