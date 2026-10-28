@@ -24,20 +24,23 @@
 {
     <p class="banner" role="status">@Ui.T("שליחת ההודעות מתעכבת כרגע. ההודעות בתור יישלחו אוטומטית.", "Messages are delayed right now. Queued messages will go out automatically.")</p>
 }
-<p class="banner @(Model.Remaining < Model.ReadyToInvite ? "err" : "ok")">@Ui.T("הודעות שנותרו בהקצאה שלכם", "Messages left in your allocation"): <b>@Model.Remaining</b>
-    @if (Model.Remaining < Model.ReadyToInvite) { <span> · @Ui.T("פחות ממספר האורחים שטרם הוזמנו; הודעות יישארו בתור עד להגדלת ההקצאה.", "fewer than the guests still to invite; messages will wait in the queue until the allocation is raised.")</span> }
+<p class="banner @(Model.Remaining < Model.InviteCredits ? "err" : "ok")">@Ui.T("הודעות שנותרו בהקצאה שלכם", "Messages left in your allocation"): <b>@Model.Remaining</b>
+    @if (Model.InviteCredits > 0)
+    {
+        <span> · @Ui.T($"ההזמנות שטרם נשלחו ידרשו בערך {Model.InviteCredits}", $"the invitations still to send will need about {Model.InviteCredits}")</span>
+    }
+    @if (Model.Remaining < Model.InviteCredits)
+    {
+        <span> · @Ui.T("זה יותר ממה שנותר; הודעות יישארו בתור עד להגדלת ההקצאה.", "that is more than you have left; messages will wait in the queue until the allocation is raised.")</span>
+    }
 </p>
-
-@if (Model.Shortfall is { } sf)
+@if (Model.BothMode)
 {
-    <div class="banner err" role="alert">
-        <p><b>@Ui.T("אין מספיק הודעות בהקצאה.", "Not enough messages in your allocation.")</b></p>
-        <p>@Ui.T($"ההזמנות דורשות בערך {sf.Need} הודעות ונותרו לכם {sf.Have}. אפשר להכניס את כולן לתור: מי שלא נכנס בהקצאה ימתין עד שההקצאה תוגדל.",
-            $"The invitations need about {sf.Need} messages and you have {sf.Have} left. You can queue them all anyway: the ones that don't fit wait until your allocation is raised.")</p>
-        <form method="post" asp-page-handler="QueueInvites" asp-route-confirmShortfall="true">
-            <button type="submit" class="btn primary">@Ui.T("הכנסה לתור בכל זאת", "Queue them anyway")</button>
-        </form>
-    </div>
+    <p class="banner" role="status"><b>@Ui.T("מצב עברית ואנגלית:", "Hebrew and English mode:")</b>
+        @Ui.T("כל הודעה כוללת את שני הטקסטים, ולכן היא ארוכה ועלולה לעלות יותר הודעות", "every message carries both texts, so it is longer and can cost more credits")
+        @if (Model.PerInviteCredits > 0) { <span>(@Ui.T($"הזמנה: בערך {Model.PerInviteCredits}", $"an invitation: about {Model.PerInviteCredits}")).</span> }
+        else { <span>.</span> }
+        <a class="link" href="/admin/event">@Ui.T("לשינוי המצב", "Change the mode")</a></p>
 }
 
 <div class="grid2">

@@ -99,6 +99,8 @@ Proposed design, confirm open decisions in SPEC.md §12 before building:
 - Language is a **couple** setting: `HebrewOnly` / `EnglishOnly` / `Both`. `Both` = one SMS with both texts and a
   he/en toggle on the guest page (Hebrew default, couple can change it); single modes = that language only, no toggle.
   Two invitation images and per-language templates. English-only SMS are GSM-7, any Hebrew makes UCS-2: count by encoding.
+  `Both` costs more: the Event page shows a live per-message estimate next to the Hebrew-only cost when that mode is chosen, and the
+  Messages page warns and counts real credits needed (not guests) against the allocation.
 - Over-allocation (admin grants more than the provider balance) is allowed; the circuit breaker makes it safe. Couples
   never see provider details, only a neutral "messages are delayed" note and their own remaining allocation.
 - "Delete all information" deletes the account too (minimal tombstone kept).

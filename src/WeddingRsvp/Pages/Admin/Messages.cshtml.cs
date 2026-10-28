@@ -16,6 +16,11 @@ public class MessagesModel(
     public int ReadyToInvite { get; private set; }
     /// <summary>The couple's remaining SMS credits.</summary>
     public int Remaining { get; private set; }
+    /// <summary>Credits the pending invitations will use (0 while event details are missing), and the rough cost of one.</summary>
+    public int InviteCredits { get; private set; }
+    public int PerInviteCredits { get; private set; }
+    /// <summary>Hebrew and English mode: every message holds both texts, so it is longer and can cost more.</summary>
+    public bool BothMode { get; private set; }
     /// <summary>Platform-wide provider problem. Couples only ever see a neutral "delayed" note.</summary>
     public bool Delayed { get; private set; }
     /// <summary>Set when "send invitations" needs more credits than the couple has left and awaits a second confirmation.</summary>
@@ -32,10 +37,14 @@ public class MessagesModel(
     {
         Event = await settings.GetAsync();
         Remaining = await allocation.BalanceAsync();
+        var (inviteGuests, inviteCredits) = await campaign.InviteCostAsync();
+        InviteCredits = inviteCredits;
+        PerInviteCredits = inviteGuests > 0 ? (int)Math.Ceiling(inviteCredits / (double)inviteGuests) : 0;
         Delayed = await breaker.IsOpenAsync();
         if (TempData["InviteShortfall"] is string sf && sf.Split('|') is [var need, var have]
             && int.TryParse(need, out var n) && int.TryParse(have, out var h))
             Shortfall = (n, h);
+        BothMode = Event.LanguageMode == LanguageMode.Both;
         InSendingWindow = window.IsAllowed(clock.LocalNow);
         MissingForInvite = MessageTemplates.MissingFields(Event, MessageKind.Invite);
         ReadyToInvite = await db.Guests.CountAsync(g => g.PhoneE164 != null && g.InviteSentAtUtc == null);

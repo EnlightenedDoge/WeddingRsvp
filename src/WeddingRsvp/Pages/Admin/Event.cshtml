@@ -54,6 +54,12 @@
                 <option value="@LanguageMode.EnglishOnly">@Ui.T("אנגלית בלבד", "English only")</option>
                 <option value="@LanguageMode.Both">@Ui.T("עברית ואנגלית", "Hebrew and English")</option>
             </select></label>
+        <div class="banner" id="bothcost" role="status" hidden>
+            <p><b>@Ui.T("מצב עברית ואנגלית עלול לעלות יותר הודעות.", "Hebrew and English mode can cost more credits.")</b></p>
+            <p>@Ui.T("כל הודעה כוללת את שני הטקסטים (ושני קישורים), ולכן היא ארוכה יותר. עברית מוגבלת בכל הודעה, וכל קטע נוסף נספר כהודעה נוספת. הערכה לפי הטקסטים שלמעלה:",
+                "Each message carries both texts (and both links), so it is longer, and every extra stretch of text is billed as another credit. Estimate with the texts below:")</p>
+            <ul id="bothcostlist" style="margin: 4px 0 0; padding-inline-start: 20px"></ul>
+        </div>
         <label class="field"><span>@Ui.T("שפת ברירת מחדל בדף (כששתיהן)", "Default page language (when both)")</span>
             <select asp-for="Settings.DefaultGuestLanguage">
                 <option value="he">עברית</option>
@@ -74,15 +80,15 @@
     <div class="fields">
         <div>
             <h3>עברית</h3>
-            <label class="field"><span>@Ui.T("הזמנה", "Invitation")</span><textarea asp-for="Settings.InviteTemplate" data-count="he" rows="3"></textarea><small>@SegText(Model.InviteSegments)</small></label>
-            <label class="field"><span>@Ui.T("תזכורת", "Reminder")</span><textarea asp-for="Settings.ReminderTemplate" data-count="he" rows="3"></textarea><small>@SegText(Model.ReminderSegments)</small></label>
-            <label class="field"><span>@Ui.T("תודה", "Thank-you")</span><textarea asp-for="Settings.ThankYouTemplate" data-count="he" rows="2"></textarea><small>@SegText(Model.ThankYouSegments)</small></label>
+            <label class="field"><span>@Ui.T("הזמנה", "Invitation")</span><textarea asp-for="Settings.InviteTemplate" data-count="he" data-kind="invite" rows="3"></textarea><small>@SegText(Model.InviteSegments)</small></label>
+            <label class="field"><span>@Ui.T("תזכורת", "Reminder")</span><textarea asp-for="Settings.ReminderTemplate" data-count="he" data-kind="reminder" rows="3"></textarea><small>@SegText(Model.ReminderSegments)</small></label>
+            <label class="field"><span>@Ui.T("תודה", "Thank-you")</span><textarea asp-for="Settings.ThankYouTemplate" data-count="he" data-kind="thanks" rows="2"></textarea><small>@SegText(Model.ThankYouSegments)</small></label>
         </div>
         <div>
             <h3>English</h3>
-            <label class="field"><span>@Ui.T("הזמנה", "Invitation")</span><textarea asp-for="Settings.InviteTemplateEn" data-count="en" rows="3" class="ltr"></textarea><small>@SegText(Model.InviteSegmentsEn)</small></label>
-            <label class="field"><span>@Ui.T("תזכורת", "Reminder")</span><textarea asp-for="Settings.ReminderTemplateEn" data-count="en" rows="3" class="ltr"></textarea><small>@SegText(Model.ReminderSegmentsEn)</small></label>
-            <label class="field"><span>@Ui.T("תודה", "Thank-you")</span><textarea asp-for="Settings.ThankYouTemplateEn" data-count="en" rows="2" class="ltr"></textarea><small>@SegText(Model.ThankYouSegmentsEn)</small></label>
+            <label class="field"><span>@Ui.T("הזמנה", "Invitation")</span><textarea asp-for="Settings.InviteTemplateEn" data-count="en" data-kind="invite" rows="3" class="ltr"></textarea><small>@SegText(Model.InviteSegmentsEn)</small></label>
+            <label class="field"><span>@Ui.T("תזכורת", "Reminder")</span><textarea asp-for="Settings.ReminderTemplateEn" data-count="en" data-kind="reminder" rows="3" class="ltr"></textarea><small>@SegText(Model.ReminderSegmentsEn)</small></label>
+            <label class="field"><span>@Ui.T("תודה", "Thank-you")</span><textarea asp-for="Settings.ThankYouTemplateEn" data-count="en" data-kind="thanks" rows="2" class="ltr"></textarea><small>@SegText(Model.ThankYouSegmentsEn)</small></label>
         </div>
     </div>
     <h3>@Ui.T("תצוגה מקדימה של ההזמנה", "Invitation preview")</h3>
@@ -144,6 +150,8 @@
         {
             chars = Ui.T("תווים", "characters"), one = Ui.T("קרדיט", "credit"), many = Ui.T("קרדיטים", "credits"),
             about = Ui.T("כ-", "about "), empty = Ui.T("עוד לא מולא למעלה:", "not filled in above yet:"),
+            hebrewOnly = Ui.T("עברית בלבד", "Hebrew only"),
+            kinds = new { invite = Ui.T("הזמנה", "Invitation"), reminder = Ui.T("תזכורת", "Reminder"), thanks = Ui.T("תודה", "Thank-you") },
         }));
         function val(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
         // Placeholder values come from the fields on this page as they are right now (saved or not), like the real message will.
@@ -156,22 +164,45 @@
                 date: d ? d[3] + '/' + d[2] : '00/00' // always dd/MM once a date is set
             };
         }
-        function update(area) {
+        function render(area) {
             var v = values(area.dataset.count), t = area.value;
-            var rendered = t.split('{name}').join(v.name).split('{couple}').join(v.couple).split('{link}').join(v.link)
+            return t.split('{name}').join(v.name).split('{couple}').join(v.couple).split('{link}').join(v.link)
                 .split('{date}').join(v.date).split('{venue}').join(v.venue).trim();
-            var len = rendered.length;
+        }
+        function creditsFor(rendered) {
             var unicode = /[^\x00-\x7F]/.test(rendered); // any non-ASCII is treated as UCS-2 (a safe over-estimate for accented Latin)
-            var r = unicode ? rules.u : rules.g;
-            var credits = len <= r.single ? 1 : 1 + Math.ceil((len - r.single) / r.part);
+            var r = unicode ? rules.u : rules.g, len = rendered.length;
+            return { len: len, est: r.est, credits: len <= r.single ? 1 : 1 + Math.ceil((len - r.single) / r.part) };
+        }
+        function update(area) {
+            var v = values(area.dataset.count), t = area.value, c = creditsFor(render(area));
             var empty = ['couple', 'venue'].filter(function (k) { return t.indexOf('{' + k + '}') >= 0 && !v[k]; })
                 .map(function (k) { return '{' + k + '}'; });
             area.parentElement.querySelector('small').textContent =
-                len + ' ' + text.chars + ' · ' + (r.est ? text.about : '') + credits + ' ' + (credits === 1 ? text.one : text.many)
+                c.len + ' ' + text.chars + ' · ' + (c.est ? text.about : '') + c.credits + ' ' + (c.credits === 1 ? text.one : text.many)
                 + (empty.length ? ' · ' + text.empty + ' ' + empty.join(' ') : '');
         }
-        function updateAll() { document.querySelectorAll('textarea[data-count]').forEach(update); }
-        document.querySelectorAll('textarea[data-count]').forEach(function (a) { a.addEventListener('input', function () { update(a); }); });
+        // Hebrew and English mode: one SMS holds both texts and an empty line between them, so it is longer and can cost more.
+        function updateBoth() {
+            var mode = document.getElementById('Settings_LanguageMode'), box = document.getElementById('bothcost');
+            if (!mode || !box) return;
+            box.hidden = mode.value !== 'Both';
+            if (box.hidden) return;
+            var list = document.getElementById('bothcostlist'); list.innerHTML = '';
+            ['invite', 'reminder', 'thanks'].forEach(function (kind) {
+                var he = document.querySelector('textarea[data-count=he][data-kind=' + kind + ']');
+                var en = document.querySelector('textarea[data-count=en][data-kind=' + kind + ']');
+                if (!he || !en) return;
+                var h = render(he), both = creditsFor(h + '\n\n' + render(en)), only = creditsFor(h);
+                var li = document.createElement('li');
+                li.textContent = text.kinds[kind] + ': ' + (both.est ? text.about : '') + both.credits + ' ' + (both.credits === 1 ? text.one : text.many)
+                    + ' (' + text.hebrewOnly + ': ' + only.credits + ')';
+                list.appendChild(li);
+            });
+        }
+        function updateAll() { document.querySelectorAll('textarea[data-count]').forEach(update); updateBoth(); }
+        document.querySelectorAll('textarea[data-count]').forEach(function (a) { a.addEventListener('input', function () { update(a); updateBoth(); }); });
+        var modeSel = document.getElementById('Settings_LanguageMode'); if (modeSel) modeSel.addEventListener('change', updateBoth);
         ['Settings_CoupleNames', 'Settings_CoupleNamesEn', 'Settings_VenueName', 'Settings_VenueNameEn', 'Settings_StartsAtLocal'].forEach(function (id) {
             var e = document.getElementById(id);
             if (e) { e.addEventListener('input', updateAll); e.addEventListener('change', updateAll); }
