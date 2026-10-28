@@ -5,6 +5,7 @@ services:
     # Published by .github/workflows/publish-image.yml. Pin a build with :sha-<short> instead of :latest if you want to roll back easily.
     image: ghcr.io/<your-github-user-lowercase>/wedding-rsvp:latest
     restart: unless-stopped
+    pull_policy: always        # check the registry on every deploy, so :latest really updates (otherwise Docker reuses the copy it already has)
     user: "568:568"            # the TrueNAS "apps" user; the dataset below must be owned by it
     ports:
       - "9080:8080"            # PUBLIC: guest pages and the couples' sign-in. Point the public nginx host here.

@@ -52,8 +52,10 @@ It works only when the keys belong to that widget, and Cloudflare's script must 
 - If Turnstile is on: open `https://<public host>/signin` and check the challenge appears and a sign-in still works. If it blocks you, empty both Turnstile keys and redeploy to turn it off while you check the widget's hostname settings.
 
 ## 7. Updating, rolling back, backing up
-- **Update:** push to `main`, wait for the workflow, then open the app in TrueNAS and update or redeploy it so it pulls the new image. Database migrations run on start.
-  Take a dataset snapshot first.
+- **Update:** push to `main`, wait for the workflow to finish (check the package has a new `sha-<short>` tag), then open the app in TrueNAS, **Edit**, and **Save** to redeploy.
+  `pull_policy: always` in the YAML makes the redeploy fetch the new `latest`; without that line Docker keeps the copy it already has and nothing updates.
+  Database migrations run on start. Take a dataset snapshot first.
+  To see what is running: `docker inspect <image>:latest --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'` prints the commit it was built from.
 - **Roll back:** change the image tag to an earlier `sha-<short>` and redeploy. (A migration that already ran stays; restore the snapshot if you need the old schema too.)
 - **Back up:** Data Protection, Periodic Snapshot Tasks on the dataset (daily), and replicate off the NAS. The snapshot includes `keys/`.
 
