@@ -372,6 +372,15 @@ validation error · RSVP closed · unknown link.
 - [x] `scripts/check-turnstile.sh` validates the secret key without printing it (verified: the owner's key is accepted by Cloudflare)
 - [ ] Live check on the real domain with the real widget: one real token accepted, the same token refused on replay
 
+### Phase H — Hidden invitation content — PLANNED, NOT BUILT (design in section 14)
+- [ ] H0 Preview and crawler hardening: `X-Robots-Tag` header, generic metadata, no names in `<title>`/preview tags, `Referrer-Policy`
+- [ ] H1 Real client IP behind Cloudflare and nginx (prerequisite for per-IP limits and Turnstile `remoteip`)
+- [ ] H2 "Reveal on verify": neutral shell for `/{token}`, content only after a Turnstile-verified reveal, path-scoped signed cookie,
+      per-guest files (`/invitation`, `/event.ics`, `/background`) and the RSVP POST need that cookie; behind a feature flag
+- [ ] H2 Tests (shell leaks nothing, cookie rules, files gated, fallback, flag off = today's behaviour) and an end-to-end run
+- [ ] H2 Live check on the real domain from a real phone, then switch the flag on
+- [ ] H3 (optional, no code) Cloudflare WAF custom rule on the guest-link path
+
 ## 9. Open questions for the client
 
 1. Does the list include how many people each invitation covers? If not, who fills it in?
@@ -474,6 +483,177 @@ challenge is invisible and limited to the "seen" report.
 
 **Out of scope for this requirement:** proxying the domain through Cloudflare (a DNS change that would also need the visitor-IP
 header for rate limits), and any visible CAPTCHA on guest-facing pages.
+
+## 14. Hidden invitation content (PLANNED, NOT BUILT; written 2026-10-28)
+
+Design only, for a possible future change. Nothing in this section is implemented. When it is picked up, confirm the "Open decisions" at
+the end first.
+
+### 14.1 Problem
+
+A plain fetch of a guest link, with no JavaScript and no cookies, returns personal content:
+- `GET /{token}` returns the guest's name, the couple names, the date, the venue, the answer form and the invitation image URL
+  (checked on the live site, 2026-10-28).
+- `GET /{token}/invitation` (the image) and `GET /{token}/event.ics` (the calendar file) answer with the token alone, without ever loading the page.
+
+Anything that reads the SMS text and fetches the link therefore gets that content: the SMS provider, carrier anti-spam scanners, the phone's
+messaging app (link previews), security scanners, link checkers and crawlers. On 2026-10-28 two invitations were fetched 0.3 s after
+sending by such an automated reader. Today `noindex, nofollow` (meta tag) and `Cache-Control: no-store` are set, which only keeps polite
+search engines from indexing the page; it does not keep anything from reading it. Search engines cannot discover a link that exists only in
+an SMS, so crawling the open web is the smaller risk; the SMS-reading scanners are the real one.
+
+### 14.2 Goals and non-goals
+
+Goals:
+- A reader that fetches the link without behaving like a real browser that passes Turnstile sees nothing personal: not on the page, not in
+  the title or preview metadata, not through the image or calendar URLs.
+- A real guest notices almost nothing (about one second, no tap).
+- The existing guest page, RSVP form and "Opened" tracking keep working for real guests.
+
+Non-goals (cannot be done, and the documentation must say so):
+- Hiding the link or the SMS text from the SMS provider and the carrier. They hold the message.
+- Stopping a real browser that passes Turnstile. To the server it is indistinguishable from a guest.
+- Hiding anything from the couple.
+
+### 14.3 What it stops
+
+| Reader | Today | After H2 |
+|---|---|---|
+| Plain HTTP fetch (curl, python-requests, HEAD), link-preview fetchers, most scanners | sees everything | sees a neutral shell |
+| Search-engine and other crawlers | `noindex` only | neutral shell |
+| Scanner that runs JavaScript but fails Turnstile | sees everything | neutral shell |
+| Scanner that runs a real browser and passes Turnstile | sees everything | sees the content (unavoidable) |
+| Guest on a phone | sees the page | sees the page after about 1 s |
+
+### 14.4 Design: "reveal on verify"
+
+The page is not hidden by obscurity or by secret paths; the server simply refuses to return personal content until a request proves it came from
+a browser that ran our script and passed Turnstile.
+
+1. **Shell.** `GET /{token}` without a valid reveal cookie returns a small neutral page, the same for every well-formed token (so it also
+   reveals nothing about whether a token exists and needs no database read):
+   - generic `<title>` and text in both languages ("Loading your invitation... / טוען את ההזמנה...");
+   - no names, dates, venue, colours, image or Open Graph tags; `noindex, nofollow, noarchive, nosnippet` in a meta tag and in
+     `X-Robots-Tag`; `Cache-Control: no-store`; `Referrer-Policy: same-origin`;
+   - the invisible Turnstile widget (`interaction-only`, action `reveal`), a small script, and a `<noscript>` message
+     ("Please enable JavaScript to see your invitation").
+2. **Reveal.** The script POSTs the Turnstile token to `POST /{token}/reveal`. The server verifies the token (`TurnstileGate`, action
+   `reveal`, hostname allow-list as today). On success it sets the reveal cookie and answers `204`; the script then reloads once. On failure it
+   answers `403` and the shell shows the fallback (14.6). The reveal also records the guest as seen (`RsvpService.SeenAsync`), replacing the
+   current 2-second beacon and its separate `seen` widget, because a verified reveal is a stronger "a person is here" signal.
+3. **Cookie.** Name `wr.reveal`, `HttpOnly`, `Secure`, `SameSite=Lax`, **`Path=/{token}`** so the browser sends it only for that guest's
+   URLs and one link cannot open another. The value is a `DataProtection` payload (purpose `guest-reveal`; the keys already persist under
+   `{DataDir}/keys`) holding the token and the issue time. Lifetime `App__GuestRevealDays` (default 30): a guest who comes back days later,
+   to change an answer, is not asked again. A cleared cookie only means one more automatic reveal.
+4. **Full page.** `GET /{token}` with a valid cookie for that token returns the existing page unchanged (`Rsvp.cshtml` stays as is). A missing,
+   tampered, expired or other-token cookie returns the shell.
+5. **Per-guest files.** `/{token}/invitation`, `/{token}/event.ics` and `/{token}/background` require the same cookie and otherwise answer `404`
+   (not `403`, so they leak nothing). The page's `<img>` and the calendar link send the cookie automatically (same origin, same path).
+6. **RSVP POST.** `POST /{token}` also requires the cookie; without it the shell is returned. The antiforgery token still applies.
+7. **Where Turnstile is off** (keys not set: development, tests): the shell reveals as soon as its script runs, with no widget. That still
+   keeps out every fetcher that does not run JavaScript.
+8. **Admin side.** The couple's own preview of a guest link, and test messages, work the same way as a guest's: the browser reveals once. Nothing
+   in the admin pages changes.
+
+### 14.5 Behaviour that must be decided or documented
+
+- **Link previews** (Messages, WhatsApp and similar) will show only the generic title. That is intended. Tell couples.
+- **Cookies disabled** in the browser: after the reveal the reload would show the shell again. The shell detects that (one reload only) and shows
+  "Please allow cookies for this site to see your invitation".
+- **In-app browsers** (WhatsApp, Instagram and similar) run JavaScript and cookies normally; Turnstile works in them. Check on a real phone.
+- **Delivery and Opened status:** unchanged for delivery reports. "Opened" is recorded at the verified reveal instead of the beacon.
+
+### 14.6 Failure policy (a decision to confirm)
+
+Strict mode would block a real guest whenever Cloudflare is unreachable or the Cloudflare script is blocked (ad blockers, some corporate
+networks). Proposed default, **fail open to a tap**: if the widget gives no token within about 8 seconds, or `POST /reveal` answers `403`, the shell
+shows a "Tap to view your invitation" button; the tap POSTs `fallback=1`. The server accepts a fallback reveal only with a per-IP rate limit
+(for example 5 per minute) and logs it. A scanner has to run JavaScript, find the button and click it to benefit, which is rare, and the
+trade-off is documented. `App__GuestRevealStrict=true` turns the fallback off for installs that prefer strict.
+
+### 14.7 Phases
+
+- **H0, preview and crawler hardening (hours, independent of the rest).**
+  - Add the `X-Robots-Tag: noindex, nofollow, noarchive` header on the public port; keep `Cache-Control: no-store`.
+  - Use a generic `<title>` and no Open Graph or description tags on whatever a fetcher without cookies can see. After H2 the shell is the only such page; before H2
+    this is the existing page, whose title carries the couple names, so H0 is only worth doing before H2 if the title is made generic
+    now.
+  - `/robots.txt` is currently served by Cloudflare's managed robots file (it answers 200 with content-signal text and is not our app's),
+    so there is nothing to add in the app; do not add one without checking that setting. A `robots.txt` would not hide anything anyway.
+- **H1, real client IP (prerequisite for any bot defence, a few hours plus checking nginx).**
+  - Observed 2026-10-28: the app's log shows visitors as Cloudflare addresses (for example `172.70.x.x`), because the chain is
+    visitor, Cloudflare, nginx, app and the app reads only the last hop. So the per-IP limits (10 credential posts per minute, 60 guest-page requests per
+    minute) and the `remoteip` sent to Turnstile are for Cloudflare edge servers. Visitors who share an edge address share a limit.
+  - Fix: read the visitor address from `CF-Connecting-IP` (ASP.NET `ForwardedHeadersOptions.ForwardedForHeaderName`), and trust it only when
+    the immediate peer is the proxy: set `KnownIPNetworks` (today they are cleared, so any peer is trusted) from a new setting
+    `App__TrustedProxies` (the nginx host or the private network). The nginx host must pass `CF-Connecting-IP` through unchanged (Nginx Proxy Manager
+    does by default; verify). Optionally restrict the origin to Cloudflare's address ranges so the header cannot be spoofed by anyone who can reach
+    the origin directly.
+  - Verify live: after the change the log's "Guest page ... from <ip>" shows the visitor's own address.
+- **H2, reveal on verify (about one day including tests).** As in 14.4 to 14.6, behind the flag `App__GuestRevealEnabled` (default off).
+  - Code: a gate in `Rsvp.cshtml.cs` (and `OnPost`), the three file endpoints and the new `/reveal` endpoint, a `GuestReveal` service
+    (issue and validate the cookie), a shell page, tests. No database change and no migration.
+  - Remove or fold the `/{token}/seen` endpoint and the `seen` widget; keep `SeenAsync`.
+- **H3, Cloudflare rule (optional, no code, about 30 minutes).** The domain already sits behind Cloudflare. A WAF custom rule on the path
+  `^/[A-Za-z0-9]{10}(/.*)?$` can challenge suspected bots before they reach the app. Limits to note: the free plan restricts custom rules and bot
+  fields, Bot Fight Mode is zone wide (not path scoped) and may challenge guests on shared mobile networks now and then. It complements H2; it
+  does not replace it.
+
+### 14.8 New settings (proposed)
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `App__GuestRevealEnabled` | `false` | Turns H2 on. Off = today's behaviour exactly. |
+| `App__GuestRevealDays` | `30` | Lifetime of the reveal cookie. |
+| `App__GuestRevealStrict` | `false` | `true` removes the tap fallback (14.6). |
+| `App__TrustedProxies` | empty | Addresses or networks whose forwarded headers are trusted (H1). |
+
+### 14.9 Security notes
+
+- The cookie proves only "this browser passed a reveal for this token"; it carries no personal data. It is signed with the existing data-protection keys
+  (rotating them invalidates all reveals, which only means one more automatic reveal each).
+- `Path=/{token}` limits the cookie to one guest's URLs. A guest who forwards the link to someone else gives them the same access as today.
+- The shell and `/reveal` answer the same way for known and unknown tokens (no existence oracle). `/reveal` is rate limited per IP like the other
+  public endpoints (needs H1 to mean anything).
+- A reveal that succeeds counts as "Opened" once; repeated reveals are idempotent.
+- Do not log tokens, cookies or the Turnstile secret. Log counters only: reveal ok, challenge failed, fallback used.
+
+### 14.10 Tests to write
+
+- Shell: for a valid token with no cookie, the HTML and headers contain none of the guest name, couple names, date, venue, image URL or colours, have a
+  generic title and the `noindex`/`no-store` headers; `HEAD` the same; an unknown token gives the same shell.
+- Reveal: no token, wrong action, wrong hostname and Cloudflare unreachable all give `403` and no cookie; a good token sets a cookie with
+  `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/{token}` and the configured lifetime, and records the open once; the strict flag removes the fallback; the fallback
+  is rate limited.
+- Cookie: valid gives the full page; tampered, expired, and a cookie for another token all give the shell.
+- Files and POST: `/invitation`, `/event.ics`, `/background` and the RSVP POST fail without the cookie and work with it.
+- Flag off: behaves exactly as today (existing tests unchanged).
+- End to end, like the Turnstile run: a local fake siteverify, plain fetch sees nothing, scripted reveal sees the page. Then on the real domain from a real phone
+  (iPhone Safari, Android Chrome, one in-app browser) and in headless Chromium for the layout jump at 320 px.
+
+### 14.11 Rollout and rollback
+
+1. Ship H1 and verify the real IPs in the log.
+2. Ship H2 with the flag off; deploy; nothing changes.
+3. Turn the flag on for a test couple's invitation first: open the link on a real phone, check the reveal time, the image, the calendar file and the RSVP,
+   and check that `curl` of the link, `/invitation` and `/event.ics` shows nothing personal.
+4. Turn it on for everyone. Roll back by switching the flag off; no data changes either way.
+
+### 14.12 Success criteria
+
+- `curl` and `HEAD` of a guest link, of `/invitation` and of `/event.ics` return no personal data.
+- A real phone shows the invitation in about 2 seconds with no tap, in Hebrew and English.
+- "Opened" appears only after a verified reveal.
+- Flag off restores today's behaviour.
+
+### 14.13 Open decisions (confirm when picking this up)
+
+1. Count "Opened" at the reveal (proposed) or keep the separate 2-second beacon as well.
+2. Cookie lifetime (proposed 30 days) and whether it should end at the event date.
+3. Fail open to a tap (proposed) or strict.
+4. Uniform shell for unknown tokens (proposed) or keep the `404` page.
+5. Neutral shell (proposed) or the couple's colours (needs a database read before verification).
+6. Whether to take the Cloudflare rule (H3) as well.
 
 ## 12. Decisions
 

@@ -29,6 +29,10 @@ link (`/{token}`) to a phone-first RSVP page. Hebrew RTL / English LTR throughou
 4. Guest page visual QA done in headless Chromium (320/360/390, landscape); still unchecked: error/saved/closed states, background-photo variant, real iOS Safari.
 5. Done: Jewish yom tov days in `SendingWindow`, live credit counter (per-provider cost rule). WhatsApp share link is out of scope.
 
+6. **Planned, not built:** hide invitation content from scanners, previews and crawlers (SPEC.md section 14, Phase H). Order: H1 real client IP behind Cloudflare/nginx
+   (the app currently sees Cloudflare addresses, so per-IP limits and Turnstile `remoteip` are wrong), then H2 "reveal on verify" behind `App__GuestRevealEnabled`.
+   H0 (preview hardening) is only worth doing alone if the page title is made generic; H3 is an optional Cloudflare WAF rule.
+
 ## Decisions already made (don't re-ask)
 Identity cookie auth (data is very sensitive); no email provider (admin copies a set-password link); couples change
 password but not email; over-allocation of SMS allowed, the circuit breaker makes it safe; couples never see provider

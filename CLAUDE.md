@@ -216,6 +216,9 @@ Don't move logic into views; if a design needs data the model doesn't expose, ad
 - [x] "Delete all information" + audit log + site-admin TOTP are built.
 - [x] Jewish yom tov days are in `SendingWindow` (computed from the Hebrew calendar). Other special days: the pause switch.
 - [x] **Turnstile** (Cloudflare) on the public login pages and on the invitation's "seen" report (SPEC.md §13, Phase T). Keys `App__TurnstileSiteKey` / `App__TurnstileSecretKey`, both empty = off. Live check on the real domain still to do.
+- [ ] (future, planned only, NOT built) **Hidden invitation content**: a plain fetch of `/{token}`, `/{token}/invitation` and `/{token}/event.ics` currently returns personal content to
+  scanners and previews. Plan: SPEC.md section 14 and Phase H (neutral shell, content only after a Turnstile-verified reveal, path-scoped signed cookie, feature flag, real client IP
+  first). Do not start without confirming the open decisions in 14.13.
 - [x] Live SMS length/credit counter in the event-settings template boxes, driven by the active provider's cost rule. (WhatsApp share link is out of scope.)
 
 ## Commands
