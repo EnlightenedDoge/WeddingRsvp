@@ -7,6 +7,7 @@ namespace WeddingRsvp.Services;
 public sealed record DashboardStats(
     int Invitations,
     int InvitedPeople,
+    int UnlimitedInvitations,
     int Responded,
     int AttendingInvitations,
     int AttendingPeople,
@@ -32,7 +33,8 @@ public sealed class DashboardService(AppDbContext db)
 
         return new DashboardStats(
             Invitations: guests.Count,
-            InvitedPeople: guests.Sum(g => g.InvitedCount),
+            InvitedPeople: guests.Sum(g => g.InvitedCount), // invitations with no limit add 0; they are counted below
+            UnlimitedInvitations: guests.Count(g => g.NoGuestLimit),
             Responded: guests.Count - pending.Count,
             AttendingInvitations: attending.Count,
             AttendingPeople: attending.Sum(g => g.AttendingCount),

@@ -345,7 +345,7 @@ app.MapGet("/admin/export.csv", async (AppDbContext db) =>
             _ => "טרם ענו",
         };
         sb.AppendLine(string.Join(",",
-            CsvReader.Escape(g.Name), CsvReader.Escape(g.PhoneRaw), g.InvitedCount,
+            CsvReader.Escape(g.Name), CsvReader.Escape(g.PhoneRaw), g.NoGuestLimit ? CsvReader.Escape("ללא הגבלה") : g.InvitedCount.ToString(),
             status, g.AttendingCount, CsvReader.Escape(g.Notes)));
     }
     // UTF-8 BOM so Excel opens Hebrew correctly.

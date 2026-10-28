@@ -2,7 +2,8 @@ namespace WeddingRsvp.Domain;
 
 /// <summary>
 /// One invitation (a household / couple / single guest), reachable on one phone number.
-/// InvitedCount is how many people this invitation covers.
+/// InvitedCount is how many people this invitation covers. 0 means "no guest limit": the invitation may bring any number of
+/// people (the RSVP page then accepts 1 to <see cref="UnlimitedCap"/>).
 /// All *Utc properties are stored and read as UTC (see AppDbContext).
 /// </summary>
 public class Guest : ITenantOwned
@@ -19,6 +20,13 @@ public class Guest : ITenantOwned
     public string? PhoneError { get; set; }
 
     public int InvitedCount { get; set; } = 1;
+
+    /// <summary>Most people an RSVP can name when the invitation has no guest limit.</summary>
+    public const int UnlimitedCap = 99;
+    /// <summary>The invitation has no limit on how many people may come (InvitedCount is 0).</summary>
+    public bool NoGuestLimit => InvitedCount == 0;
+    /// <summary>The largest headcount an answer may name.</summary>
+    public int MaxHeadcount => InvitedCount > 0 ? InvitedCount : UnlimitedCap;
 
     /// <summary>Unguessable token used in the personal RSVP link.</summary>
     public string Token { get; set; } = "";

@@ -18,8 +18,13 @@
             <label class="field"><span>@Ui.T("טלפון", "Phone")</span><input asp-for="Input.Phone" class="ltr" inputmode="tel" />
                 <span asp-validation-for="Input.Phone" class="field-validation-error"></span>
                 @if (Model.Existing?.PhoneError is { } err) { <small class="error">@Labels.Problem(err)</small> }</label>
-            <label class="field"><span>@Ui.T("מספר מוזמנים", "People invited")</span><input asp-for="Input.InvitedCount" type="number" min="1" />
-                <span asp-validation-for="Input.InvitedCount" class="field-validation-error"></span></label>
+            <div class="field"><span>@Ui.T("מספר מוזמנים", "People invited")</span>
+                <div class="row">
+                    <input asp-for="Input.InvitedCount" id="invitedNumber" type="number" min="0" max="50" style="flex: 0 1 120px" aria-label="@Ui.T("מספר מוזמנים", "People invited")" />
+                    <label class="checks"><input asp-for="Input.NoLimit" id="noLimit" /> @Ui.T("ללא הגבלה", "No guest limit")</label>
+                </div>
+                <small>@Ui.T($"הזמנה ללא הגבלה מאפשרת לאורחים לציין כל מספר עד {Guest.UnlimitedCap}. גם הזנת 0 משמעה ללא הגבלה.", $"With no limit the guests can name any number up to {Guest.UnlimitedCap}. Typing 0 means the same.")</small>
+                <span asp-validation-for="Input.InvitedCount" class="field-validation-error"></span></div>
             <label class="field"><span>@Ui.T("סטטוס", "Status")</span>
                 <select asp-for="Input.Status">
                     <option value="@RsvpStatus.Pending">@Labels.Status(RsvpStatus.Pending)</option>
@@ -67,3 +72,15 @@
     </div>
 }
 </div>
+
+<script>
+    // "No guest limit" greys out the number box; typing 0 ticks the box.
+    (function () {
+        var box = document.getElementById('noLimit'), num = document.getElementById('invitedNumber');
+        if (!box || !num) return;
+        function sync() { num.disabled = box.checked; num.style.opacity = box.checked ? '.45' : ''; }
+        box.addEventListener('change', sync);
+        num.addEventListener('input', function () { if (num.value === '0') { box.checked = true; sync(); } });
+        sync();
+    })();
+</script>

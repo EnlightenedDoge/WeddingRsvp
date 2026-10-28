@@ -7,7 +7,7 @@
     <p>@Ui.T("קובץ CSV מאקסל עם העמודות:", "A CSV file from Excel with the columns:")
         <b>@Ui.T("שם", "Name")</b>, <b>@Ui.T("טלפון", "Phone")</b>,
         @Ui.T("ואופציונלית", "and optionally") <b>@Ui.T("מוזמנים", "Invited")</b>
-        (@Ui.T("כמה אנשים בהזמנה, ברירת מחדל 1", "how many people the invitation covers, default 1")).
+        (@Ui.T("כמה אנשים בהזמנה, ברירת מחדל 1. 0 או \"ללא הגבלה\" = בלי הגבלת מספר אורחים", "how many people the invitation covers, default 1. 0 or \"unlimited\" = no limit on guests")).
         @Ui.T("מספרים שכבר קיימים ברשימה יידלגו.", "Numbers already on the list are skipped.")</p>
     <form method="post" enctype="multipart/form-data" class="row">
         <input type="file" name="File" accept=".csv,text/csv" />

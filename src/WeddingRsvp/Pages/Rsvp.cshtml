@@ -12,7 +12,7 @@
     var answered = g.Status != RsvpStatus.Pending;
     var showForm = !Model.IsClosed && !Model.JustSaved;
     var saved = Model.JustSaved;
-    var chipMax = Math.Min(g.InvitedCount, 12);
+    var chipMax = Math.Min(g.MaxHeadcount, 12);
     string Answer() => g.Status == RsvpStatus.Attending
         ? Model.T($"התשובה שלכם: מגיעים · {g.AttendingCount} אורחים", $"Your answer: attending · {g.AttendingCount} guest{(g.AttendingCount == 1 ? "" : "s")}")
         : Model.T("התשובה שלכם: לא מגיעים", "Your answer: not attending");
@@ -107,8 +107,8 @@
                         <label class="choice"><input type="radio" name="Attending" value="false" checked="@(Model.Attending == false)" /><span>@Model.T("לא מגיעים", "Not attending")</span></label>
                     </div>
                     <div class="count-block">
-                        <div style="font-weight: 500">@Model.T("כמה אתם?", "How many of you?") <span class="hint">· @Model.T($"הוזמנתם עד {g.InvitedCount}", $"You are invited with up to {g.InvitedCount}")</span></div>
-                        @if (g.InvitedCount <= 12)
+                        <div style="font-weight: 500">@Model.T("כמה אתם?", "How many of you?") <span class="hint">· @(g.NoGuestLimit ? Model.T("ללא הגבלת מספר אורחים", "No limit on the number of guests") : Model.T($"הוזמנתם עד {g.InvitedCount}", $"You are invited with up to {g.InvitedCount}"))</span></div>
+                        @if (!g.NoGuestLimit && g.InvitedCount <= 12)
                         {
                             <div class="chips">
                                 @for (var n = 1; n <= chipMax; n++)
@@ -119,7 +119,7 @@
                         }
                         else
                         {
-                            <input type="number" name="Count" min="1" max="@g.InvitedCount" value="@Model.Count" inputmode="numeric" style="min-height: 56px; font-size: 20px; border-radius: 14px; border: 1px solid #CBD3CF; padding: 0 14px" />
+                            <input type="number" name="Count" min="1" max="@g.MaxHeadcount" value="@Model.Count" inputmode="numeric" style="min-height: 56px; font-size: 20px; border-radius: 14px; border: 1px solid #CBD3CF; padding: 0 14px" />
                         }
                     </div>
                     <div class="submit"><button type="submit">@(answered ? Model.T("עדכון תשובה", "Update answer") : Model.T("שליחת תשובה", "Send answer"))</button></div>

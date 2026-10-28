@@ -17,6 +17,8 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         public string Name { get; set; } = "";
         public string? Phone { get; set; }
         public int InvitedCount { get; set; } = 1;
+        /// <summary>No limit on how many people the invitation covers (stored as InvitedCount 0).</summary>
+        public bool NoLimit { get; set; }
         public RsvpStatus Status { get; set; }
         public int AttendingCount { get; set; }
         public string? Notes { get; set; }
@@ -35,7 +37,7 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         var g = Existing!;
         Input = new GuestInput
         {
-            Name = g.Name, Phone = g.PhoneRaw, InvitedCount = g.InvitedCount,
+            Name = g.Name, Phone = g.PhoneRaw, InvitedCount = g.NoGuestLimit ? 1 : g.InvitedCount, NoLimit = g.NoGuestLimit,
             Status = g.Status, AttendingCount = g.AttendingCount, Notes = g.Notes,
         };
         return Page();
@@ -57,10 +59,15 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
 
         if (string.IsNullOrWhiteSpace(Input.Name))
             ModelState.AddModelError("Input.Name", ui.T("חסר שם", "Name is required"));
-        if (Input.InvitedCount is < 1 or > 50)
-            ModelState.AddModelError("Input.InvitedCount", ui.T("בין 1 ל-50", "Between 1 and 50"));
-        if (Input.Status == RsvpStatus.Attending && (Input.AttendingCount < 1 || Input.AttendingCount > Input.InvitedCount))
-            ModelState.AddModelError("Input.AttendingCount", ui.T("מספר המגיעים צריך להיות בין 1 למספר המוזמנים", "Attending must be between 1 and the number invited"));
+        // "No guest limit" is the toggle, or 0 typed in the number box; both are stored as 0.
+        var unlimited = Input.NoLimit || Input.InvitedCount == 0;
+        if (!unlimited && Input.InvitedCount is < 1 or > 50)
+            ModelState.AddModelError("Input.InvitedCount", ui.T("בין 1 ל-50, או סמנו \"ללא הגבלה\"", "Between 1 and 50, or turn on \"No guest limit\""));
+        var maxAttending = unlimited ? Guest.UnlimitedCap : Input.InvitedCount;
+        if (Input.Status == RsvpStatus.Attending && (Input.AttendingCount < 1 || Input.AttendingCount > maxAttending))
+            ModelState.AddModelError("Input.AttendingCount", unlimited
+                ? ui.T($"מספר המגיעים צריך להיות בין 1 ל-{Guest.UnlimitedCap}", $"Attending must be between 1 and {Guest.UnlimitedCap}")
+                : ui.T("מספר המגיעים צריך להיות בין 1 למספר המוזמנים", "Attending must be between 1 and the number invited"));
 
         var phone = PhoneNormalizer.Normalize(Input.Phone);
         if (phone.IsValid && await db.Guests.AnyAsync(x => x.PhoneE164 == phone.E164 && x.Id != g.Id))
@@ -72,7 +79,7 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         g.PhoneRaw = Input.Phone?.Trim() ?? "";
         g.PhoneE164 = phone.E164;
         g.PhoneError = phone.Error;
-        g.InvitedCount = Input.InvitedCount;
+        g.InvitedCount = unlimited ? 0 : Input.InvitedCount;
         g.Notes = Input.Notes;
 
         // A manual status change is recorded as such, so the couple can tell phone-call

@@ -60,7 +60,7 @@ non-responders, dashboard "X of Y", thank-you the day after.
 
 ## Architecture
 
-- `Domain/` — `Guest` (one invitation = one phone, `InvitedCount` people), `MessageLog` (also the outbox),
+- `Domain/` — `Guest` (one invitation = one phone, `InvitedCount` people; **`InvitedCount = 0` means no guest limit**: `Guest.NoGuestLimit`, answers may name up to `Guest.UnlimitedCap` = 99, use `Guest.MaxHeadcount`), `MessageLog` (also the outbox),
   `EventSettings` (event details, templates, schedule, pause switch; **today a single row Id = 1**, becomes one
   row per couple).
 - `Services/CampaignService` decides **what** to send and enqueues `MessageLog` rows (Status = Queued).

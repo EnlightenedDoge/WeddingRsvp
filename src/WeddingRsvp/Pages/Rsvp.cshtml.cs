@@ -53,7 +53,7 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
             RsvpStatus.Declined => false,
             _ => null,
         };
-        Count = g.Status == RsvpStatus.Attending ? g.AttendingCount : g.InvitedCount;
+        Count = g.Status == RsvpStatus.Attending ? g.AttendingCount : g.NoGuestLimit ? 1 : g.InvitedCount;
         return Page();
     }
 
@@ -74,7 +74,7 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
                 Error = T("נא לבחור אם מגיעים כדי להמשיך.", "Please choose whether you are attending to continue.");
                 break;
             case RsvpResult.InvalidCount:
-                Error = T($"אפשר לאשר בין 1 ל-{g.InvitedCount} אורחים.", $"You can confirm between 1 and {g.InvitedCount} guests.");
+                Error = T($"אפשר לאשר בין 1 ל-{g.MaxHeadcount} אורחים.", $"You can confirm between 1 and {g.MaxHeadcount} guests.");
                 break;
             case RsvpResult.Closed:
                 Error = T("האירוע כבר התחיל, אי אפשר לעדכן תשובה.", "The event has started, so the answer can no longer be changed.");

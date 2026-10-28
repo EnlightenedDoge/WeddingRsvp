@@ -61,7 +61,7 @@ public sealed class ImportService(AppDbContext db, IsraelClock clock)
                 continue;
             }
 
-            var count = countCol >= 0 && int.TryParse(Cell(r, countCol), out var c) && c > 0 ? c : 1;
+            var count = countCol >= 0 ? ParseInvitedCount(Cell(r, countCol)) : 1;
 
             string token;
             do token = TokenGenerator.New(); while (!existingTokens.Add(token));
@@ -82,6 +82,19 @@ public sealed class ImportService(AppDbContext db, IsraelClock clock)
 
         await db.SaveChangesAsync(ct);
         return report;
+    }
+
+    private static readonly string[] UnlimitedWords = ["ללא הגבלה", "בלי הגבלה", "ללא הגבלת מספר", "unlimited", "no limit", "any", "∞"];
+
+    /// <summary>
+    /// The "invited" cell: a positive number is the limit; 0 or a word such as "ללא הגבלה" / "unlimited" means no guest limit (stored as 0);
+    /// anything else (empty, text, negative) defaults to 1.
+    /// </summary>
+    public static int ParseInvitedCount(string? cell)
+    {
+        var t = (cell ?? "").Trim();
+        if (int.TryParse(t, out var n)) return n >= 0 ? n : 1;
+        return UnlimitedWords.Contains(t.ToLowerInvariant()) ? 0 : 1;
     }
 
     private static (int name, int phone, int count, bool hasHeader) MapColumns(List<string> first)
