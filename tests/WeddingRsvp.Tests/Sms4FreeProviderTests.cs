@@ -34,13 +34,13 @@ public sealed class Sms4FreeProviderTests
     private static readonly SmsMessage Msg = new("+972501234567", "שלום", "DanaYossi");
 
     [Fact]
-    public async Task Sends_the_documented_fields_with_a_local_recipient()
+    public async Task Sends_the_documented_fields_with_the_country_code_first()
     {
         var (p, h) = Make(_ => Task.FromResult(Json("""{"status":1,"message":""}""")));
         var r = await p.SendAsync(Msg, default);
         Assert.Equal(SmsFailureKind.Sent, r.Kind);
         var doc = JsonDocument.Parse(h.LastBody!).RootElement;
-        Assert.Equal("0501234567", doc.GetProperty("recipient").GetString());
+        Assert.Equal("+972501234567", doc.GetProperty("recipient").GetString());
         Assert.Equal("שלום", doc.GetProperty("msg").GetString());
         Assert.Equal("DanaYossi", doc.GetProperty("sender").GetString());
         Assert.Equal("k", doc.GetProperty("key").GetString());
@@ -77,6 +77,14 @@ public sealed class Sms4FreeProviderTests
         var (g, _) = Make(_ => Task.FromResult(Json("not json")));
         Assert.Equal(SmsFailureKind.Unknown, (await g.SendAsync(Msg, default)).Kind);
     }
+
+    [Theory]
+    [InlineData("+972501234567", "+972501234567")]
+    [InlineData("+97225123456", null)]      // landline / too short
+    [InlineData("0501234567", null)]        // not E.164
+    [InlineData("+14155550100", null)]
+    public void Recipient_keeps_the_country_code_and_only_israeli_mobiles_pass(string input, string? expected) =>
+        Assert.Equal(expected, Sms4FreeProvider.ToRecipient(input));
 
     [Fact]
     public async Task Non_israeli_numbers_are_rejected_without_a_request()

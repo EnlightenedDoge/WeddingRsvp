@@ -185,7 +185,7 @@ The provider may ask for ID verification after a purchase (Ministry of Communica
 - Body: `key`, `user`, `pass`, `sender`, recipient, message. **Confirm the exact recipient/message field names on
   the account's API page** after signup (community clients exist for PHP and Node; no official field reference
   was found publicly).
-- Recipient format: national `05XXXXXXXX` (convert from our E.164). International numbers: check with support;
+- Recipient format: sent as stored, E.164 with the country code first (`+9725XXXXXXXX`); the API accepts `05…`, `9725…` and `+9725…`. International numbers: check with support;
   until then treat non-Israeli numbers as "send manually" in the admin.
 - Response: positive `status` = number of accepted recipients → `SmsSendResult.Ok(null)`.
   Zero/negative = refused → `Fail("<status>: <message>")`.
@@ -198,7 +198,7 @@ The provider may ask for ID verification after a purchase (Ministry of Communica
     no automatic retry. The admin can requeue after checking the provider's sent log.
   - Explicit provider refusals → `Failed`, no retry.
 - **Credits:** a community client estimates 1 credit for the first 134 characters and +1 per 67 after that.
-  That's unofficial — verify by sending a real invite to yourself and diffing the balance. Our `SmsSegments`
+  Confirmed for Hebrew on 2026-10-28 (see Phase 1). English-only/GSM-7 is still unverified. Original note: verify by sending a real invite to yourself and diffing the balance. Our `SmsSegments`
   shows network segments, which may differ from billed credits.
 - Pre-flight on "send invitations": fetch the balance; if it's lower than (guests to invite × credits per
   invite), show a warning and require confirmation.
@@ -305,7 +305,7 @@ validation error · RSVP closed · unknown link.
 - [x] Auto-pause on account-level refusals; surface it on `/admin/messages`
 - [ ] Balance on `/admin/messages` + pre-flight warning before "send invitations"
 - [x] Unit tests: phone conversion, response parsing, retry classification
-- [ ] Live test with the free messages (sender = registered number); confirm credits per Hebrew invite via balance diff
+- [x] Live test (2026-10-28): credits per Hebrew SMS confirmed by balance diff: 62 chars = 1, 138 = 2, 163 = 2 (134 + 67 rule holds)
 - [ ] Decide on the DLR endpoint per support's answer (implement or remove)
 
 ### Phase 2 — Design integration

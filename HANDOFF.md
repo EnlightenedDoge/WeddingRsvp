@@ -19,12 +19,14 @@ link (`/{token}`) to a phone-first RSVP page. Hebrew RTL / English LTR throughou
 - The user was mid manual test from a phone over the LAN (see recipe below).
 
 ## Deferred / open (priority order)
-1. **SMS provider layer: built 2026-10-28** (providers, breaker, ledger, 85 tests). Remaining: live test with the 10 free
-   SMS4FREE messages (confirm credits per Hebrew SMS via balance diff), pre-flight confirm on "send invitations" is only a
-   banner for now, DLR webhook still disabled. Couples start with 0 allocation; delete `data/rsvp.db` once (new tables).
+1. **SMS provider layer: built and live-tested 2026-10-28** (providers, breaker, ledger, 86+ tests). Live results with the real account:
+   balance diff confirmed 62 chars = 1 credit, 138 = 2, 163 = 2; sender name `Invitation` accepted. One early 138-char message was accepted by
+   the API but never received; later ones arrived (cause unknown: first send from a new sender name, a carrier filter or a delay).
+   Recipients are now sent country code first (`+9725…`), not yet live-verified. Still open: English-only (GSM-7) credit count,
+   delivery reports (DLR) not built. Couples start with 0 allocation.
 2. ~~First EF migration~~ done: `InitialCreate` (run `dotnet ef migrations add <Name> -p src/WeddingRsvp` for later schema changes).
-3. TOTP-required banner for the site admin; audit-log viewer page.
-4. Visual QA of the guest page at 320/360/390 and landscape 844x390 in a real browser.
+3. ~~TOTP banner, audit-log viewer~~ done (`/admin/site/audit`).
+4. Guest page visual QA done in headless Chromium (320/360/390, landscape); still unchecked: error/saved/closed states, background-photo variant, real iOS Safari.
 5. Jewish holidays in `SendingWindow`; optional WhatsApp share link; live SMS segment counter.
 
 ## Decisions already made (don't re-ask)

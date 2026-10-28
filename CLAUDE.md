@@ -23,7 +23,7 @@ See `HANDOFF.md` for session context, deferred work, run recipes and pitfalls.
   Event page with language mode, per-language templates/images and page look. Language mode renders SMS via `MessageTemplates.Body`.
 - **SMS provider layer built (2026-10-28):** `ISmsProvider` + `Log`/`Sms4Free` providers (`Sms:Provider`), failure kinds, persisted circuit
   breaker (`PlatformState`, `/admin/site/provider`, banner), per-couple allocation ledger (`SmsAllocationEntry`, card on the couple page,
-  couples start at 0). Needs a fresh DB. Live test with real credentials still to do (verify credits per Hebrew SMS).
+  couples start at 0). Needs a fresh DB. Live-tested 2026-10-28: billing matches 1 credit up to 134 chars, +1 per 67 (138 chars = 2, 62 = 1, 163 = 2); sender name `Invitation` accepted.
 - **Still open:** data backfill
   (delete `data/rsvp.db`), first EF migration, per-language email-less polish, visual QA at 320/360/390 in a real browser.
 - Not done yet: first EF migration (`dotnet-ef` is not installed here; and the multi-tenant change reshapes the
@@ -198,7 +198,7 @@ Don't move logic into views; if a design needs data the model doesn't expose, ad
 - [x] Added `PageBackgroundColor` / `PageBackgroundImageFile` / `PageAccentColor` to `EventSettings` + the "Guest page look" section on the Event page.
 - [x] Sign-out / account entry in the couple sidebars (not in the canvas yet).
 - [x] First EF migration (`InitialCreate`, 2026-10-28); Program.cs applies it on startup.
-- [x] SMS provider layer, `Sms4FreeProvider` and per-couple allocations (live test with real credentials pending).
+- [x] SMS provider layer, `Sms4FreeProvider` and per-couple allocations (live-tested 2026-10-28).
 - [x] Couple language mode + per-language images/templates + guest-page toggle (SPEC.md §11).
 - [x] "Delete all information" + audit log + site-admin TOTP are built.
 - [ ] Jewish holidays aren't in `SendingWindow`; couples use the pause switch. Could add a holiday list.

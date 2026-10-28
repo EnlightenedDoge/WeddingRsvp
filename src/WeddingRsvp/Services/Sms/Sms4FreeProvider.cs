@@ -16,7 +16,7 @@ public sealed class Sms4FreeProvider(HttpClient http, IOptions<SmsOptions> optio
 
     public async Task<SmsSendResult> SendAsync(SmsMessage m, CancellationToken ct)
     {
-        if (ToLocal(m.ToE164) is not { } recipient)
+        if (ToRecipient(m.ToE164) is not { } recipient)
             return SmsSendResult.Rejected("Non-Israeli number: send manually");
 
         var o = options.Value;
@@ -68,10 +68,13 @@ public sealed class Sms4FreeProvider(HttpClient http, IOptions<SmsOptions> optio
         };
     }
 
-    /// <summary>+9725XXXXXXXX -> 05XXXXXXXX. Null for anything that isn't an Israeli mobile number.</summary>
-    public static string? ToLocal(string e164) =>
+    /// <summary>
+    /// The recipient exactly as stored (+9725XXXXXXXX, country code first; the API accepts it). Null for anything
+    /// that isn't an Israeli mobile number, because the API only sends to Israeli numbers.
+    /// </summary>
+    public static string? ToRecipient(string e164) =>
         e164.StartsWith("+9725", StringComparison.Ordinal) && e164.Length == 13 && e164[1..].All(char.IsDigit)
-            ? "0" + e164[4..] : null;
+            ? e164 : null;
 
     private sealed record Reply(int Status, string? Message);
 }
