@@ -51,16 +51,21 @@ public sealed class RsvpService(AppDbContext db, SettingsService settings, Israe
     public async Task<bool> IsClosedAsync(CancellationToken ct = default) =>
         (await settings.GetAsync(ct)).StartsAtLocal is not { } startsAt || clock.LocalNow >= startsAt;
 
-    public async Task<RsvpResult> SubmitAsync(string token, bool? attending, int count, CancellationToken ct = default)
+    /// <summary>
+    /// Records an answer. Attending needs at least one adult; adults and children together must fit the invitation
+    /// (<see cref="Guest.MaxHeadcount"/>). Children are stored separately and included in AttendingCount.
+    /// </summary>
+    public async Task<RsvpResult> SubmitAsync(string token, bool? attending, int adults, int children, CancellationToken ct = default)
     {
         var g = await FindAsync(token, ct);
         if (g is null) return RsvpResult.NotFound;
         if (await IsClosedAsync(ct)) return RsvpResult.Closed;
         if (attending is null) return RsvpResult.MissingAnswer;
-        if (attending == true && (count < 1 || count > g.MaxHeadcount)) return RsvpResult.InvalidCount;
+        if (attending == true && (adults < 1 || children < 0 || adults + children > g.MaxHeadcount)) return RsvpResult.InvalidCount;
 
         g.Status = attending.Value ? RsvpStatus.Attending : RsvpStatus.Declined;
-        g.AttendingCount = attending.Value ? count : 0;
+        g.AttendingCount = attending.Value ? adults + children : 0;
+        g.AttendingChildren = attending.Value ? children : 0;
         g.Source = RsvpSource.Web;
         g.RespondedAtUtc = clock.UtcNow;
 

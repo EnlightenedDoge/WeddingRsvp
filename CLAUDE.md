@@ -60,7 +60,7 @@ non-responders, dashboard "X of Y", thank-you the day after.
 
 ## Architecture
 
-- `Domain/` — `Guest` (one invitation = one phone, `InvitedCount` people; **`InvitedCount = 0` means no guest limit**: `Guest.NoGuestLimit`, answers may name up to `Guest.UnlimitedCap` = 99, use `Guest.MaxHeadcount`), `MessageLog` (also the outbox),
+- `Domain/` — `Guest` (one invitation = one phone, `InvitedCount` people (adults and children together); **attendance is split: `AttendingCount` is everyone, `AttendingChildren` the children among them, `AttendingAdults` = the rest; old answers count as adults**; **`InvitedCount = 0` means no guest limit**: `Guest.NoGuestLimit`, answers may name up to `Guest.UnlimitedCap` = 99, use `Guest.MaxHeadcount`), `MessageLog` (also the outbox),
   `EventSettings` (event details, templates, schedule, pause switch; **today a single row Id = 1**, becomes one
   row per couple).
 - `Services/CampaignService` decides **what** to send and enqueues `MessageLog` rows (Status = Queued).
@@ -169,7 +169,7 @@ queries) and work at 390px. All sample names/numbers in the canvas are placehold
 - Primary button is sticky at the bottom of the answer card, above the home indicator (`env(safe-area-inset-bottom)`).
 - Tap targets ≥ 48px (answer cards 60px, headcount chips 56px, submit 56px); text ≥ 16px so iOS doesn't zoom;
   `100svh` not `100vh`; titles `overflow-wrap: anywhere`; verified layouts at 320, 360, 390 and landscape 844×390.
-- Headcount as big tappable chips (radio `Count`), only when attending is chosen; `Attending` radios are `true`/`false`.
+- Headcount as two groups of big tappable chips, "Adults" (radio `Adults`, from 1) and "Children" (radio `Children`, from 0; hidden for a 1-person invitation), only when attending is chosen; choices that would exceed the invitation are greyed out. Unlimited or large invitations use number boxes. `Attending` radios are `true`/`false`.
 - **Couple-controlled look:** background colour (presets or custom hex), optional background photo (behind a dark
   overlay), button/accent colour. Text colours (greeting, title, venue) flip automatically by luminance;
   cards stay white with dark text. Stored on `EventSettings`: `PageBackgroundColor`, `PageBackgroundImageFile`,
@@ -182,8 +182,9 @@ queries) and work at 390px. All sample names/numbers in the canvas are placehold
 - `RsvpModel` provides: `Guest` (Name, InvitedCount, Status, AttendingCount), `Event` (Title, CoupleNames,
   StartsAtLocal (nullable), VenueDisplay), `ImageUrl`, `GoogleCalendarUrl` (empty when no date), `WazeUrl`
   (nullable), `IsClosed`, `JustSaved`, `Error`, `Attending` (bool?), `Count`.
-- The form must POST to the same URL with fields named `Attending` ("true"/"false") and `Count` (int),
-  and include the antiforgery token (the form tag helper does this automatically).
+- The form must POST to the same URL with fields named `Attending` ("true"/"false"), `Adults` (int, default 1) and `Children` (int, default 0),
+  and include the antiforgery token (the form tag helper does this automatically). A legacy `Count` field is read as adults when `Adults` is missing.
+  Attending needs at least 1 adult, and adults + children must fit the invitation (`Guest.MaxHeadcount`).
 - States to design: first visit, already answered (can change), just saved (attending / declined),
   validation error, RSVP closed, unknown link (NotFound page). Headcount only matters when attending.
 - Calendar: `/event.ics` (iOS/Outlook) and the Google link. Navigation: `WazeUrl`.

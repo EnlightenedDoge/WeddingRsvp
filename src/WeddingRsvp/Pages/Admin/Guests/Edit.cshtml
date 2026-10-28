@@ -31,8 +31,10 @@
                     <option value="@RsvpStatus.Attending">@Labels.Status(RsvpStatus.Attending)</option>
                     <option value="@RsvpStatus.Declined">@Labels.Status(RsvpStatus.Declined)</option>
                 </select></label>
-            <label class="field"><span>@Ui.T("מגיעים", "Attending")</span><input asp-for="Input.AttendingCount" type="number" min="0" />
-                <span asp-validation-for="Input.AttendingCount" class="field-validation-error"></span></label>
+            <label class="field"><span>@Ui.T("מבוגרים שמגיעים", "Adults attending")</span><input asp-for="Input.AttendingAdults" type="number" min="1" />
+                <span asp-validation-for="Input.AttendingAdults" class="field-validation-error"></span></label>
+            <label class="field"><span>@Ui.T("ילדים שמגיעים", "Children attending")</span><input asp-for="Input.AttendingChildren" type="number" min="0" />
+                <span asp-validation-for="Input.AttendingChildren" class="field-validation-error"></span></label>
         </div>
         <label class="field"><span>@Ui.T("הערות", "Notes")</span><textarea asp-for="Input.Notes" rows="2"></textarea></label>
         <button type="submit" class="btn primary">@Ui.T("שמירה", "Save")</button>

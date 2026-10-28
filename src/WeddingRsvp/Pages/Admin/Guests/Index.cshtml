@@ -30,7 +30,7 @@
                 <td><a href="/admin/guests/edit/@g.Id"><b>@g.Name</b></a></td>
                 <td class="ltr">@g.PhoneRaw @if (g.PhoneError is not null) { <div class="faint">@Labels.Problem(g.PhoneError)</div> }</td>
                 <td>@(g.NoGuestLimit ? Ui.T("ללא הגבלה", "No limit") : g.InvitedCount.ToString())</td>
-                <td><span class="pill @Labels.StatusPill(g.Status)">@Labels.Status(g.Status)@(g.Status == RsvpStatus.Attending ? " · " + g.AttendingCount : "")</span></td>
+                <td><span class="pill @Labels.StatusPill(g.Status)">@Labels.Status(g.Status)@(g.Status == RsvpStatus.Attending ? " · " + Labels.Headcount(g.AttendingAdults, g.AttendingChildren) : "")</span></td>
                 <td>@Labels.Local(g.InviteSentAtUtc)</td>
                 <td>@g.RemindersSent</td>
                 <td>@Labels.Local(g.FirstOpenedAtUtc)</td>

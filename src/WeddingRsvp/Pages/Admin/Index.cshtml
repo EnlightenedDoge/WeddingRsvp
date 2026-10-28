@@ -30,6 +30,7 @@
         <div style="display: flex; align-items: baseline; gap: 10px; margin-block-start: 6px">
             <span class="big">@s.AttendingPeople</span>
             <span class="muted">@(s.UnlimitedInvitations > 0 ? Ui.T($"מתוך {s.InvitedPeople}+ מוזמנים", $"of {s.InvitedPeople}+ invited") : Ui.T($"מתוך {s.InvitedPeople} מוזמנים", $"of {s.InvitedPeople} invited"))</span>
+            @if (s.AttendingChildren > 0) { <div class="faint">@Ui.T($"{s.AttendingAdults} מבוגרים, {s.AttendingChildren} ילדים", $"{s.AttendingAdults} adults, {s.AttendingChildren} children")</div> }
             @if (s.UnlimitedInvitations > 0) { <div class="faint">@Ui.T($"כולל {s.UnlimitedInvitations} הזמנות ללא הגבלה", $"plus {s.UnlimitedInvitations} invitation(s) with no guest limit")</div> }
         </div>
     </div>
@@ -76,7 +77,7 @@
             <div class="list-row">
                 <div><a href="/admin/guests/edit/@g.Id"><b>@g.Name</b></a>
                     <div class="faint">@Labels.Local(g.RespondedAtUtc)</div></div>
-                <span class="pill ok">@Ui.T("מגיעים", "Attending") · @g.AttendingCount / @(g.NoGuestLimit ? "∞" : g.InvitedCount.ToString())</span>
+                <span class="pill ok" title="@Ui.T("מוזמנים", "Invited"): @(g.NoGuestLimit ? Ui.T("ללא הגבלה", "no limit") : g.InvitedCount.ToString())">@Ui.T("מגיעים", "Attending") · @Labels.Headcount(g.AttendingAdults, g.AttendingChildren)</span>
             </div>
         }
         @if (s.Attending.Count == 0)

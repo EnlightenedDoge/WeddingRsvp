@@ -16,6 +16,16 @@ public static class Labels
         _ => T("טרם ענו", "Awaiting"),
     };
 
+    /// <summary>"2 adults · 1 child" (children left out when there are none).</summary>
+    public static string Headcount(int adults, int children)
+    {
+        var a = adults == 1 ? T("מבוגר", "adult") : T("מבוגרים", "adults");
+        var text = $"{adults} {a}";
+        if (children <= 0) return text;
+        var c = children == 1 ? T("ילד", "child") : T("ילדים", "children");
+        return $"{text} · {children} {c}";
+    }
+
     public static string StatusPill(RsvpStatus s) => s switch
     {
         RsvpStatus.Attending => "ok",

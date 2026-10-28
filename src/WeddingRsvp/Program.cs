@@ -335,7 +335,7 @@ app.MapGet("/admin/export.csv", async (AppDbContext db) =>
 {
     var guests = await db.Guests.AsNoTracking().OrderBy(g => g.Name).ToListAsync();
     var sb = new StringBuilder();
-    sb.AppendLine("שם,טלפון,מוזמנים,סטטוס,מגיעים,הערות");
+    sb.AppendLine("שם,טלפון,מוזמנים,סטטוס,מגיעים,מבוגרים,ילדים,הערות");
     foreach (var g in guests)
     {
         var status = g.Status switch
@@ -346,7 +346,7 @@ app.MapGet("/admin/export.csv", async (AppDbContext db) =>
         };
         sb.AppendLine(string.Join(",",
             CsvReader.Escape(g.Name), CsvReader.Escape(g.PhoneRaw), g.NoGuestLimit ? CsvReader.Escape("ללא הגבלה") : g.InvitedCount.ToString(),
-            status, g.AttendingCount, CsvReader.Escape(g.Notes)));
+            status, g.AttendingCount, g.AttendingAdults, g.AttendingChildren, CsvReader.Escape(g.Notes)));
     }
     // UTF-8 BOM so Excel opens Hebrew correctly.
     var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();

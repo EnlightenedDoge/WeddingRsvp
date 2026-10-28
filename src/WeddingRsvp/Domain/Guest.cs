@@ -32,7 +32,12 @@ public class Guest : ITenantOwned
     public string Token { get; set; } = "";
 
     public RsvpStatus Status { get; set; } = RsvpStatus.Pending;
+    /// <summary>Everyone attending, adults and children together (this is what the totals use).</summary>
     public int AttendingCount { get; set; }
+    /// <summary>How many of <see cref="AttendingCount"/> are children. Answers from before children were tracked count as adults.</summary>
+    public int AttendingChildren { get; set; }
+    /// <summary>The adults attending: everyone except the children.</summary>
+    public int AttendingAdults => AttendingCount - AttendingChildren;
     public RsvpSource Source { get; set; } = RsvpSource.None;
     public DateTime? RespondedAtUtc { get; set; }
 

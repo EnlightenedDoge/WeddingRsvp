@@ -14,7 +14,7 @@
     var saved = Model.JustSaved;
     var chipMax = Math.Min(g.MaxHeadcount, 12);
     string Answer() => g.Status == RsvpStatus.Attending
-        ? Model.T($"התשובה שלכם: מגיעים · {g.AttendingCount} אורחים", $"Your answer: attending · {g.AttendingCount} guest{(g.AttendingCount == 1 ? "" : "s")}")
+        ? Model.T($"התשובה שלכם: מגיעים · {Model.People(g.AttendingAdults, g.AttendingChildren)}", $"Your answer: attending · {Model.People(g.AttendingAdults, g.AttendingChildren)}")
         : Model.T("התשובה שלכם: לא מגיעים", "Your answer: not attending");
     string Link(string lang) => $"/{g.Token}?lang={lang}";
 }
@@ -81,7 +81,7 @@
                     <div class="tick @(g.Status == RsvpStatus.Attending ? "" : "no")"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
                     @if (g.Status == RsvpStatus.Attending)
                     {
-                        <b>@Model.T($"תודה! רשמנו {g.AttendingCount} אורחים.", $"Thank you! We have you down for {g.AttendingCount} guest{(g.AttendingCount == 1 ? "" : "s")}.")</b>
+                        <b>@Model.T($"תודה! רשמנו {Model.People(g.AttendingAdults, g.AttendingChildren)}.", $"Thank you! We have you down for {Model.People(g.AttendingAdults, g.AttendingChildren)}.")</b>
                         <div>@Model.T("נתראה בשמחה!", "See you there!")</div>
                     }
                     else
@@ -106,21 +106,50 @@
                         <label class="choice"><input type="radio" name="Attending" value="true" checked="@(Model.Attending == true)" /><span>@Model.T("מגיעים", "Attending")</span></label>
                         <label class="choice"><input type="radio" name="Attending" value="false" checked="@(Model.Attending == false)" /><span>@Model.T("לא מגיעים", "Not attending")</span></label>
                     </div>
-                    <div class="count-block">
-                        <div style="font-weight: 500">@Model.T("כמה אתם?", "How many of you?") <span class="hint">· @(g.NoGuestLimit ? Model.T("ללא הגבלת מספר אורחים", "No limit on the number of guests") : Model.T($"הוזמנתם עד {g.InvitedCount}", $"You are invited with up to {g.InvitedCount}"))</span></div>
-                        @if (!g.NoGuestLimit && g.InvitedCount <= 12)
+                    @{
+                        var max = g.MaxHeadcount;
+                        var chips = !g.NoGuestLimit && g.InvitedCount <= 12;
+                        var adultsNow = Model.Adults ?? 1;
+                    }
+                    <div class="count-block" data-max="@max">
+                        <div class="count-group">
+                            <div style="font-weight: 500">@Model.T("כמה מבוגרים?", "How many adults?")</div>
+                            @if (chips)
+                            {
+                                <div class="chips">
+                                    @for (var n = 1; n <= chipMax; n++)
+                                    {
+                                        <label class="chip"><input type="radio" name="Adults" value="@n" checked="@(adultsNow == n)" />@n</label>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <input type="number" name="Adults" min="1" max="@max" value="@adultsNow" inputmode="numeric" aria-label="@Model.T("מבוגרים", "Adults")" class="count-number" />
+                            }
+                        </div>
+                        @if (max > 1)
                         {
-                            <div class="chips">
-                                @for (var n = 1; n <= chipMax; n++)
+                            <div class="count-group">
+                                <div style="font-weight: 500">@Model.T("כמה ילדים?", "How many children?") <span class="hint">· @Model.T("אפשר להשאיר 0", "0 if none")</span></div>
+                                @if (chips)
                                 {
-                                    <label class="chip"><input type="radio" name="Count" value="@n" checked="@(Model.Count == n)" />@n</label>
+                                    <div class="chips">
+                                        @for (var n = 0; n <= Math.Min(max - 1, 12); n++)
+                                        {
+                                            <label class="chip"><input type="radio" name="Children" value="@n" checked="@(Model.Children == n)" />@n</label>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <input type="number" name="Children" min="0" max="@(max - 1)" value="@Model.Children" inputmode="numeric" aria-label="@Model.T("ילדים", "Children")" class="count-number" />
                                 }
                             </div>
                         }
-                        else
-                        {
-                            <input type="number" name="Count" min="1" max="@g.MaxHeadcount" value="@Model.Count" inputmode="numeric" style="min-height: 56px; font-size: 20px; border-radius: 14px; border: 1px solid #CBD3CF; padding: 0 14px" />
-                        }
+                        <div class="hint">@(g.NoGuestLimit ? Model.T("ללא הגבלת מספר אורחים", "No limit on the number of guests")
+            : g.InvitedCount == 1 ? Model.T("ההזמנה היא לאורח אחד", "Your invitation is for 1 guest")
+            : Model.T($"הוזמנתם עד {g.InvitedCount} אורחים בסך הכול (מבוגרים וילדים)", $"You are invited with up to {g.InvitedCount} guests in total (adults and children)"))</div>
                     </div>
                     <div class="submit"><button type="submit">@(answered ? Model.T("עדכון תשובה", "Update answer") : Model.T("שליחת תשובה", "Send answer"))</button></div>
                 </form>
@@ -154,5 +183,28 @@
         function arm() { setTimeout(seen, 2000); }
         if (document.readyState === 'complete') arm(); else window.addEventListener('load', arm);
         document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') arm(); });
+    })();
+</script>
+
+<script>
+    // Adults and children together can't exceed the invitation: grey out choices that would, and cap the number boxes.
+    (function () {
+        var blk = document.querySelector('.count-block');
+        if (!blk) return;
+        var max = parseInt(blk.dataset.max, 10);
+        function val(name) {
+            var picked = blk.querySelector('input[type=radio][name=' + name + ']:checked');
+            if (picked) return parseInt(picked.value, 10);
+            var box = blk.querySelector('input[type=number][name=' + name + ']');
+            return box ? (parseInt(box.value, 10) || 0) : 0;
+        }
+        function sync() {
+            var adults = val('Adults'), children = val('Children');
+            blk.querySelectorAll('input[type=radio][name=Adults]').forEach(function (i) { i.disabled = parseInt(i.value, 10) + children > max; });
+            blk.querySelectorAll('input[type=radio][name=Children]').forEach(function (i) { i.disabled = parseInt(i.value, 10) + adults > max; });
+            var a = blk.querySelector('input[type=number][name=Adults]'); if (a) a.max = Math.max(1, max - children);
+            var c = blk.querySelector('input[type=number][name=Children]'); if (c) c.max = Math.max(0, max - adults);
+        }
+        blk.addEventListener('change', sync); blk.addEventListener('input', sync); sync();
     })();
 </script>

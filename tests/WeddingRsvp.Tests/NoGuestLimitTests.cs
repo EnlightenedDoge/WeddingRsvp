@@ -40,12 +40,12 @@ public sealed class NoGuestLimitTests : IDisposable
         return new AppDbContext(_options, t);
     }
 
-    private async Task<RsvpResult> SubmitAsync(string token, int count)
+    private async Task<RsvpResult> SubmitAsync(string token, int count, int children = 0)
     {
         var tenant = new TenantContext(); // the public flow starts with no tenant; the token decides it
         using var db = new AppDbContext(_options, tenant);
         var svc = new RsvpService(db, new SettingsService(db, tenant), new IsraelClock(TimeProvider.System), tenant);
-        return await svc.SubmitAsync(token, true, count);
+        return await svc.SubmitAsync(token, true, count, children);
     }
 
     [Fact]

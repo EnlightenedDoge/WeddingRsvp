@@ -47,7 +47,7 @@ Added later (2026-10):
 ### Guest (on a phone, opened from an SMS)
 1. Receives SMS: `{name}, שמחים להזמין אתכם לחתונה של {couple} ב-{date}! לפרטים ואישור הגעה: {link}`
 2. Opens `https://rsvp.example.com/{token}` → sees greeting, invitation image, date, venue.
-3. Chooses מגיעים / לא מגיעים; if attending, picks headcount 1..InvitedCount (or any number up to 99 when the invitation has no guest limit) → submits.
+3. Chooses מגיעים / לא מגיעים; if attending, picks how many adults (at least 1, default 1) and how many children (default 0); together they may not exceed InvitedCount (or 99 when the invitation has no guest limit) → submits.
 4. Sees confirmation. Can reopen the link and change the answer until the event starts.
 5. Can add the event to a calendar and open Waze.
 6. If still pending after N days: reminder SMS (same link). Day after the event: thank-you SMS.
@@ -105,7 +105,7 @@ Added later (2026-10):
   exact provider credit formula is unverified, §6). A couple's remaining allocation is the sum; the dispatcher
   reserves the segments before sending and returns them if the send provably failed.
 - **Guest**: one invitation = one phone. `Name`, `PhoneRaw`, `PhoneE164` (null if invalid), `PhoneError`,
-  `InvitedCount` (0 = no guest limit, shown as "No limit" / ∞; the guest form has a toggle, and 0 in an import cell or the form means the same), `Token` (10 chars), `Status` (Pending/Attending/Declined), `AttendingCount`,
+  `InvitedCount` (0 = no guest limit, shown as "No limit" / ∞; the guest form has a toggle, and 0 in an import cell or the form means the same), `Token` (10 chars), `Status` (Pending/Attending/Declined), `AttendingCount` (adults + children), `AttendingChildren` (the children among them; adults = the rest),
   `Source` (Web/Manual), timestamps for invite/reminders/thank-you/first & last open, `Notes`.
 - **MessageLog**: outbox + history. `Kind` (Invite/Reminder/ThankYou/Test), `Status`
   (Queued/Sent/Delivered/Failed/Cancelled), `Body`, `Attempts`, `NotBeforeUtc`, `ProviderMessageId`, `Error`.

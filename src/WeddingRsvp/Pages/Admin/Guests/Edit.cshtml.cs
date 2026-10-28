@@ -20,7 +20,9 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         /// <summary>No limit on how many people the invitation covers (stored as InvitedCount 0).</summary>
         public bool NoLimit { get; set; }
         public RsvpStatus Status { get; set; }
-        public int AttendingCount { get; set; }
+        /// <summary>Adults and children attending; they only apply while the status is Attending (default: 1 adult, 0 children).</summary>
+        public int AttendingAdults { get; set; } = 1;
+        public int AttendingChildren { get; set; }
         public string? Notes { get; set; }
     }
 
@@ -38,7 +40,9 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         Input = new GuestInput
         {
             Name = g.Name, Phone = g.PhoneRaw, InvitedCount = g.NoGuestLimit ? 1 : g.InvitedCount, NoLimit = g.NoGuestLimit,
-            Status = g.Status, AttendingCount = g.AttendingCount, Notes = g.Notes,
+            Status = g.Status, Notes = g.Notes,
+            AttendingAdults = g.Status == RsvpStatus.Attending ? g.AttendingAdults : 1,
+            AttendingChildren = g.Status == RsvpStatus.Attending ? g.AttendingChildren : 0,
         };
         return Page();
     }
@@ -64,10 +68,17 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         if (!unlimited && Input.InvitedCount is < 1 or > 50)
             ModelState.AddModelError("Input.InvitedCount", ui.T("בין 1 ל-50, או סמנו \"ללא הגבלה\"", "Between 1 and 50, or turn on \"No guest limit\""));
         var maxAttending = unlimited ? Guest.UnlimitedCap : Input.InvitedCount;
-        if (Input.Status == RsvpStatus.Attending && (Input.AttendingCount < 1 || Input.AttendingCount > maxAttending))
-            ModelState.AddModelError("Input.AttendingCount", unlimited
-                ? ui.T($"מספר המגיעים צריך להיות בין 1 ל-{Guest.UnlimitedCap}", $"Attending must be between 1 and {Guest.UnlimitedCap}")
-                : ui.T("מספר המגיעים צריך להיות בין 1 למספר המוזמנים", "Attending must be between 1 and the number invited"));
+        if (Input.Status == RsvpStatus.Attending)
+        {
+            if (Input.AttendingAdults < 1)
+                ModelState.AddModelError("Input.AttendingAdults", ui.T("צריך לפחות מבוגר אחד", "At least 1 adult is needed"));
+            if (Input.AttendingChildren < 0)
+                ModelState.AddModelError("Input.AttendingChildren", ui.T("מספר הילדים לא יכול להיות שלילי", "Children can't be negative"));
+            if (Input.AttendingAdults + Input.AttendingChildren > maxAttending)
+                ModelState.AddModelError("Input.AttendingAdults", unlimited
+                    ? ui.T($"מבוגרים וילדים יחד: עד {Guest.UnlimitedCap}", $"Adults and children together: at most {Guest.UnlimitedCap}")
+                    : ui.T("מבוגרים וילדים יחד לא יכולים לעלות על מספר המוזמנים", "Adults and children together can't exceed the number invited"));
+        }
 
         var phone = PhoneNormalizer.Normalize(Input.Phone);
         if (phone.IsValid && await db.Guests.AnyAsync(x => x.PhoneE164 == phone.E164 && x.Id != g.Id))
@@ -84,10 +95,14 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
 
         // A manual status change is recorded as such, so the couple can tell phone-call
         // answers apart from guests who answered through the link.
-        if (g.Status != Input.Status || (Input.Status == RsvpStatus.Attending && g.AttendingCount != Input.AttendingCount))
+        var attendingNow = Input.Status == RsvpStatus.Attending;
+        var adults = attendingNow ? Input.AttendingAdults : 0;
+        var children = attendingNow ? Input.AttendingChildren : 0;
+        if (g.Status != Input.Status || (attendingNow && (g.AttendingAdults != adults || g.AttendingChildren != children)))
         {
             g.Status = Input.Status;
-            g.AttendingCount = Input.Status == RsvpStatus.Attending ? Input.AttendingCount : 0;
+            g.AttendingCount = adults + children;
+            g.AttendingChildren = children;
             g.Source = Input.Status == RsvpStatus.Pending ? RsvpSource.None : RsvpSource.Manual;
             g.RespondedAtUtc = Input.Status == RsvpStatus.Pending ? null : clock.UtcNow;
         }

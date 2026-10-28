@@ -359,6 +359,9 @@ namespace WeddingRsvp.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("AttendingChildren")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("AttendingCount")
                         .HasColumnType("INTEGER");
 

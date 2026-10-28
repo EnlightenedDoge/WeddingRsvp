@@ -51,7 +51,11 @@ h1 { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.25; overflow-w
 .choice span { font-size: 18px; font-weight: 500; }
 .choice:has(input:checked) { border: 2px solid var(--accent); background: #EAF2EE; }
 .choices { display: flex; flex-direction: column; gap: 10px; }
-.count-block { display: none; flex-direction: column; gap: 10px; }
+.count-block { display: none; flex-direction: column; gap: 18px; }
+.count-group { display: flex; flex-direction: column; gap: 10px; }
+.count-number { min-height: 56px; font-size: 20px; border-radius: 14px; border: 1px solid #CBD3CF; padding: 0 14px; }
+.chip:has(input:disabled) { opacity: .35; cursor: not-allowed; }
+.chip:has(input:disabled) input { cursor: not-allowed; }
 .card:has(input[name=Attending][value=true]:checked) .count-block { display: flex; }
 .chips { display: flex; flex-wrap: wrap; gap: 10px; }
 .chip { position: relative; min-width: 56px; min-height: 56px; display: grid; place-items: center; border-radius: 14px; cursor: pointer;
