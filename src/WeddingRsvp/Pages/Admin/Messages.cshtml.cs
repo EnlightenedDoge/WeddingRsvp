@@ -18,6 +18,8 @@ public class MessagesModel(
     public int Remaining { get; private set; }
     /// <summary>Platform-wide provider problem. Couples only ever see a neutral "delayed" note.</summary>
     public bool Delayed { get; private set; }
+    /// <summary>Set when "send invitations" needs more credits than the couple has left and awaits a second confirmation.</summary>
+    public (int Need, int Have)? Shortfall { get; private set; }
     /// <summary>Event details the invitation text uses that haven't been filled in (e.g. "{couple}"). Blocks sending.</summary>
     public IReadOnlyList<string> MissingForInvite { get; private set; } = [];
     public Dictionary<MessageStatus, int> Counts { get; private set; } = new();
@@ -31,6 +33,9 @@ public class MessagesModel(
         Event = await settings.GetAsync();
         Remaining = await allocation.BalanceAsync();
         Delayed = await breaker.IsOpenAsync();
+        if (TempData["InviteShortfall"] is string sf && sf.Split('|') is [var need, var have]
+            && int.TryParse(need, out var n) && int.TryParse(have, out var h))
+            Shortfall = (n, h);
         InSendingWindow = window.IsAllowed(clock.LocalNow);
         MissingForInvite = MessageTemplates.MissingFields(Event, MessageKind.Invite);
         ReadyToInvite = await db.Guests.CountAsync(g => g.PhoneE164 != null && g.InviteSentAtUtc == null);
@@ -41,12 +46,19 @@ public class MessagesModel(
             .OrderByDescending(m => m.Id).Take(100).ToListAsync();
     }
 
-    public async Task<IActionResult> OnPostQueueInvitesAsync()
+    public async Task<IActionResult> OnPostQueueInvitesAsync(bool confirmShortfall = false)
     {
         var missing = await campaign.MissingFieldsAsync(MessageKind.Invite);
         if (missing.Count > 0)
         {
             TempData["Flash"] = ui.T("אי אפשר לשלוח הזמנות: חסרים פרטים באירוע (", "Can't send invitations: event details are missing (") + string.Join(" ", missing) + ")";
+            return RedirectToPage();
+        }
+        var (_, need) = await campaign.InviteCostAsync();
+        var have = await allocation.BalanceAsync();
+        if (need > have && !confirmShortfall)
+        {
+            TempData["InviteShortfall"] = $"{need}|{have}";
             return RedirectToPage();
         }
         var n = await campaign.QueueInvitesAsync();

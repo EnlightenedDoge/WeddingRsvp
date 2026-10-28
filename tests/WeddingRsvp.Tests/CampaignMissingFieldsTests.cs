@@ -76,6 +76,24 @@ public sealed class CampaignMissingFieldsTests : IDisposable
         Assert.Equal(0, await _db.Messages.CountAsync());
     }
 
+    [Fact]
+    public async Task Invite_cost_is_zero_while_fields_are_missing_then_counts_guests_and_credits()
+    {
+        Assert.Equal((0, 0), await _campaign.InviteCostAsync());
+
+        var s = await _settings.GetAsync();
+        s.CoupleNames = "A ו-B";
+        s.StartsAtLocal = DateTime.Today.AddMonths(2).AddHours(19);
+        await _db.SaveChangesAsync();
+
+        var (guests, credits) = await _campaign.InviteCostAsync();
+        Assert.Equal(1, guests);
+        Assert.True(credits >= 1);
+
+        await _campaign.QueueInvitesAsync(); // once queued it no longer counts as "to invite"
+        Assert.Equal((0, 0), await _campaign.InviteCostAsync());
+    }
+
     public void Dispose()
     {
         _db.Dispose();

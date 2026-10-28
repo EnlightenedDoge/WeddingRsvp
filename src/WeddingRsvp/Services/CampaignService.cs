@@ -42,6 +42,22 @@ public sealed class CampaignService(
         return n;
     }
 
+    /// <summary>
+    /// How many invitations "send invitations" would queue now and roughly how many SMS credits they cost,
+    /// using each guest's real rendered text (the link length matches a real one).
+    /// </summary>
+    public async Task<(int Guests, int Credits)> InviteCostAsync(CancellationToken ct = default)
+    {
+        var s = await settings.GetAsync(ct);
+        if (MessageTemplates.MissingFields(s, MessageKind.Invite).Count > 0) return (0, 0);
+        var queued = await QueuedGuestIdsAsync(MessageKind.Invite, ct);
+        var guests = await db.Guests.AsNoTracking()
+            .Where(g => g.PhoneE164 != null && g.InviteSentAtUtc == null).ToListAsync(ct);
+        var link = MessageTemplates.GuestLink(app.Value.PublicBaseUrl, "TESTTESTAB");
+        var pending = guests.Where(g => !queued.Contains(g.Id)).ToList();
+        return (pending.Count, pending.Sum(g => SmsSegments.Credits(MessageTemplates.Body(s, MessageKind.Invite, g.Name, link))));
+    }
+
     /// <summary>Queues (or re-queues) one guest's invitation, e.g. after fixing their number.</summary>
     public async Task<bool> QueueInviteAsync(int guestId, CancellationToken ct = default)
     {

@@ -60,6 +60,11 @@ h1 { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.25; overflow-w
 .submit { position: sticky; bottom: 0; z-index: 1; margin: 0 -20px -20px; padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
   background: #fff; border-top: 1px solid #ECEFEC; border-radius: 0 0 16px 16px; }
 .submit button { width: 100%; min-height: 56px; border-radius: 14px; border: 0; background: var(--accent); color: var(--on-accent, #fff); font-size: 18px; font-weight: 700; cursor: pointer; }
+/* Landscape phones: keep the sticky bar slim so the answer options stay visible. */
+@media (max-height: 500px) {
+  .submit { padding-block: 6px calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .submit button { min-height: 48px; }
+}
 .links { display: flex; flex-direction: column; gap: 10px; }
 .links a { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; border-radius: 14px; background: #fff; border: 1px solid var(--card-line); color: #1E2321; font-weight: 500; }
 .links svg { stroke: var(--accent); flex: none; }

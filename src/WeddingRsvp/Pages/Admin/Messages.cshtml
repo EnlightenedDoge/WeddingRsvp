@@ -28,6 +28,18 @@
     @if (Model.Remaining < Model.ReadyToInvite) { <span> · @Ui.T("פחות ממספר האורחים שטרם הוזמנו; הודעות יישארו בתור עד להגדלת ההקצאה.", "fewer than the guests still to invite; messages will wait in the queue until the allocation is raised.")</span> }
 </p>
 
+@if (Model.Shortfall is { } sf)
+{
+    <div class="banner err" role="alert">
+        <p><b>@Ui.T("אין מספיק הודעות בהקצאה.", "Not enough messages in your allocation.")</b></p>
+        <p>@Ui.T($"ההזמנות דורשות בערך {sf.Need} הודעות ונותרו לכם {sf.Have}. אפשר להכניס את כולן לתור: מי שלא נכנס בהקצאה ימתין עד שההקצאה תוגדל.",
+            $"The invitations need about {sf.Need} messages and you have {sf.Have} left. You can queue them all anyway: the ones that don't fit wait until your allocation is raised.")</p>
+        <form method="post" asp-page-handler="QueueInvites" asp-route-confirmShortfall="true">
+            <button type="submit" class="btn primary">@Ui.T("הכנסה לתור בכל זאת", "Queue them anyway")</button>
+        </form>
+    </div>
+}
+
 <div class="grid2">
 <section class="card wide">
     <h2>@Ui.T("הזמנות", "Invitations")</h2>
