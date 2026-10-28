@@ -5,7 +5,9 @@ body.dark { --ink: #F4F6F5; --ink2: #E2E7E4; --muted: #C3CBC7; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; min-height: 100vh; min-height: 100svh; background: var(--bg); color: var(--ink);
   font: 16px/1.5 'Heebo', system-ui, sans-serif; }
-body[style*="--bg-image"] { background: linear-gradient(rgba(14,20,18,.42), rgba(14,20,18,.42)), var(--bg-image) center / cover fixed, var(--bg); }
+body[style*="--bg-image"] { background: linear-gradient(rgba(14,20,18,.56), rgba(14,20,18,.56)), var(--bg-image) center / cover fixed, var(--bg); }
+/* Text sits directly on the photo (cards stay white): a soft shadow keeps it readable on bright spots. */
+body[style*="--bg-image"] :is(.top .hello, h1, .when, .where, .noimage .t) { text-shadow: 0 1px 8px rgba(0,0,0,.55); }
 a { color: inherit; text-decoration: none; }
 button, input { font: inherit; }
 .wrap { max-width: 1040px; margin-inline: auto; padding: 16px 16px 40px; display: flex; flex-direction: column; gap: 20px; }
