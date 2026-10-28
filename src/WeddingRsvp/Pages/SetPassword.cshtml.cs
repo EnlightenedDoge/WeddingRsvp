@@ -7,7 +7,7 @@ using WeddingRsvp.Services;
 namespace WeddingRsvp.Pages;
 
 /// <summary>Landing page of the one-time link the site admin passes on. Also used for "set a new password".</summary>
-public class SetPasswordModel(UserManager<AppUser> users, AuditLog audit, Ui ui) : PageModel
+public class SetPasswordModel(UserManager<AppUser> users, AuditLog audit, Ui ui, TurnstileGate turnstile) : PageModel
 {
     public bool Invalid { get; private set; }
     public string? Error { get; private set; }
@@ -26,6 +26,12 @@ public class SetPasswordModel(UserManager<AppUser> users, AuditLog audit, Ui ui)
         UserId = u ?? "";
         Token = t ?? "";
         if (await Resolve(u, t) is not { } user) { Invalid = true; return Page(); }
+
+        if (await turnstile.CheckFormAsync("set-password") != TurnstileOutcome.Passed)
+        {
+            Error = ui.T("בדיקת האבטחה נכשלה. טענו את הדף מחדש ונסו שוב.", "The security check failed. Reload the page and try again.");
+            return Page();
+        }
 
         if (password != confirm)
         {

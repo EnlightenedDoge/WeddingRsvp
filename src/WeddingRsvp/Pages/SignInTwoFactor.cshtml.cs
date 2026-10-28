@@ -6,7 +6,7 @@ using WeddingRsvp.Services;
 
 namespace WeddingRsvp.Pages;
 
-public class SignInTwoFactorModel(SignInManager<AppUser> signIn, AuditLog audit, Ui ui) : PageModel
+public class SignInTwoFactorModel(SignInManager<AppUser> signIn, AuditLog audit, Ui ui, TurnstileGate turnstile) : PageModel
 {
     public string? Error { get; private set; }
 
@@ -17,6 +17,13 @@ public class SignInTwoFactorModel(SignInManager<AppUser> signIn, AuditLog audit,
     {
         var user = await signIn.GetTwoFactorAuthenticationUserAsync();
         if (user is null) return Redirect("/signin");
+
+        if (await turnstile.CheckFormAsync("signin-2fa") != TurnstileOutcome.Passed)
+        {
+            await audit.WriteAsync("signin.failed", user, detail: "turnstile");
+            Error = ui.T("בדיקת האבטחה נכשלה. טענו את הדף מחדש ונסו שוב.", "The security check failed. Reload the page and try again.");
+            return Page();
+        }
 
         var clean = (code ?? "").Replace(" ", "").Replace("-", "");
         var r = await signIn.TwoFactorAuthenticatorSignInAsync(clean, isPersistent: false, rememberClient: false);

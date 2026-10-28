@@ -54,6 +54,26 @@ dotnet run --project src/WeddingRsvp
 5. Check: `https://<public host>/healthz` returns `ok`, `https://<public host>/signin` loads, `https://<public host>/admin/site/couples`
    returns 404, and the admin host is not reachable from outside your network.
 
+## Bot protection (Cloudflare Turnstile)
+
+Turnstile guards the couples' **sign-in pages** (`/signin`, `/signin/2fa`, `/set-password`) and the **invitation**: the guest page's
+"seen" report only counts as "Opened" when Cloudflare confirms an invisible check. The page itself, the RSVP form and the private admin
+port (site admin on your LAN) are never challenged, and the site admin never depends on Cloudflare.
+
+1. In the Cloudflare dashboard create a Turnstile widget whose domains include your public host (for example `example.com`).
+2. Put both keys in `.env`: `App__TurnstileSiteKey` (public) and `App__TurnstileSecretKey` (secret, never commit it). Turnstile is ON only
+   when both are set; one alone keeps it off and the app logs a warning at startup.
+3. Run `scripts/check-turnstile.sh`. It sends a dummy token to Cloudflare with your secret (the secret goes over stdin, is never printed)
+   and tells you whether the secret is valid.
+4. Restart: `docker compose up -d --build`. Then sign in once at `https://<public host>/signin` to see the widget work.
+
+Behaviour: sign-in fails closed (if Cloudflare is unreachable or the check fails, the attempt is refused before the password is looked at and
+does not count towards lockout; refusals are audited as `signin.failed` / `turnstile`). The "seen" report fails open for the guest: a failed
+check only means that open is not counted. The widget's token must be for the expected action (`signin`, `signin-2fa`, `set-password`,
+`seen`) and the hostname must be your public host (or `App__TurnstileAllowedHostnames`).
+
+Privacy: Cloudflare's script sees each visitor's IP address and browser details. The couple's account page says so.
+
 ## Using it (site admin) — planned
 
 1. Sign in at `/signin`, open **Couples**.

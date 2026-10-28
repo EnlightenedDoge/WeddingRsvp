@@ -12,7 +12,7 @@ namespace WeddingRsvp.Pages;
 
 public class SignInModel(
     SignInManager<AppUser> signIn, UserManager<AppUser> users, AppDbContext db, AuditLog audit, Ui ui,
-    IOptions<AppOptions> app) : PageModel
+    IOptions<AppOptions> app, TurnstileGate turnstile) : PageModel
 {
     public string? Error { get; private set; }
     public string Email { get; private set; } = "";
@@ -29,6 +29,15 @@ public class SignInModel(
     {
         Email = email?.Trim() ?? "";
         ReturnUrl = returnUrl;
+
+        // Bot check first, before the email or password is looked at. A failed check never reaches the password, so it can't lock an account.
+        if (await turnstile.CheckFormAsync("signin") != TurnstileOutcome.Passed)
+        {
+            await audit.WriteAsync("signin.failed", null, detail: "turnstile");
+            Error = ui.T("בדיקת האבטחה נכשלה. טענו את הדף מחדש ונסו שוב.", "The security check failed. Reload the page and try again.");
+            return Page();
+        }
+
         var user = Email.Length > 0 ? await users.FindByEmailAsync(Email) : null;
 
         // One neutral message for every failure: wrong password, unknown email, suspended or deleted account.

@@ -154,3 +154,7 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible { outline: 2px sol
 .img-slot { flex: 1 1 220px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .img-slot img { max-width: 100%; max-height: 260px; border-radius: 10px; border: 1px solid var(--line); }
 .img-empty { width: 100%; padding: 36px 12px; border: 1px dashed #C5CEC9; border-radius: 10px; text-align: center; }
+
+/* Cloudflare Turnstile widget on the sign-in pages */
+.cf-turnstile { margin-block: 12px; min-height: 65px; max-width: 100%; overflow: hidden; }
+.turnstile-note { margin: 0 0 12px; }

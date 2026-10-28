@@ -20,6 +20,20 @@ public sealed class AppOptions
     public int AdminPort { get; set; } = 8081;
     /// <summary>Secret path segment for the SMS delivery-report webhook. Empty disables it.</summary>
     public string? DeliveryWebhookSecret { get; set; }
+
+    /// <summary>
+    /// Cloudflare Turnstile (SPEC.md section 13). The site key is public; the secret key lives in .env only. Turnstile is ON only when
+    /// both are set. It guards the couples' sign-in pages and the invitation's "seen" report on the public port, never the private admin port.
+    /// </summary>
+    public string? TurnstileSiteKey { get; set; }
+    public string? TurnstileSecretKey { get; set; }
+    /// <summary>
+    /// Hostnames Cloudflare may report for a valid token, comma-separated. Empty = the host of <see cref="PublicBaseUrl"/>. Never put
+    /// localhost here in production.
+    /// </summary>
+    public string? TurnstileAllowedHostnames { get; set; }
+    /// <summary>Test-only: replaces Cloudflare's siteverify address (a local fake). Leave empty in production.</summary>
+    public string? TurnstileVerifyUrl { get; set; }
 }
 
 public sealed class SmsOptions

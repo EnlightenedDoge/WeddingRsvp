@@ -15,5 +15,6 @@
         <input name="Email" type="email" class="ltr" value="@Model.Email" autocomplete="username" required autofocus /></label>
     <label class="field"><span>@Ui.T("סיסמה", "Password")</span>
         <input name="Password" type="password" autocomplete="current-password" required /></label>
+    <partial name="_Turnstile" model='"signin"' />
     <button type="submit" class="btn primary">@Ui.T("כניסה", "Sign in")</button>
 </form>

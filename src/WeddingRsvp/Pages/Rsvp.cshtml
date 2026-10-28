@@ -170,15 +170,29 @@
     </div>
 </div>
 
+@inject TurnstileGate Turnstile
 @* Reports that a person is looking at the page: the browser ran it, it is visible, and it stayed for a moment.
-   Scanners, link previews and checkers only fetch the HTML, so they never trigger this. *@
+   Scanners, link previews and checkers only fetch the HTML, so they never trigger this. With Turnstile on, an invisible widget
+   (it only shows if Cloudflare needs an interaction) produces a token and the report carries it; the server counts the open only if
+   Cloudflare confirms it. Nothing here blocks or changes the guest's page. *@
+@if (Turnstile.Active)
+{
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <div class="cf-turnstile" data-sitekey="@Turnstile.SiteKey" data-action="seen" data-appearance="interaction-only"
+         data-language="@(Model.IsHe ? "he" : "en")" data-callback="wrTurnstileDone" data-expired-callback="wrTurnstileExpired"></div>
+}
 <script>
     (function () {
-        var sent = false;
+        var sent = false, token = null, tries = 0, needToken = @(Turnstile.Active ? "true" : "false");
+        window.wrTurnstileDone = function (t) { token = t; };
+        window.wrTurnstileExpired = function () { token = null; };
         function seen() {
             if (sent || document.visibilityState !== 'visible') return;
+            if (needToken && !token) { if (++tries < 20) setTimeout(seen, 1000); return; } // wait for the invisible check, up to ~20 s
             sent = true;
-            try { navigator.sendBeacon(location.pathname.replace(/\/$/, '') + '/seen'); } catch (e) { }
+            var data = new FormData();
+            if (token) data.append('cf-turnstile-response', token);
+            try { navigator.sendBeacon(location.pathname.replace(/\/$/, '') + '/seen', data); } catch (e) { }
         }
         function arm() { setTimeout(seen, 2000); }
         if (document.readyState === 'complete') arm(); else window.addEventListener('load', arm);

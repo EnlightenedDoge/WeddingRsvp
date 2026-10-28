@@ -1,0 +1,10 @@
+@model string
+@inject WeddingRsvp.Services.TurnstileGate Turnstile
+@* The Cloudflare Turnstile widget for a form. Renders nothing unless Turnstile is on for this request (public port, both keys set).
+   The model is the action name; the server checks the token against it. *@
+@if (Turnstile.Active)
+{
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <div class="cf-turnstile" data-sitekey="@Turnstile.SiteKey" data-action="@Model" data-language="@(Ui.IsHebrew ? "he" : "en")"></div>
+    <p class="faint turnstile-note">@Ui.T("האתר מוגן באמצעות Cloudflare Turnstile.", "Protected by Cloudflare Turnstile.")</p>
+}

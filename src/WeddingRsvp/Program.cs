@@ -73,6 +73,8 @@ else
     throw new InvalidOperationException($"Unknown Sms:Provider '{smsProvider}' (expected Log or Sms4Free).");
 builder.Services.AddScoped<ProviderCircuitBreaker>();
 builder.Services.AddScoped<DeliveryReports>();
+builder.Services.AddHttpClient<ITurnstileVerifier, TurnstileVerifier>(c => c.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddScoped<TurnstileGate>();
 builder.Services.AddScoped<AllocationService>();
 
 // --- Identity: the data here is very sensitive, so accounts are locked down.
@@ -169,6 +171,23 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment() && (!Uri.TryCreate(appOptions.PublicBaseUrl, UriKind.Absolute, out var publicUri) || publicUri.IsLoopback))
     app.Logger.LogWarning("App__PublicBaseUrl is '{Url}': links built from it will not work for guests or couples. Set it in .env.", appOptions.PublicBaseUrl);
 
+// Turnstile: on only when both keys are set. One key alone is a misconfiguration: stay off, but say so.
+{
+    var haveSite = !string.IsNullOrWhiteSpace(appOptions.TurnstileSiteKey);
+    var haveSecret = !string.IsNullOrWhiteSpace(appOptions.TurnstileSecretKey);
+    if (haveSite != haveSecret)
+        app.Logger.LogWarning("Turnstile is OFF: set both App__TurnstileSiteKey and App__TurnstileSecretKey (only {Which} is set).", haveSite ? "the site key" : "the secret key");
+    else if (haveSite)
+    {
+        var hosts = TurnstileVerifier.AllowedHostnames(appOptions);
+        app.Logger.LogInformation("Turnstile is ON for the public port; accepted hostnames: {Hosts}", string.Join(", ", hosts));
+        if (!string.IsNullOrWhiteSpace(appOptions.TurnstileVerifyUrl))
+            app.Logger.LogWarning("App__TurnstileVerifyUrl is set ({Url}): Turnstile tokens are NOT being checked with Cloudflare. For tests only.", appOptions.TurnstileVerifyUrl);
+        if (!app.Environment.IsDevelopment() && hosts.Any(h => h is "localhost" or "127.0.0.1" or "::1"))
+            app.Logger.LogWarning("Turnstile accepts a loopback hostname in production; remove it from App__TurnstileAllowedHostnames / App__PublicBaseUrl.");
+    }
+}
+
 // --- Database
 using (var scope = app.Services.CreateScope())
 {
@@ -241,9 +260,12 @@ app.MapRazorPages();
 
 // --- Guest-facing endpoints. No signed-in user here: the guest token picks the couple.
 // The guest page reports back here once a person has actually looked at it (see Rsvp.cshtml). This, not the page load, is an "open".
-app.MapPost("/{token:length(10)}/seen", async (string token, RsvpService rsvp) =>
+app.MapPost("/{token:length(10)}/seen", async (string token, RsvpService rsvp, TurnstileGate turnstile) =>
 {
-    await rsvp.SeenAsync(token);
+    // With Turnstile on, an open counts only when Cloudflare confirms the token the invisible widget produced. Lenient: if the check
+    // fails or Cloudflare is unreachable the open is simply not counted; the guest and the page are never affected.
+    if (await turnstile.CheckFormAsync("seen") == TurnstileOutcome.Passed)
+        await rsvp.SeenAsync(token);
     return Results.NoContent();
 });
 

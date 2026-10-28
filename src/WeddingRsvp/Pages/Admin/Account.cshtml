@@ -1,5 +1,6 @@
 @page "/admin/account"
 @model WeddingRsvp.Pages.Admin.AccountModel
+@inject WeddingRsvp.Services.TurnstileGate Turnstile
 @{ ViewData["Title"] = Ui.T("החשבון שלי", "My account"); }
 <header class="page-head"><h1>@Ui.T("החשבון שלי", "My account")</h1></header>
 
@@ -24,6 +25,14 @@
         <button type="submit" class="btn primary">@Ui.T("שמירה", "Save")</button>
     </form>
 </section>
+@if (Turnstile.Active)
+{
+<section class="card">
+    <h2>@Ui.T("פרטיות והגנה מרובוטים", "Privacy and bot protection")</h2>
+    <p>@Ui.T("כדי להגן על דפי הכניסה ועל ההזמנות מפני רובוטים אנחנו משתמשים ב-Cloudflare Turnstile. השירות רואה את כתובת ה-IP ופרטי הדפדפן של כל מי שנכנס לדף, כולל האורחים שפותחים את ההזמנה שלהם.",
+        "To protect the sign-in pages and the invitations from bots we use Cloudflare Turnstile. It sees the IP address and browser details of everyone who opens those pages, including guests who open their invitation.")</p>
+</section>
+}
 </div>
 
 <section class="card narrow" style="border-color: #E3B5AC">
