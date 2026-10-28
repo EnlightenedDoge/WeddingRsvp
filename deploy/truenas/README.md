@@ -32,7 +32,12 @@ Paste `deploy/truenas/wedding-rsvp.app.yaml` and fill in every `<placeholder>`:
 | Storage (host path) | your dataset path, mounted at `/data` |
 | Environment | the `App__*` and `Sms__*` entries from the YAML |
 
-Your SMS4FREE password and API key are stored in the app's configuration on the NAS, so limit who can open it.
+Your SMS4FREE password, API key and Turnstile secret key are stored in the app's configuration on the NAS, so limit who can open it.
+
+**Turnstile (optional bot protection).** Set `App__TurnstileSiteKey` and `App__TurnstileSecretKey` from your Cloudflare Turnstile widget to turn it on; leave both empty to keep it off.
+It guards the couples' sign-in pages and the invitation's "seen" report on the public port, never the private admin port. In the widget's settings add your public host
+(the host in `App__PublicBaseUrl`) to the allowed hostnames; if guests reach the site on other hostnames too, list them in `App__TurnstileAllowedHostnames`.
+It works only when the keys belong to that widget, and Cloudflare's script must be reachable from guests' phones, which it normally is.
 
 ## 5. Point nginx at it
 - **Public host** (e.g. `example.com`), with SSL: `http://<truenas-ip>:9080`. Guests and couples use it. Set `client_max_body_size 10m;` (invitation images are up to 10 MB)
@@ -44,6 +49,7 @@ Your SMS4FREE password and API key are stored in the app's configuration on the 
 - `https://<public host>/healthz` returns `ok`; `https://<public host>/signin` loads; `https://<public host>/admin/site/couples` returns 404.
 - Sign in as the site admin on the private port, turn on two-factor authentication, then **remove `App__BootstrapAdminPassword`** from the app's environment and redeploy.
 - Send one test message from the Messages page and confirm the status reaches Delivered (the delivery report came back through nginx).
+- If Turnstile is on: open `https://<public host>/signin` and check the challenge appears and a sign-in still works. If it blocks you, empty both Turnstile keys and redeploy to turn it off while you check the widget's hostname settings.
 
 ## 7. Updating, rolling back, backing up
 - **Update:** push to `main`, wait for the workflow, then open the app in TrueNAS and update or redeploy it so it pulls the new image. Database migrations run on start.

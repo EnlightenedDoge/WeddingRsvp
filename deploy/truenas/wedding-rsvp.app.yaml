@@ -17,6 +17,11 @@ services:
       Sms__ApiPassword: <sms4free-password>
       Sms__ApiKey: <sms4free-api-key>
       App__DeliveryWebhookSecret: <long-random-string>           # turns on delivery reports; empty = off
+      # --- Cloudflare Turnstile: bot protection on the couples' sign-in pages and the invitation's "seen" report (public port only).
+      # ON only when BOTH keys are set; leave both empty to keep it off. The site key is public; the secret key is secret.
+      App__TurnstileSiteKey: <turnstile-site-key>
+      App__TurnstileSecretKey: <turnstile-secret-key>
+      # App__TurnstileAllowedHostnames: <extra-host>             # optional; default = the host of App__PublicBaseUrl
       # --- first start only (empty database): creates the site admin, then REMOVE the password and redeploy
       App__BootstrapAdminEmail: <your-email>
       App__BootstrapAdminPassword: <at-least-10-characters>
