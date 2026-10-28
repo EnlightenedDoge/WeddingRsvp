@@ -9,7 +9,7 @@ creates **couple** accounts; each couple sees only its own guests/messages/setti
 link (`/{token}`) to a phone-first RSVP page. Hebrew RTL / English LTR throughout.
 
 ## State
-- Builds with 0 errors, **85 tests pass** (`DOTNET_ROLL_FORWARD=Major dotnet test` while only .NET 10 runtime is installed).
+- Builds with 0 errors, **85 tests pass** (`dotnet test`, net10.0).
 - Built: tenancy (EF query filters via `ITenantContext`), Identity sign-in (lockout 5/15 min, 10-char passwords, cookie
   `wr.auth`), one-time set-password links the site admin passes on, TOTP for the site admin, audit log, "open as couple"
   (audited, banner, account page blocked while acting), "delete all information" (deletes the account, keeps a tombstone),
@@ -35,7 +35,7 @@ details, only a neutral "messages are delayed" note; English templates fall back
 
 ## Run / test
 ```bash
-DOTNET_ROLL_FORWARD=Major dotnet test
+dotnet test
 cd src/WeddingRsvp && dotnet run          # public :8080, admin+sign-in :8081
 ```
 Run from `src/WeddingRsvp` (cwd) or `wwwroot` isn't served. `/admin*`, `/signin*`, `/signout`, `/set-password` are 404 on 8080.
@@ -45,7 +45,7 @@ LAN test recipe (what was used):
 cd src/WeddingRsvp && ASPNETCORE_ENVIRONMENT=Development App__DataDir=<dir> \
   App__PublicBaseUrl=http://<lan-ip>:8080 App__AdminBaseUrl=http://<lan-ip>:8081 \
   App__BootstrapAdminEmail=<email> App__BootstrapAdminPassword='<10+ chars>' \
-  DOTNET_ROLL_FORWARD=Major setsid nohup dotnet bin/Debug/net8.0/WeddingRsvp.dll > app.log 2>&1 & disown
+  setsid nohup dotnet bin/Debug/net10.0/WeddingRsvp.dll > app.log 2>&1 & disown
 ```
 Phone could not connect: host uses **firewalld**; LAN interface is in zone `home`. Fix:
 `sudo firewall-cmd --zone=home --add-port=8080/tcp --add-port=8081/tcp` (runtime only). Also: same Wi-Fi (no guest
@@ -64,6 +64,6 @@ Implemented tokens are in `wwwroot/css/admin.css` (couple accent `#1F6F5F`, site
 `public.css` (guest portal).
 
 ## New machine
-`git clone git@github.com:EnlightenedDoge/WeddingRsvp.git`; install the .NET 8 SDK (or 10 + `DOTNET_ROLL_FORWARD=Major`);
+`git clone git@github.com:EnlightenedDoge/WeddingRsvp.git`; install the .NET 10 SDK;
 `dotnet test`; `cp .env.example .env`; `docker compose up -d --build` (see README for Nginx Proxy Manager).
 Not in git: `.env`, `data/`, `.local-test/` (throwaway test DB), `opencode.json` (local model config).

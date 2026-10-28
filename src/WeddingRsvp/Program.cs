@@ -129,7 +129,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
     // NPM sits on the Docker network in front of us; the container ports are not published,
     // so trusting the single forwarding hop is safe.
     o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    o.KnownNetworks.Clear();
+    o.KnownIPNetworks.Clear();
     o.KnownProxies.Clear();
     o.ForwardLimit = 1;
 });

@@ -21,8 +21,7 @@ dotnet run --project src/WeddingRsvp
 - Admin: http://localhost:8081/admin
 - With `Sms:Provider=Log` (default) messages are written to the console instead of being sent. `Sms4Free` sends for real
   (set `Sms__ApiUser/ApiPassword/ApiKey`). Couples start with **0 SMS allocation**: grant credits on the site-admin couple page before anything sends.
-- Tests: `DOTNET_ROLL_FORWARD=Major dotnet test` (the roll-forward is only needed while just the .NET 10
-  runtime is installed; the projects target net8.0).
+- Tests: `dotnet test` (projects target net10.0).
 
 ## Deploy (Docker + Nginx Proxy Manager)
 

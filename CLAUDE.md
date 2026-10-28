@@ -29,8 +29,7 @@ See `HANDOFF.md` for session context, deferred work, run recipes and pitfalls.
 - Not done yet: first EF migration (`dotnet-ef` is not installed here; and the multi-tenant change reshapes the
   schema, so migrate after it), a manual run of the whole flow.
 - Git repo exists. Admin and sign-in share the admin port (8081); Identity is the real protection, not the NPM Access List.
-- Only the .NET 10 runtime is installed on this machine but the projects target net8.0. Run tests with
-  `DOTNET_ROLL_FORWARD=Major dotnet test`.
+- The projects target net10.0 (.NET 10 SDK/runtime). Run tests with `dotnet test`.
 
 ## Product scope
 
@@ -210,7 +209,7 @@ Don't move logic into views; if a design needs data the model doesn't expose, ad
 
 ```bash
 dotnet run --project src/WeddingRsvp      # public :8080, admin :8081/admin
-DOTNET_ROLL_FORWARD=Major dotnet test     # needed while only the .NET 10 runtime is installed
+dotnet test
 dotnet ef migrations add <Name> -p src/WeddingRsvp   # needs: dotnet tool install --global dotnet-ef
 docker compose up -d --build              # see README for NPM setup
 ```

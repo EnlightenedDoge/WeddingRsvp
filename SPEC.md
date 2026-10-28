@@ -77,7 +77,7 @@ Added later (2026-10):
 - Ports: **8080 public**, **8081 admin**. `/admin*` returns 404 on the public port.
 - Auth (planned, §10): cookie sessions for site admin and couples. The NPM Access List on `admin.*` can stay as a
   second layer but is no longer the only protection.
-- Dev machine: only the .NET 10 runtime is installed; run tests with `DOTNET_ROLL_FORWARD=Major`.
+- Dev machine: .NET 10 SDK; projects target net10.0; run tests with `dotnet test`.
 - Nginx Proxy Manager (cert already exists for example.com):
   - `rsvp.example.com` → `http://wedding-rsvp:8080`
   - `admin.example.com` → `http://wedding-rsvp:8081` + Access List (basic auth)
