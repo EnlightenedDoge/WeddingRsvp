@@ -1,20 +1,20 @@
-# The app joins NPM's Docker network; no ports are published on the host.
-# NPM proxy hosts:
-#   <your public host> -> http://wedding-rsvp:8080   (public, e.g. example.com)
-#   admin.<your host>  -> http://wedding-rsvp:8081   (attach an Access List!)
+# Publishes the two app ports on the host; point your reverse proxy (Nginx / Nginx Proxy Manager) at them:
+#   <your public host> -> http://<this-host>:${PUBLIC_HOST_PORT:-8080}   (guest pages, public)
+#   admin.<your host>  -> http://<this-host>:${ADMIN_HOST_PORT:-8081}    (sign-in and admin; attach an Access List)
 # The real hostnames live only in .env (App__PublicBaseUrl, App__AdminBaseUrl), never in the repo.
+# Proxy and Docker on the same host with a shared network instead of published ports: add docker-compose.npm.yml
+# (docker compose -f docker-compose.yml -f docker-compose.npm.yml up -d --build).
 services:
   wedding-rsvp:
     build: .
     container_name: wedding-rsvp
     restart: unless-stopped
     env_file: .env
+    # Run as this user so the data folder is owned by it (TrueNAS apps usually use a non-root user, e.g. 568). Default: root.
+    user: "${APP_UID:-0}:${APP_GID:-0}"
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:${PUBLIC_HOST_PORT:-8080}:8080"
+      - "${BIND_ADDRESS:-0.0.0.0}:${ADMIN_HOST_PORT:-8081}:8081"
     volumes:
-      - ./data:/data
-    networks:
-      - npm
-
-networks:
-  npm:
-    external: true
-    name: ${NPM_NETWORK:-npm_default}
+      # An absolute path on TrueNAS (a dataset), e.g. DATA_DIR=/mnt/tank/apps/wedding-rsvp
+      - ${DATA_DIR:-./data}:/data

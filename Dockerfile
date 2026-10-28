@@ -8,7 +8,9 @@ RUN dotnet publish src/WeddingRsvp/WeddingRsvp.csproj -c Release -o /app --no-re
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app .
+# The app binds its own two ports (App__PublicPort / App__AdminPort); clear the image's default 8080 binding.
 ENV App__DataDir=/data \
+    ASPNETCORE_HTTP_PORTS= \
     TZ=Asia/Jerusalem
 VOLUME /data
 EXPOSE 8080 8081

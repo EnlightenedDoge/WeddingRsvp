@@ -1,0 +1,10 @@
+# Optional override: join the proxy's Docker network so it can reach http://wedding-rsvp:8080 and :8081 by name.
+services:
+  wedding-rsvp:
+    networks:
+      - npm
+
+networks:
+  npm:
+    external: true
+    name: ${NPM_NETWORK:-npm_default}
