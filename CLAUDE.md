@@ -14,7 +14,7 @@ See `HANDOFF.md` for session context, deferred work, run recipes and pitfalls.
 - The solution **builds with 0 errors** and **160 tests pass**.
 - **Phase M is built (core):** `Couple`/`AppUser`, `CoupleId` on Guest/MessageLog/EventSettings, global query filter via
   `ITenantContext`, ASP.NET Core Identity (cookie auth, lockout 5/15 min, 10-char passwords), audit log, site-admin
-  pages (`/admin/site/couples`, `/new`, `/{id}`, `/security` with TOTP), `/signin`, `/signin/2fa`, `/set-password`,
+  pages (`/admin/site/couples`, `/new`, `/{id}`, `/security` with TOTP and change-password for the site admin), `/signin`, `/signin/2fa`, `/set-password`,
   `/admin/account` (change password, delete all information), per-couple worker, per-guest `/{token}/event.ics` and
   `/{token}/invitation`. UI strings use `@Ui.T("עברית", "English")` and `/lang/{he|en}` (culture cookie).
 - **Frontend is ported:** design-system `admin.css`, sidebar layouts (`_AdminLayout`, `_SiteLayout`, `_AuthLayout`), every

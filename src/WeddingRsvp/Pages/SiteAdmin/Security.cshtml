@@ -4,6 +4,23 @@
 <header class="page-head"><h1>@Ui.T("אבטחה", "Security")</h1></header>
 
 <section class="card">
+    <h2>@Ui.T("החלפת סיסמה", "Change password")</h2>
+    @if (Model.PasswordError is not null) { <p class="banner err" role="alert">@Model.PasswordError</p> }
+    <form method="post" asp-page-handler="Password">
+        <div class="fields">
+            <label class="field"><span>@Ui.T("סיסמה נוכחית", "Current password")</span>
+                <input name="Current" type="password" autocomplete="current-password" required /></label>
+            <label class="field"><span>@Ui.T("סיסמה חדשה (לפחות 10 תווים)", "New password (at least 10 characters)")</span>
+                <input name="New" type="password" autocomplete="new-password" minlength="10" required /></label>
+            <label class="field"><span>@Ui.T("אימות סיסמה חדשה", "Confirm the new password")</span>
+                <input name="Confirm" type="password" autocomplete="new-password" minlength="10" required /></label>
+        </div>
+        <p class="faint">@Ui.T("שאר ההתחברויות של החשבון ינותקו.", "Your other signed-in sessions will be signed out.")</p>
+        <button type="submit" class="btn primary">@Ui.T("עדכון סיסמה", "Update password")</button>
+    </form>
+</section>
+
+<section class="card">
     <h2>@Ui.T("אימות דו-שלבי (TOTP)", "Two-factor authentication (TOTP)")</h2>
     @if (Model.Enabled)
     {
