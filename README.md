@@ -26,10 +26,11 @@ dotnet run --project src/WeddingRsvp
 ## Deploy (Docker + Nginx Proxy Manager)
 
 1. `cp .env.example .env` and fill it in. `NPM_NETWORK` is the Docker network NPM is on
-   (`docker network ls`).
+   (`docker network ls`). Set `App__PublicBaseUrl` (guest links in SMS) and `App__AdminBaseUrl` to your real hosts here;
+   they are not in `docker-compose.yml`. Without `App__PublicBaseUrl` links fall back to `http://localhost:8080`.
 2. `docker compose up -d --build`
 3. In NPM add two proxy hosts, both with SSL:
-   - `rsvp.example.com` → `http://wedding-rsvp:8080`
+   - your public host (e.g. `example.com`) → `http://wedding-rsvp:8080`
    - `admin.example.com` → `http://wedding-rsvp:8081`, with an **Access List** (basic auth) attached.
      Once sign-in is built this becomes a second layer; the app's own sessions are the real protection.
    - Set `App__BootstrapAdminEmail` / `App__BootstrapAdminPassword` in `.env` for the
