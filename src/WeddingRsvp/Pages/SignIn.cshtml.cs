@@ -4,12 +4,15 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using WeddingRsvp.Data;
 using WeddingRsvp.Domain;
+using Microsoft.Extensions.Options;
+using WeddingRsvp.Options;
 using WeddingRsvp.Services;
 
 namespace WeddingRsvp.Pages;
 
 public class SignInModel(
-    SignInManager<AppUser> signIn, UserManager<AppUser> users, AppDbContext db, AuditLog audit, Ui ui) : PageModel
+    SignInManager<AppUser> signIn, UserManager<AppUser> users, AppDbContext db, AuditLog audit, Ui ui,
+    IOptions<AppOptions> app) : PageModel
 {
     public string? Error { get; private set; }
     public string Email { get; private set; } = "";
@@ -31,9 +34,13 @@ public class SignInModel(
         // One neutral message for every failure: wrong password, unknown email, suspended or deleted account.
         var generic = ui.T("אימייל או סיסמה שגויים", "Wrong email or password");
 
-        if (user is null || string.IsNullOrEmpty(password) || !await CoupleIsActiveAsync(user))
+        // The site admin signs in only on the private admin port; on the public port that account looks like any wrong login.
+        var siteAdminOnPublicPort = user?.Role == UserRole.SiteAdmin && HttpContext.Connection.LocalPort != app.Value.AdminPort;
+
+        if (user is null || string.IsNullOrEmpty(password) || siteAdminOnPublicPort || !await CoupleIsActiveAsync(user))
         {
-            await audit.WriteAsync("signin.failed", null, detail: user is null ? "unknown-user" : "blocked");
+            await audit.WriteAsync("signin.failed", null,
+                detail: user is null ? "unknown-user" : siteAdminOnPublicPort ? "site-admin-on-public-port" : "blocked");
             Error = generic;
             return Page();
         }

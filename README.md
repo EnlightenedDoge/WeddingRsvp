@@ -18,7 +18,7 @@ dotnet run --project src/WeddingRsvp
 ```
 
 - Guest pages: http://localhost:8080/{token}
-- Admin: http://localhost:8081/admin
+- Couples sign in at http://localhost:8080/signin (public port); the site admin only on the private port: http://localhost:8081/signin
 - With `Sms:Provider=Log` (default) messages are written to the console instead of being sent. `Sms4Free` sends for real
   (set `Sms__ApiUser/ApiPassword/ApiKey`). Couples start with **0 SMS allocation**: grant credits on the site-admin couple page before anything sends.
 - Tests: `dotnet test` (projects target net10.0).
@@ -26,27 +26,33 @@ dotnet run --project src/WeddingRsvp
 ## Deploy (Docker + Nginx / Nginx Proxy Manager, e.g. TrueNAS Scale)
 
 1. `cp .env.example .env` and fill it in:
-   - `App__PublicBaseUrl` / `App__AdminBaseUrl`: your real hosts. They are not in `docker-compose.yml`, and the app logs a warning at
-     startup if they are missing. The SMS link is `App__PublicBaseUrl` + `/` + a 10-character token, so a short host saves SMS characters.
-   - `PUBLIC_HOST_PORT` / `ADMIN_HOST_PORT` / `BIND_ADDRESS`: host ports the container publishes (default 8080 / 8081) and the address
-     they bind to (`127.0.0.1` if the proxy runs on the same machine).
+   - `App__PublicBaseUrl`: your real public host. It is not in `docker-compose.yml`, and the app logs a warning at startup if it is
+     missing. Couples' set-password links use it too. The SMS link is `App__PublicBaseUrl` + `/` + a 10-character token, so a short host saves SMS characters.
+   - `PUBLIC_HOST_PORT` / `ADMIN_HOST_PORT`: host ports the container publishes (default 8080 / 8081). `BIND_ADDRESS` is the address
+     they bind to (`127.0.0.1` if the proxy runs on the same machine); `ADMIN_BIND_ADDRESS` overrides it for the private admin port only.
    - `DATA_DIR`: where the SQLite DB, uploaded images and the data-protection keys live. On TrueNAS use an absolute dataset path
      (e.g. `/mnt/tank/apps/wedding-rsvp`). Keep the folder private: the keys are stored unencrypted. Back it up.
    - `App__BootstrapAdminEmail` / `App__BootstrapAdminPassword` for the first site admin (remove them afterwards), and the `Sms__*` settings.
 2. `docker compose up -d --build`. On TrueNAS Scale you can instead paste the compose file into a Custom App and set the same
    variables there. If the proxy is another container on the same host and you prefer a shared Docker network over published ports,
    add the override: `docker compose -f docker-compose.yml -f docker-compose.npm.yml up -d --build`.
-3. In the proxy add two hosts, both with SSL, pointing at `http://<docker-host>:<port>`:
-   - your public host (e.g. `example.com`) → `PUBLIC_HOST_PORT`
-   - `admin.<your host>` → `ADMIN_HOST_PORT`, with an **Access List** (basic auth) as a second layer; the app's own sign-in
-     (Identity, lockout, TOTP for the site admin) is the real protection.
-   - Both hosts need `X-Forwarded-Proto` / `X-Forwarded-For` (Nginx Proxy Manager sends them). Without HTTPS reaching the app as
-     forwarded, sign-in returns a 500 because the antiforgery cookie is secure-only.
-   - Raise the upload limit: invitation images can be up to 10 MB and nginx's default is 1 MB. In Nginx Proxy Manager's host
+3. **Public host** (e.g. `example.com`), with SSL → `http://<docker-host>:<PUBLIC_HOST_PORT>`. It serves the guest pages and the couples'
+   sign-in and portal (`/signin`, `/admin/**`, `/set-password`). `/admin/site/**` returns 404 here, and the site-admin account cannot sign in here.
+   - It needs `X-Forwarded-Proto` / `X-Forwarded-For` (Nginx Proxy Manager sends them). Without HTTPS reaching the app as forwarded,
+     sign-in returns a 500 because the antiforgery cookie is secure-only.
+   - Raise the upload limit: couples upload invitation images up to 10 MB and nginx's default is 1 MB. In Nginx Proxy Manager's host
      "Advanced" box add `client_max_body_size 10m;`.
-   - Do not expose the admin port to the internet directly; only through the proxy. `/admin*`, `/signin*` and `/set-password` return
-     404 on the public port.
-4. Check: `https://<public host>/healthz` returns `ok`, `https://<public host>/signin` returns 404, `https://admin.<your host>/signin` loads.
+   - The delivery-report callback (`/webhooks/sms-delivery/<secret>`) is on this host, so POSTs to it must pass through.
+4. **Private admin port** → `http://<docker-host>:<ADMIN_HOST_PORT>`: the site admin (create couples, SMS credits, provider, audit log).
+   **Keep it off the internet.** Two ways to reach it:
+   - **Directly on your LAN over plain HTTP**: set `App__AdminAllowPlainHttp=true` in `.env`, then open `http://<docker-host>:<ADMIN_HOST_PORT>/signin`.
+     Only this port is relaxed; the public port still requires HTTPS. Your admin password crosses the LAN unencrypted, so use it only on a
+     network you trust (and not over Wi-Fi you share).
+   - **Through a LAN-only HTTPS host**, e.g. `admin.<your host>` with SSL and, in Nginx Proxy Manager's "Advanced" box,
+     `allow 192.168.1.0/24; deny all;` (add your VPN range if you use one). Leave `App__AdminAllowPlainHttp` off.
+   Browsers may try `https://` on a bare IP:port; type `http://` explicitly (the app serves plain HTTP only).
+5. Check: `https://<public host>/healthz` returns `ok`, `https://<public host>/signin` loads, `https://<public host>/admin/site/couples`
+   returns 404, and the admin host is not reachable from outside your network.
 
 ## Using it (site admin) — planned
 

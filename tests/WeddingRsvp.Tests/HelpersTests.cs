@@ -48,3 +48,51 @@ public class HelpersTests
         Assert.Contains("DTSTART:20270315T170000Z", ics); // 19:00 Israel standard time = 17:00 UTC
     }
 }
+
+public class PortGuardTests
+{
+    [Theory]
+    [InlineData("/admin/site", true)]
+    [InlineData("/admin/site/couples", true)]
+    [InlineData("/ADMIN/SITE/couples/3", true)]
+    [InlineData("/admin", false)]
+    [InlineData("/admin/guests", false)]
+    [InlineData("/admin/event", false)]
+    [InlineData("/admin/sitemap", false)]
+    [InlineData("/signin", false)]
+    public void Only_site_admin_pages_are_private(string path, bool siteAdmin) =>
+        Assert.Equal(siteAdmin, PortGuard.IsSiteAdminPath(path));
+
+    [Theory]
+    [InlineData("/signin", true)]
+    [InlineData("/signin/2fa", true)]
+    [InlineData("/signout", true)]
+    [InlineData("/set-password", true)]
+    [InlineData("/admin/guests", true)]
+    [InlineData("/AbCdEfGhJk", false)]
+    [InlineData("/healthz", false)]
+    public void Portal_paths(string path, bool portal) => Assert.Equal(portal, PortGuard.IsPortalPath(path));
+
+    [Theory]
+    [InlineData("/signin", true)]
+    [InlineData("/set-password", true)]
+    [InlineData("/signin/2fa", true)]
+    [InlineData("/signout", false)]
+    [InlineData("/admin/guests", false)]
+    public void Credential_paths(string path, bool credential) => Assert.Equal(credential, PortGuard.IsCredentialPath(path));
+
+    // development, onAdminPort, adminAllowPlainHttp, path, isHttps -> refused
+    [Theory]
+    [InlineData(false, false, false, "/signin", false, true)]    // public port, plain HTTP: refused
+    [InlineData(false, false, true, "/signin", false, true)]     // the opt-in never applies to the public port
+    [InlineData(false, false, false, "/signin", true, false)]    // public port via the proxy with HTTPS: fine
+    [InlineData(false, false, false, "/admin/guests", false, true)]
+    [InlineData(false, false, false, "/AbCdEfGhJk", false, false)] // guest pages don't need HTTPS here
+    [InlineData(false, false, false, "/healthz", false, false)]
+    [InlineData(false, true, false, "/signin", false, true)]     // admin port, opt-in off: refused
+    [InlineData(false, true, true, "/signin", false, false)]     // admin port, opt-in on: allowed
+    [InlineData(false, true, true, "/admin/site/couples", false, false)]
+    [InlineData(true, false, false, "/signin", false, false)]    // Development: never refused
+    public void Https_is_required_except_on_the_opt_in_admin_port(bool dev, bool admin, bool allow, string path, bool https, bool refused) =>
+        Assert.Equal(refused, PortGuard.RequiresHttps(dev, admin, allow, path, https));
+}

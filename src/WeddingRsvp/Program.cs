@@ -101,8 +101,9 @@ builder.Services.ConfigureApplicationCookie(o =>
     o.Cookie.Name = "wr.auth";
     o.Cookie.HttpOnly = true;
     o.Cookie.SameSite = SameSiteMode.Strict;
-    o.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-        ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+    // Secure follows the request (nginx forwards X-Forwarded-Proto: https). The "HTTPS only" rule is enforced per port in the
+    // port middleware, so the private admin port alone can be allowed over plain HTTP (App__AdminAllowPlainHttp).
+    o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     o.ExpireTimeSpan = TimeSpan.FromHours(12);
     o.SlidingExpiration = true;
     o.LoginPath = "/signin";
@@ -113,13 +114,16 @@ builder.Services.AddAuthorization(o =>
     o.AddPolicy("Couple", p => p.RequireAssertion(c =>
         c.User.IsInRole(Roles.Couple)
         || (c.User.IsInRole(Roles.SiteAdmin) && c.User.IsActingAsCouple() && c.User.CoupleId() is not null)));
-    o.AddPolicy("SiteAdmin", p => p.RequireRole(Roles.SiteAdmin));
+    // Site admin only on the private admin port, even if a request somehow got past the path guard.
+    o.AddPolicy("SiteAdmin", p => p.RequireRole(Roles.SiteAdmin)
+        .RequireAssertion(c => c.Resource is HttpContext h && h.Connection.LocalPort == appOptions.AdminPort));
 });
 builder.Services.AddAntiforgery(o =>
 {
     o.Cookie.SameSite = SameSiteMode.Strict;
-    o.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-        ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+    // Secure follows the request (nginx forwards X-Forwarded-Proto: https). The "HTTPS only" rule is enforced per port in the
+    // port middleware, so the private admin port alone can be allowed over plain HTTP (App__AdminAllowPlainHttp).
+    o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
 });
 
 // --- Web
@@ -145,31 +149,25 @@ builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
-        ctx.Connection.LocalPort == appOptions.AdminPort
-            ? (HttpMethods.IsPost(ctx.Request.Method) && AdminPortOnly.IsCredentialPath(ctx.Request.Path)
-                ? RateLimitPartition.GetFixedWindowLimiter(
-                    "cred:" + ctx.Connection.RemoteIpAddress,
-                    _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })
-                : RateLimitPartition.GetNoLimiter("admin"))
-            : RateLimitPartition.GetFixedWindowLimiter(
-                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 60,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueLimit = 0,
-                }));
+    {
+        var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        // Sign-in and set-password accept credentials on both ports: 10 attempts a minute per IP.
+        if (HttpMethods.IsPost(ctx.Request.Method) && PortGuard.IsCredentialPath(ctx.Request.Path))
+            return RateLimitPartition.GetFixedWindowLimiter("cred:" + ip,
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
+        // The signed-in portal (and everything on the private admin port) is not throttled like public guest pages.
+        if (ctx.Connection.LocalPort == appOptions.AdminPort || PortGuard.IsPortalPath(ctx.Request.Path))
+            return RateLimitPartition.GetNoLimiter("portal");
+        return RateLimitPartition.GetFixedWindowLimiter(ip,
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
+    });
 });
 
 var app = builder.Build();
 
-// Guest SMS links and set-password links are built from these. The localhost defaults would put dead links in real messages.
-if (!app.Environment.IsDevelopment())
-{
-    foreach (var (name, url) in new[] { ("App__PublicBaseUrl", appOptions.PublicBaseUrl), ("App__AdminBaseUrl", appOptions.AdminBaseUrl) })
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var u) || u.IsLoopback)
-            app.Logger.LogWarning("{Setting} is '{Url}': links built from it will not work for guests. Set it in .env.", name, url);
-}
+// Guest SMS links and couples' set-password links are built from this. The localhost default would put dead links in real messages.
+if (!app.Environment.IsDevelopment() && (!Uri.TryCreate(appOptions.PublicBaseUrl, UriKind.Absolute, out var publicUri) || publicUri.IsLoopback))
+    app.Logger.LogWarning("App__PublicBaseUrl is '{Url}': links built from it will not work for guests or couples. Set it in .env.", appOptions.PublicBaseUrl);
 
 // --- Database
 using (var scope = app.Services.CreateScope())
@@ -202,12 +200,19 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
-// Admin routes exist only on the admin port. Requests reaching /admin through the public
-// proxy host get a bare 404, so the NPM access list in front of admin.* can't be bypassed.
+// Two ports. The public port serves guest pages and the couples' sign-in and portal (/signin, /admin/**).
+// The site-admin pages (/admin/site/**) exist only on the private admin port: on the public port they get a bare 404,
+// so exposing the public host to the internet never exposes them. (The SiteAdmin policy and the sign-in page back this up.)
 app.Use(async (ctx, next) =>
 {
     var onAdminPort = ctx.Connection.LocalPort == appOptions.AdminPort;
-    if (AdminPortOnly.Matches(ctx.Request.Path) && !onAdminPort)
+    if (PortGuard.RequiresHttps(app.Environment.IsDevelopment(), onAdminPort, appOptions.AdminAllowPlainHttp, ctx.Request.Path, ctx.Request.IsHttps))
+    {
+        ctx.Response.StatusCode = StatusCodes.Status400BadRequest; // sign-in and the portal never run over plain HTTP, except the opt-in admin port
+        await ctx.Response.WriteAsync("HTTPS required");
+        return;
+    }
+    if (!onAdminPort && PortGuard.IsSiteAdminPath(ctx.Request.Path))
     {
         ctx.Response.StatusCode = StatusCodes.Status404NotFound;
         return;
@@ -343,16 +348,27 @@ app.MapGet("/admin/export.csv", async (AppDbContext db) =>
 
 app.Run();
 
-/// <summary>Paths that exist only on the admin port: the admin area, sign-in and account setup.</summary>
-internal static class AdminPortOnly
+/// <summary>Which paths are served on which port.</summary>
+public static class PortGuard
 {
-    public static bool Matches(PathString p) =>
+    /// <summary>Site-admin pages: only on the private admin port.</summary>
+    public static bool IsSiteAdminPath(PathString p) => p.StartsWithSegments("/admin/site");
+
+    /// <summary>The couples' sign-in and signed-in portal (served on both ports).</summary>
+    public static bool IsPortalPath(PathString p) =>
         p.StartsWithSegments("/admin") || p.StartsWithSegments("/signin") || p.StartsWithSegments("/signout")
         || p.StartsWithSegments("/set-password");
 
     /// <summary>Endpoints that accept credentials; rate limited per IP.</summary>
     public static bool IsCredentialPath(PathString p) =>
         p.StartsWithSegments("/signin") || p.StartsWithSegments("/set-password");
+
+    /// <summary>
+    /// Sign-in and the portal need HTTPS (as forwarded by the proxy) outside Development. The only exception is the private
+    /// admin port when <c>App__AdminAllowPlainHttp</c> is on, for a LAN-only site admin without a certificate.
+    /// </summary>
+    public static bool RequiresHttps(bool development, bool onAdminPort, bool adminAllowPlainHttp, PathString path, bool isHttps) =>
+        !development && !isHttps && IsPortalPath(path) && !(onAdminPort && adminAllowPlainHttp);
 }
 
 internal static class MediaPaths

@@ -30,7 +30,7 @@ See `HANDOFF.md` for session context, deferred work, run recipes and pitfalls.
   (delete `data/rsvp.db`), first EF migration, per-language email-less polish, visual QA at 320/360/390 in a real browser.
 - Not done yet: first EF migration (`dotnet-ef` is not installed here; and the multi-tenant change reshapes the
   schema, so migrate after it), a manual run of the whole flow.
-- Git repo exists. Admin and sign-in share the admin port (8081); Identity is the real protection, not the NPM Access List.
+- Git repo exists. Couples sign in on the public host; the site admin signs in only on the private admin port (8081). Identity is the real protection.
 - The projects target net10.0 (.NET 10 SDK/runtime). Run tests with `dotnet test`.
 
 ## Product scope
@@ -71,8 +71,12 @@ non-responders, dashboard "X of Y", thank-you the day after.
 - `Services/MessageTemplates` — placeholders `{name} {couple} {link} {date} {venue}`; `MissingFields()` reports
   event-level placeholders a template uses but that have no value yet.
 - `Services/Sms/ISmsProvider` — `LogSmsProvider` (dev) and `Sms4FreeProvider`. **Character limits and credit cost are per provider**: `ISmsProvider.CostRule(unicode)` returns an `SmsCostRule` (single limit, part limit, estimated flag); use `provider.Credits(text)`, never a hardcoded 134/67 (dispatcher, `CampaignService.InviteCostAsync` and the Event page counter all do).
-- Two Kestrel ports: **8080 public**, **8081 admin**. Middleware in Program.cs returns 404 for `/admin*`
-  on the public port.
+- Two Kestrel ports: **8080 public**, **8081 private admin**. The public port serves guest pages **and the couples' sign-in and
+  portal** (`/signin`, `/signout`, `/set-password`, `/admin/**`); the **site-admin pages (`/admin/site/**`) exist only on the private
+  admin port** (`PortGuard` middleware returns 404 for them on the public port; the `SiteAdmin` policy also requires the admin
+  port; a site-admin account cannot sign in on the public port). Couples' set-password links use `App__PublicBaseUrl`.
+  Sign-in and the portal require HTTPS (as forwarded by the proxy) outside Development, enforced per port in `PortGuard.RequiresHttps`;
+  the only exception is the private admin port with opt-in `App__AdminAllowPlainHttp=true` (cookies are `SameAsRequest`).
 
 ## Multi-tenancy and auth (built — see SPEC.md §10)
 
@@ -107,8 +111,9 @@ Proposed design, confirm open decisions in SPEC.md §12 before building:
 
 ## Invariants — don't break these
 
-- `/admin*` must stay unreachable on the public port. (Until auth lands, admin auth is the NPM Access List on
-  admin.* only. Once auth lands, signed-in sessions are required **in addition**.)
+- `/admin/site/**` (site admin) must stay unreachable on the public port, and the site admin must never be able to sign in
+  there. Couples' `/signin` and `/admin/**` are public (Identity, lockout, 10/min per-IP limit on credential posts). Never expose the
+  private admin port to the internet.
 - **Tenant isolation:** a couple's session can never read or write another couple's guests, messages or settings.
   A site admin acts on a couple only through an explicit "open as couple" session, never by loosening filters.
 - A guest never has two **queued** messages of the same kind (all planners are idempotent; they run every tick).

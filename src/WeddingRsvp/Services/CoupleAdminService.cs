@@ -69,7 +69,7 @@ public sealed class CoupleAdminService(
     }
 
     private string SetPasswordLink(AppUser user, string token) =>
-        $"{app.Value.AdminBaseUrl.TrimEnd('/')}/set-password?u={Uri.EscapeDataString(user.Id)}" +
+        $"{app.Value.PublicBaseUrl.TrimEnd('/')}/set-password?u={Uri.EscapeDataString(user.Id)}" +
         $"&t={WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token))}";
 
     public static string DecodeToken(string t) => Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(t));

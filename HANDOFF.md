@@ -40,12 +40,12 @@ details, only a neutral "messages are delayed" note; English templates fall back
 dotnet test
 cd src/WeddingRsvp && dotnet run          # public :8080, admin+sign-in :8081
 ```
-Run from `src/WeddingRsvp` (cwd) or `wwwroot` isn't served. `/admin*`, `/signin*`, `/signout`, `/set-password` are 404 on 8080.
+Run from `src/WeddingRsvp` (cwd) or `wwwroot` isn't served. `/admin/site/**` is 404 on 8080 (public); the couples' `/signin` and `/admin/**` work on both ports; the site admin can only sign in on 8081.
 
 LAN test recipe (what was used):
 ```bash
 cd src/WeddingRsvp && ASPNETCORE_ENVIRONMENT=Development App__DataDir=<dir> \
-  App__PublicBaseUrl=http://<lan-ip>:8080 App__AdminBaseUrl=http://<lan-ip>:8081 \
+  App__PublicBaseUrl=http://<lan-ip>:8080 \
   App__BootstrapAdminEmail=<email> App__BootstrapAdminPassword='<10+ chars>' \
   setsid nohup dotnet bin/Debug/net10.0/WeddingRsvp.dll > app.log 2>&1 & disown
 ```

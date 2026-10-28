@@ -74,13 +74,15 @@ Added later (2026-10):
 ## 3. Stack and deployment (summary)
 
 - ASP.NET Core 8 Razor Pages, EF Core 8 + SQLite, single container.
-- Ports: **8080 public**, **8081 admin**. `/admin*` returns 404 on the public port.
-- Auth (planned, §10): cookie sessions for site admin and couples. The NPM Access List on `admin.*` can stay as a
-  second layer but is no longer the only protection.
+- Ports: **8080 public** (guest pages and the couples' sign-in and portal), **8081 private admin** (site admin). `/admin/site/**` returns
+  404 on the public port, and a site-admin account cannot sign in there (decision 2026-10-28: couples are public, the site admin is private).
+- HTTPS: sign-in and the portal need HTTPS as forwarded by the proxy; the private admin port can opt out with `App__AdminAllowPlainHttp` (LAN-only site admin).
+- Auth (§10): cookie sessions for site admin and couples. Keep the private admin port off the internet (LAN/VPN only, e.g. an nginx
+  `allow`/`deny` list); the couples' sign-in on the public host is protected by Identity, lockout and a per-IP rate limit.
 - Dev machine: .NET 10 SDK; projects target net10.0; run tests with `dotnet test`.
 - Nginx Proxy Manager (cert already exists for example.com):
-  - `rsvp.example.com` → `http://wedding-rsvp:8080`
-  - `admin.example.com` → `http://wedding-rsvp:8081` + Access List (basic auth)
+  - public host (e.g. `example.com`) → `http://wedding-rsvp:8080` (guests and couples)
+  - `admin.example.com` → `http://wedding-rsvp:8081`, LAN/VPN only, never the internet
 - Data in `/data` volume: `rsvp.db`, `media/invitation.*`.
 - Background worker every 20 s: plan (queue due messages) → dispatch (send queued messages).
 
@@ -331,7 +333,7 @@ validation error · RSVP closed · unknown link.
 ### Phase 3 — Deploy
 - [ ] `.env` from `.env.example` (SMS4FREE `user`/`pass`/`key`, `NPM_NETWORK`, bootstrap site-admin email/password)
 - [ ] `docker compose up -d --build`; `/healthz` OK through NPM
-- [ ] NPM: `rsvp.example.com` → 8080; `admin.example.com` → 8081 with Access List; SSL on both
+- [ ] NPM: public host → 8080 with SSL; `admin.example.com` → 8081 restricted to LAN/VPN (or not proxied at all)
 - [ ] Confirm `https://rsvp.example.com/admin` → 404 and admin requires sign-in
 - [ ] Register the DLR URL with SMS4FREE (only if Phase 1 confirmed DLRs)
 - [ ] Back up `./data` (cron copy of `rsvp.db` + `media/`)
