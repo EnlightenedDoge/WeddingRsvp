@@ -66,7 +66,10 @@
     <h2>@Ui.T("ההודעות", "Messages")</h2>
     <p class="muted">@Ui.T("אפשר להשתמש ב:", "You can use:") <code class="ltr">@MessageTemplates.Placeholders</code>.
         @Ui.T($"הודעה עד {ruleU.SingleLimit} תווים (עברית) עולה קרדיט אחד, וכל {ruleU.PartLimit} תווים נוספים עולים קרדיט נוסף. באנגלית בלבד: {ruleG.SingleLimit} ו-{ruleG.PartLimit}. הקישור נספר כחלק מההודעה.",
-            $"A message costs 1 credit up to {ruleU.SingleLimit} characters (Hebrew), plus 1 for each further {ruleU.PartLimit}. English only: {ruleG.SingleLimit} and {ruleG.PartLimit}. The link counts as part of the message.")</p>
+            $"A message costs 1 credit up to {ruleU.SingleLimit} characters (Hebrew), plus 1 for each further {ruleU.PartLimit}. English only: {ruleG.SingleLimit} and {ruleG.PartLimit}. The link counts as part of the message.")
+        @(Model.LongestGuestName is { } ln
+            ? Ui.T($"הספירה משתמשת בשם האורח הארוך ביותר ברשימה ({ln}) ובערכים שמולאו למעלה.", $"Counts use your longest guest name ({ln}) and the values filled in above.")
+            : Ui.T("הספירה משתמשת בשם לדוגמה עד שתהיה רשימת אורחים, ובערכים שמולאו למעלה.", "Counts use a sample name until you have guests, and the values filled in above."))</p>
     <label class="field"><span>@Ui.T("שם השולח", "Sender name")</span><input asp-for="Settings.SmsSenderName" class="ltr" maxlength="11" /></label>
     <div class="fields">
         <div>
@@ -91,12 +94,8 @@
     <h2>@Ui.T("עיצוב דף האורחים", "Guest page look")</h2>
     <p class="muted">@Ui.T("הצבעים חלים על הדף שהאורחים רואים. הכרטיסים נשארים לבנים.", "These apply to the page guests see. The cards stay white.")</p>
     <div class="fields">
-        <div class="field"><span>@Ui.T("צבע רקע", "Background colour")</span>
-            <input asp-for="Settings.PageBackgroundColor" class="ltr" placeholder="#F6F1E7" maxlength="7" />
-            <div class="swatches">@foreach (var c in presets) { <button type="button" class="swatch" style="background: @c" data-target="Settings_PageBackgroundColor" data-color="@c" aria-label="@c"></button> }</div></div>
-        <div class="field"><span>@Ui.T("צבע כפתור", "Button colour")</span>
-            <input asp-for="Settings.PageAccentColor" class="ltr" placeholder="#1F6F5F" maxlength="7" />
-            <div class="swatches">@foreach (var c in new[] { "#1F6F5F", "#2F5D8A", "#7A4E8C", "#A8553A", "#1B2A2F" }) { <button type="button" class="swatch" style="background: @c" data-target="Settings_PageAccentColor" data-color="@c" aria-label="@c"></button> }</div></div>
+        <partial name="_ColorPicker" model='new ColorPicker(Ui.T("צבע רקע", "Background colour"), "Settings.PageBackgroundColor", s.PageBackgroundColor, HexColor.DefaultBackground, presets)' />
+        <partial name="_ColorPicker" model='new ColorPicker(Ui.T("צבע כפתור", "Button colour"), "Settings.PageAccentColor", s.PageAccentColor, HexColor.DefaultAccent, new[] { "#1F6F5F", "#2F5D8A", "#7A4E8C", "#A8553A", "#1B2A2F" })' />
     </div>
 </section>
 
@@ -141,21 +140,75 @@
         var rules = { u: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { single = ruleU.SingleLimit, part = ruleU.PartLimit, est = ruleU.Estimated })),
                       g: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { single = ruleG.SingleLimit, part = ruleG.PartLimit, est = ruleG.Estimated })) };
         var samples = { he: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleHe)), en: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleEn)) };
-        var text = { chars: '@Ui.T("תווים", "characters")', one: '@Ui.T("קרדיט", "credit")', many: '@Ui.T("קרדיטים", "credits")', about: '@Ui.T("כ-", "about ")' };
+        var text = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            chars = Ui.T("תווים", "characters"), one = Ui.T("קרדיט", "credit"), many = Ui.T("קרדיטים", "credits"),
+            about = Ui.T("כ-", "about "), empty = Ui.T("עוד לא מולא למעלה:", "not filled in above yet:"),
+        }));
+        function val(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+        // Placeholder values come from the fields on this page as they are right now (saved or not), like the real message will.
+        function values(lang) {
+            var en = lang === 'en', base = samples[lang], d = /^(\d{4})-(\d{2})-(\d{2})/.exec(val('Settings_StartsAtLocal'));
+            return {
+                name: base.name, link: base.link,
+                couple: (en && val('Settings_CoupleNamesEn')) || val('Settings_CoupleNames'),
+                venue: (en && val('Settings_VenueNameEn')) || val('Settings_VenueName'),
+                date: d ? d[3] + '/' + d[2] : '00/00' // always dd/MM once a date is set
+            };
+        }
         function update(area) {
-            var s = samples[area.dataset.count];
-            var rendered = area.value.split('{name}').join(s.name).split('{couple}').join(s.couple).split('{link}').join(s.link)
-                .split('{date}').join(s.date).split('{venue}').join(s.venue).trim();
+            var v = values(area.dataset.count), t = area.value;
+            var rendered = t.split('{name}').join(v.name).split('{couple}').join(v.couple).split('{link}').join(v.link)
+                .split('{date}').join(v.date).split('{venue}').join(v.venue).trim();
             var len = rendered.length;
             var unicode = /[^\x00-\x7F]/.test(rendered); // any non-ASCII is treated as UCS-2 (a safe over-estimate for accented Latin)
             var r = unicode ? rules.u : rules.g;
             var credits = len <= r.single ? 1 : 1 + Math.ceil((len - r.single) / r.part);
+            var empty = ['couple', 'venue'].filter(function (k) { return t.indexOf('{' + k + '}') >= 0 && !v[k]; })
+                .map(function (k) { return '{' + k + '}'; });
             area.parentElement.querySelector('small').textContent =
-                len + ' ' + text.chars + ' · ' + (r.est ? text.about : '') + credits + ' ' + (credits === 1 ? text.one : text.many);
+                len + ' ' + text.chars + ' · ' + (r.est ? text.about : '') + credits + ' ' + (credits === 1 ? text.one : text.many)
+                + (empty.length ? ' · ' + text.empty + ' ' + empty.join(' ') : '');
         }
+        function updateAll() { document.querySelectorAll('textarea[data-count]').forEach(update); }
         document.querySelectorAll('textarea[data-count]').forEach(function (a) { a.addEventListener('input', function () { update(a); }); });
+        ['Settings_CoupleNames', 'Settings_CoupleNamesEn', 'Settings_VenueName', 'Settings_VenueNameEn', 'Settings_StartsAtLocal'].forEach(function (id) {
+            var e = document.getElementById(id);
+            if (e) { e.addEventListener('input', updateAll); e.addEventListener('change', updateAll); }
+        });
+        updateAll();
     })();
-    document.querySelectorAll('.swatch').forEach(function (b) {
-        b.addEventListener('click', function () { document.getElementById(b.dataset.target).value = b.dataset.color; });
-    });
+    // Colour fields: the hex box is what gets saved; the chip (also a native picker) and the swatches follow it.
+    (function () {
+        var text = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            hex = Ui.T("הזינו צבע בצורה #RRGGBB", "Use the form #RRGGBB, for example #1F6F5F"),
+            def = Ui.T("ברירת מחדל", "Default"), custom = Ui.T("צבע מותאם אישית", "Custom colour"),
+        }));
+        var HEX = /^#[0-9a-fA-F]{6}$/;
+        document.querySelectorAll('.colorpick').forEach(function (box) {
+            var input = box.querySelector('.colortext'), chip = box.querySelector('.colorchip'), msg = box.querySelector('.colormsg');
+            var reset = box.querySelector('.colorreset'), swatches = box.querySelectorAll('.swatch'), dflt = box.dataset.default;
+            function sync() {
+                var v = input.value.trim(), blank = v === '', valid = HEX.test(v), preset = false;
+                if (blank) chip.value = dflt.toLowerCase(); else if (valid) chip.value = v.toLowerCase();
+                chip.classList.toggle('isdefault', blank);
+                input.classList.toggle('invalid', !blank && !valid);
+                swatches.forEach(function (s) {
+                    var on = valid && s.dataset.color.toLowerCase() === v.toLowerCase();
+                    preset = preset || on;
+                    s.classList.toggle('selected', on);
+                    s.setAttribute('aria-pressed', on ? 'true' : 'false');
+                });
+                reset.classList.toggle('selected', blank);
+                msg.classList.toggle('bad', !blank && !valid);
+                msg.textContent = blank ? text.def + ' ' + dflt : !valid ? text.hex : preset ? '' : text.custom + ' ' + v.toUpperCase();
+            }
+            swatches.forEach(function (s) { s.addEventListener('click', function () { input.value = s.dataset.color; sync(); }); });
+            chip.addEventListener('input', function () { input.value = chip.value.toUpperCase(); sync(); });
+            input.addEventListener('input', sync);
+            reset.addEventListener('click', function () { input.value = ''; sync(); });
+            sync();
+        });
+    })();
 </script>

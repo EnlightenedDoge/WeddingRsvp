@@ -1,0 +1,17 @@
+@model WeddingRsvp.Pages.Admin.ColorPicker
+@{ var id = Model.Name.Replace('.', '_'); }
+<div class="field colorpick" data-default="@Model.Default">
+    <span>@Model.Label</span>
+    <div class="colorrow">
+        <input type="color" class="colorchip" value="@((Model.Value is { Length: 7 } v ? v : Model.Default).ToLowerInvariant())" aria-label="@Model.Label" title="@Ui.T("בחירת צבע", "Pick a colour")" />
+        <input id="@id" name="@Model.Name" value="@Model.Value" class="ltr colortext" placeholder="@Model.Default" maxlength="7" autocomplete="off" />
+        <button type="button" class="btn colorreset">@Ui.T("ברירת מחדל", "Default")</button>
+    </div>
+    <div class="swatches" role="group" aria-label="@Model.Label">
+        @foreach (var c in Model.Presets)
+        {
+            <button type="button" class="swatch" style="background: @c" data-color="@c" aria-label="@c" aria-pressed="false" title="@c"></button>
+        }
+    </div>
+    <small class="colormsg"></small>
+</div>

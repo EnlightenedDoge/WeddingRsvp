@@ -1,8 +1,8 @@
 @using WeddingRsvp.Domain
 @{
     var lang = ViewData["Lang"] as string ?? "he";
-    var bg = ViewData["Bg"] as string ?? "#F5F4F0";
-    var accent = ViewData["Accent"] as string ?? "#2E5E4E";
+    var bg = ViewData["Bg"] as string ?? HexColor.DefaultBackground;
+    var accent = ViewData["Accent"] as string ?? HexColor.DefaultAccent;
     var dark = ViewData["Dark"] as bool? ?? false;
     var bgImage = ViewData["BgImage"] as string;
     // Text on accent-coloured buttons flips by luminance, like the page text does.

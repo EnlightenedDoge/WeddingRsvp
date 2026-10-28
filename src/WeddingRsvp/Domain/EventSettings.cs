@@ -117,6 +117,10 @@ public class EventSettings : ITenantOwned
 /// <summary>Couple-chosen colours are the only user input that ends up inside CSS, so only exact #RRGGBB passes.</summary>
 public static class HexColor
 {
+    /// <summary>What the guest page uses when the couple has not chosen a colour.</summary>
+    public const string DefaultBackground = "#F5F4F0";
+    public const string DefaultAccent = "#2E5E4E";
+
     public static bool IsValid(string? v) =>
         v is { Length: 7 } && v[0] == '#' && v.Skip(1).All(Uri.IsHexDigit);
 

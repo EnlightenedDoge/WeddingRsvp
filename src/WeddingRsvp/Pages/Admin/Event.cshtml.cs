@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using WeddingRsvp.Data;
 using WeddingRsvp.Domain;
@@ -9,6 +10,9 @@ using WeddingRsvp.Services;
 using WeddingRsvp.Services.Sms;
 
 namespace WeddingRsvp.Pages.Admin;
+
+/// <summary>A colour field: text box (the value that is saved), live chip / picker, default option, presets.</summary>
+public sealed record ColorPicker(string Label, string Name, string? Value, string Default, string[] Presets);
 
 public sealed record ImageSlot(string Kind, string Title, bool Has, long? Ticks, string? Lang);
 
@@ -31,6 +35,8 @@ public class EventModel(AppDbContext db, SettingsService settings, IsraelClock c
     /// <summary>Sample values for each placeholder, per language, so the page can count a template's rendered length while typing.</summary>
     /// <summary>How the active SMS provider bills a message (differs per provider and per encoding).</summary>
     public SmsCostRule CostRule(bool unicode) => sms.CostRule(unicode);
+    /// <summary>The longest guest name on the list (worst case for the counters), or null while the list is empty.</summary>
+    public string? LongestGuestName { get; private set; }
     public object SampleHe { get; private set; } = new();
     public object SampleEn { get; private set; } = new();
     public SegmentInfo InviteSegments { get; private set; }
@@ -122,11 +128,14 @@ public class EventModel(AppDbContext db, SettingsService settings, IsraelClock c
     private void Describe(EventSettings s)
     {
         var sampleLink = MessageTemplates.GuestLink(app.Value.PublicBaseUrl, "AbCdEfGhJk");
-        SegmentInfo Seg(string t) => SmsSegments.Count(MessageTemplates.Render(t, "משפחת ישראלי", s, sampleLink));
+        // {name} is counted with the longest real guest name (worst case); a sample name until guests exist.
+        LongestGuestName = db.Guests.AsNoTracking().Select(g => g.Name).AsEnumerable()
+            .OrderByDescending(n => n.Length).FirstOrDefault();
+        SegmentInfo Seg(string t) => SmsSegments.Count(MessageTemplates.Render(t, LongestGuestName ?? "משפחת ישראלי", s, sampleLink));
         InviteSegments = Seg(s.InviteTemplate);
         ReminderSegments = Seg(s.ReminderTemplate);
         ThankYouSegments = Seg(s.ThankYouTemplate);
-        SegmentInfo SegEn(string t) => SmsSegments.Count(MessageTemplates.Render(t, "Cohen family", s, sampleLink, english: true));
+        SegmentInfo SegEn(string t) => SmsSegments.Count(MessageTemplates.Render(t, LongestGuestName ?? "Cohen family", s, sampleLink, english: true));
         InviteSegmentsEn = SegEn(s.InviteTemplateEn);
         ReminderSegmentsEn = SegEn(s.ReminderTemplateEn);
         ThankYouSegmentsEn = SegEn(s.ThankYouTemplateEn);
@@ -141,7 +150,7 @@ public class EventModel(AppDbContext db, SettingsService settings, IsraelClock c
             venue = MessageTemplates.VenueFor(s, en),
             link = sampleLink,
         };
-        SampleHe = Sample("משפחת ישראלי", false);
-        SampleEn = Sample("Cohen family", true);
+        SampleHe = Sample(LongestGuestName ?? "משפחת ישראלי", false);
+        SampleEn = Sample(LongestGuestName ?? "Cohen family", true);
     }
 }
