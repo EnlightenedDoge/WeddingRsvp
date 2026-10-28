@@ -34,6 +34,11 @@ h3 { margin: 16px 0 8px; font-size: 15px; }
 .langsw a { min-width: 44px; min-height: 36px; padding: 0 10px; display: grid; place-items: center; border-radius: 7px; font-size: 14px; font-weight: 500; }
 .langsw a.on { background: #fff; color: var(--ink); }
 .side form button { background: none; border: 0; color: var(--side-ink); cursor: pointer; padding: 6px 4px; text-decoration: underline; }
+/* Wide screens: the menu stays in view while the page scrolls. Narrow screens stack it above the page (flex-wrap), where sticky
+   would pin a tall block over the content, so this is the one media query in the admin layout. */
+@media (min-width: 800px) {
+  .side { position: sticky; top: 0; align-self: flex-start; height: 100vh; height: 100dvh; overflow-y: auto; }
+}
 .main { flex: 999 1 560px; min-width: 0; padding: 32px; display: flex; flex-direction: column; gap: 24px; }
 .page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
 .page-head .sub { color: var(--muted); margin-block-start: 4px; }
@@ -84,6 +89,24 @@ table { border-collapse: collapse; width: 100%; }
 th { text-align: start; color: var(--muted); font-weight: 500; font-size: 13px; }
 th, td { padding: 12px 10px; border-bottom: 1px solid var(--line-soft); text-align: start; vertical-align: middle; }
 tr.bad td { background: #FBF1EE; }
+
+/* Clickable rows (the guest list): the whole row opens the item. Hover tint, an accent bar at the row start, a nudging chevron
+   and a pressed state make that obvious. */
+tr.clickrow { cursor: pointer; }
+tr.clickrow td { transition: background-color .15s ease, box-shadow .15s ease; }
+tr.clickrow:hover td, tr.clickrow:focus-within td { background: color-mix(in srgb, var(--accent) 7%, #fff); }
+tr.clickrow:active td { background: color-mix(in srgb, var(--accent) 15%, #fff); }
+tr.clickrow.bad:hover td, tr.clickrow.bad:focus-within td { background: #F6E3DE; }
+tr.clickrow.bad:active td { background: #F1D3CB; }
+tr.clickrow:hover td:first-child, tr.clickrow:focus-within td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+[dir="rtl"] tr.clickrow:hover td:first-child, [dir="rtl"] tr.clickrow:focus-within td:first-child { box-shadow: inset -3px 0 0 var(--accent); }
+tr.clickrow td a b { color: var(--accent); }
+tr.clickrow:hover td a b { text-decoration: underline; text-underline-offset: 3px; }
+td.chevcell { width: 28px; padding-inline-start: 0; color: var(--faint); }
+.chev { display: block; position: relative; inset-inline-start: 0; transition: inset-inline-start .15s ease, color .15s ease; }
+[dir="rtl"] .chev { transform: scaleX(-1); }
+tr.clickrow:hover .chev, tr.clickrow:focus-within .chev { inset-inline-start: 5px; color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { tr.clickrow td, .chev { transition: none; } }
 
 .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .toolbar input[type=search] { flex: 1 1 220px; }

@@ -21,12 +21,12 @@
         <thead><tr>
             <th>@Ui.T("שם", "Name")</th><th>@Ui.T("טלפון", "Phone")</th><th>@Ui.T("מוזמנים", "Invited")</th>
             <th>@Ui.T("סטטוס", "Status")</th><th>@Ui.T("הזמנה נשלחה", "Invite sent")</th>
-            <th>@Ui.T("תזכורות", "Reminders")</th><th>@Ui.T("פתחו קישור", "Opened link")</th>
+            <th>@Ui.T("תזכורות", "Reminders")</th><th>@Ui.T("פתחו קישור", "Opened link")</th><th aria-hidden="true"></th>
         </tr></thead>
         <tbody>
         @foreach (var g in Model.Guests)
         {
-            <tr class="@(g.PhoneE164 is null ? "bad" : "")">
+            <tr class="clickrow @(g.PhoneE164 is null ? "bad" : "")" data-href="/admin/guests/edit/@g.Id">
                 <td><a href="/admin/guests/edit/@g.Id"><b>@g.Name</b></a></td>
                 <td class="ltr">@g.PhoneRaw @if (g.PhoneError is not null) { <div class="faint">@Labels.Problem(g.PhoneError)</div> }</td>
                 <td>@g.InvitedCount</td>
@@ -34,6 +34,7 @@
                 <td>@Labels.Local(g.InviteSentAtUtc)</td>
                 <td>@g.RemindersSent</td>
                 <td>@Labels.Local(g.FirstOpenedAtUtc)</td>
+                <td class="chevcell" aria-hidden="true"><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></td>
             </tr>
         }
         </tbody>
@@ -44,3 +45,14 @@
         <p class="muted">@Ui.T("אין אורחים להצגה.", "No guests to show.")</p>
     }
 </section>
+
+<script>
+    // The whole row opens the guest (the name stays a real link for keyboard and middle-click). Selecting text doesn't navigate.
+    document.querySelectorAll('tr.clickrow').forEach(function (row) {
+        row.addEventListener('click', function (e) {
+            if (e.target.closest('a, button, input, select, label')) return;
+            if (window.getSelection && String(window.getSelection())) return;
+            if (e.ctrlKey || e.metaKey) window.open(row.dataset.href, '_blank'); else window.location.href = row.dataset.href;
+        });
+    });
+</script>

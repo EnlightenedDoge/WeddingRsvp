@@ -187,7 +187,7 @@ queries) and work at 390px. All sample names/numbers in the canvas are placehold
 - Calendar: `/event.ics` (iOS/Outlook) and the Google link. Navigation: `WazeUrl`.
 
 **Admin portal** — `Pages/Shared/_AdminLayout.cshtml`, `Pages/Admin/**`, `wwwroot/css/admin.css`.
-- Hebrew RTL **and English LTR**, used on phone and desktop. Flash messages come via `TempData["Flash"]`.
+- Hebrew RTL **and English LTR**, used on phone and desktop. The side menu is sticky on wide screens (one `min-width: 800px` media query); clickable table rows use `tr.clickrow`. Flash messages come via `TempData["Flash"]`.
 - Keep page-handler names (`asp-page-handler="SendInvite"`, `Delete`, `QueueInvites`, `TogglePause`,
   `RequeueFailed`, `Test`, `Image`) and the bound field names.
 - Language switch: HE/EN in the sidebar. Needs request localization for `he` and `en`, `dir`/`lang` set in the
