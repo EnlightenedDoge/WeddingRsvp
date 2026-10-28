@@ -156,6 +156,14 @@ builder.Services.AddRateLimiter(o =>
 
 var app = builder.Build();
 
+// Guest SMS links and set-password links are built from these. The localhost defaults would put dead links in real messages.
+if (!app.Environment.IsDevelopment())
+{
+    foreach (var (name, url) in new[] { ("App__PublicBaseUrl", appOptions.PublicBaseUrl), ("App__AdminBaseUrl", appOptions.AdminBaseUrl) })
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var u) || u.IsLoopback)
+            app.Logger.LogWarning("{Setting} is '{Url}': links built from it will not work for guests. Set it in .env.", name, url);
+}
+
 // --- Database
 using (var scope = app.Services.CreateScope())
 {
