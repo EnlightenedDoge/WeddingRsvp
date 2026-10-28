@@ -7,11 +7,11 @@ accounts. ASP.NET Core 8 Razor Pages + EF Core SQLite, one container behind Ngin
 
 Read `SPEC.md` too: where the two disagree, SPEC.md is newer and wins.
 
-## Status (2026-10-25)
+## Status (2026-10-28)
 
 See `HANDOFF.md` for session context, deferred work, run recipes and pitfalls.
 
-- The solution **builds with 0 errors** and **85 tests pass**.
+- The solution **builds with 0 errors** and **160 tests pass**.
 - **Phase M is built (core):** `Couple`/`AppUser`, `CoupleId` on Guest/MessageLog/EventSettings, global query filter via
   `ITenantContext`, ASP.NET Core Identity (cookie auth, lockout 5/15 min, 10-char passwords), audit log, site-admin
   pages (`/admin/site/couples`, `/new`, `/{id}`, `/security` with TOTP), `/signin`, `/signin/2fa`, `/set-password`,
@@ -26,10 +26,9 @@ See `HANDOFF.md` for session context, deferred work, run recipes and pitfalls.
 - **SMS provider layer built (2026-10-28):** `ISmsProvider` + `Log`/`Sms4Free` providers (`Sms:Provider`), failure kinds, persisted circuit
   breaker (`PlatformState`, `/admin/site/provider`, banner), per-couple allocation ledger (`SmsAllocationEntry`, card on the couple page,
   couples start at 0). Needs a fresh DB. Live-tested 2026-10-28: billing matches 1 credit up to 134 chars, +1 per 67 (138 chars = 2, 62 = 1, 163 = 2); sender name `Invitation` accepted.
-- **Still open:** data backfill
-  (delete `data/rsvp.db`), first EF migration, per-language email-less polish, visual QA at 320/360/390 in a real browser.
-- Not done yet: first EF migration (`dotnet-ef` is not installed here; and the multi-tenant change reshapes the
-  schema, so migrate after it), a manual run of the whole flow.
+- **Still open before go-live:** a full run with a real couple on the public host (reminders and thank-you have never run live), backups of
+  the data folder, TrueNAS deployment (untested; may need a pre-built image), real-phone QA (iOS Safari, Android Chrome), Turnstile
+  (requirement only, SPEC.md §13), privacy note and data-retention agreement. See SPEC.md §8.
 - Git repo exists. Couples sign in on the public host; the site admin signs in only on the private admin port (8081). Identity is the real protection.
 - The projects target net10.0 (.NET 10 SDK/runtime). Run tests with `dotnet test`.
 
@@ -56,8 +55,8 @@ non-responders, dashboard "X of Y", thank-you the day after.
 | Dashboard: who confirmed, X of Y | `/admin` (`DashboardService`), `/admin/guests`, `/admin/export.csv` |
 | Thank-you the day after | `CampaignService.PlanAsync` → thank-yous at `ThankYouHourLocal` the day after the event |
 | Block sending while event details are missing | `MessageTemplates.MissingFields` → guards in `CampaignService`, `Messages` page, guest edit |
-| Site admin creates couples | **Planned** — `/admin/site/couples`, `/admin/site/couples/new` |
-| Sign in (couple and site admin) | **Planned** — `/signin` |
+| Site admin creates couples | `/admin/site/couples`, `/admin/site/couples/new` (private admin port only) |
+| Sign in (couples on the public host, site admin on the private port) | `/signin` |
 
 ## Architecture
 

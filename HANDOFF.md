@@ -1,4 +1,4 @@
-# Handoff (written 2026-10-25)
+# Handoff (written 2026-10-25, refreshed 2026-10-28)
 
 Everything needed to continue this project on another machine. Read `CLAUDE.md` (project rules) and `SPEC.md`
 (newer, wins on conflicts) too. This file is the session context that isn't in either.
@@ -9,7 +9,7 @@ creates **couple** accounts; each couple sees only its own guests/messages/setti
 link (`/{token}`) to a phone-first RSVP page. Hebrew RTL / English LTR throughout.
 
 ## State
-- Builds with 0 errors, **85 tests pass** (`dotnet test`, net10.0).
+- Builds with 0 errors, **160 tests pass** (`dotnet test`, net10.0).
 - Built: tenancy (EF query filters via `ITenantContext`), Identity sign-in (lockout 5/15 min, 10-char passwords, cookie
   `wr.auth`), one-time set-password links the site admin passes on, TOTP for the site admin, audit log, "open as couple"
   (audited, banner, account page blocked while acting), "delete all information" (deletes the account, keeps a tombstone),
@@ -19,7 +19,7 @@ link (`/{token}`) to a phone-first RSVP page. Hebrew RTL / English LTR throughou
 - The user was mid manual test from a phone over the LAN (see recipe below).
 
 ## Deferred / open (priority order)
-1. **SMS provider layer: built and live-tested 2026-10-28** (providers, breaker, ledger, 86+ tests). Live results with the real account:
+1. **SMS provider layer: built and live-tested 2026-10-28** (providers, breaker, ledger). Live results with the real account:
    balance diff confirmed 62 chars = 1 credit, 138 = 2, 163 = 2; sender name `Invitation` accepted. One early 138-char message was accepted by
    the API but never received; later ones arrived (cause unknown: first send from a new sender name, a carrier filter or a delay).
    Recipients are now sent country code first (`+9725…`), not yet live-verified. Still open: English-only (GSM-7) credit count,

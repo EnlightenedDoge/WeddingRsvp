@@ -271,41 +271,45 @@ validation error · RSVP closed · unknown link.
 
 ### Phase 0 — Make the scaffold real
 - [x] `dotnet build` the solution (0 errors)
-- [x] `dotnet test`; all green (38 tests, with `DOTNET_ROLL_FORWARD=Major`)
+- [x] `dotnet test`; all green (160 tests on net10.0, no roll-forward needed; refreshed 2026-10-28)
 - [x] Missing-fields rule enforced in `CampaignService` + Messages page + guest edit, with unit and SQLite tests
 - [x] Remove assumed couple data from `EventSettings` (empty defaults, nullable dates)
-- [ ] First EF migration — **after** Phase M's schema change (needs `dotnet-ef` installed); delete `src/WeddingRsvp/data/rsvp.db` once
-- [ ] Run locally; confirm `/admin` is 404 on :8080 and works on :8081
+- [x] First EF migration: `InitialCreate` and `AddMessageOpenedAt`; the app applies migrations on startup
+- [x] Run locally; confirm the port split: `/admin/site/**` is 404 on the public port, couples' `/signin` and `/admin/**` work on both, the site admin only on the private port (verified locally and through the live domain, 2026-10-28)
 - [ ] Import `samples/guests-sample.csv`: 4 added, 1 flagged (landline)
 - [ ] Walk the full flow with `Sms:Provider=Log`: invite → open link → answer → change answer → reminders skip responders
+      (smoke-tested 2026-10-25 up to answering; the reminder and thank-you steps have never run live)
 - [ ] Verify sending window and pause switch actually block dispatch (unit test with a fake `TimeProvider`)
+      (window incl. Fridays, Saturdays and yom tov is unit-tested in `SendingWindowTests`; the pause switch has no test yet)
 - [ ] Add integration tests for `CampaignService` planners (idempotency, reminder timing, thank-you window) using SQLite in-memory
       (started: `CampaignMissingFieldsTests` covers the missing-fields rule only)
 
 ### Phase M — Multi-tenancy and auth (new; do before the migration and design integration)
-- [ ] `Couple` and `User` entities; `CoupleId` on `Guest`, `MessageLog`, `EventSettings` (one settings row per couple)
-- [ ] `ITenantContext` + EF global query filter on `CoupleId`; tests proving couple A cannot read/write couple B's data
-- [ ] Public flow resolves the tenant from the guest token; `/event.ics` and the invitation image become per-guest/per-couple URLs
-- [ ] `MessagingWorker` runs per couple; per-couple pause, window and SMS quota
-- [ ] ASP.NET Core Identity (cookie auth): `/signin`, sign-out, lockout, set-password / reset via single-use expiring
+- [x] `Couple` and `User` entities; `CoupleId` on `Guest`, `MessageLog`, `EventSettings` (one settings row per couple)
+- [x] `ITenantContext` + EF global query filter on `CoupleId`; tests proving couple A cannot read/write couple B's data
+- [x] Public flow resolves the tenant from the guest token; `/event.ics` and the invitation image become per-guest/per-couple URLs
+- [x] `MessagingWorker` runs per couple; per-couple pause, window and SMS quota
+- [x] ASP.NET Core Identity (cookie auth): `/signin`, sign-out, lockout, set-password / reset via single-use expiring
       links the **site admin copies and passes on** (no email provider), change-password for couples, no email change,
       suspended couples cannot sign in
-- [ ] Hardening: Secure/HttpOnly/SameSite cookies, short idle timeout for site admin, rate-limited sign-in,
+- [ ] Hardening (done: cookie flags, per-IP rate limit on credential posts, site-admin TOTP, audit log, security headers;
+      open: a short idle timeout for the site admin (cookies currently last 12 h, sliding) and encrypted backups): Secure/HttpOnly/SameSite cookies, short idle timeout for site admin, rate-limited sign-in,
       TOTP two-factor for site admin (recommended; optional for couples), audit log (sign-ins, open-as-couple,
       password resets, allocation grants, deletions), security headers, backups encrypted
-- [ ] SMS allocations: ledger, site admin grants, dispatcher enforcement, couple-facing balance
-- [ ] "Delete all information" in the couple's account menu: offer CSV export first, typed confirmation, wipes guests,
+- [x] SMS allocations: ledger, site admin grants, dispatcher enforcement, couple-facing balance
+- [x] "Delete all information" in the couple's account menu: offer CSV export first, password plus a confirmation box (not a typed phrase), wipes guests,
       messages, settings, images (and the account); keeps only a minimal tombstone (couple id, date) for accounting;
       site admin can also purge
-- [ ] Bootstrap first site admin from config on an empty database
-- [ ] Site admin pages: couples list, create couple, reset password, suspend, "open as couple"
-- [ ] Data migration: existing single-couple rows → one `Couple`
-- [ ] Then the first EF migration
+- [x] Bootstrap first site admin from config on an empty database (verified live 2026-10-28)
+- [x] Site admin pages: couples list, create couple, new set-password link (the "reset"), suspend, "open as couple", audit log, provider page
+- [x] Data migration: not needed, no production data existed; the database was recreated fresh
+- [x] Then the first EF migration
 
 ### Phase L — Bilingual UI
-- [ ] Request localization for `he` and `en`; `dir`/`lang` in layouts; HE/EN switch persisted (cookie, then user preference)
+- [x] Request localization for `he` and `en`; `dir`/`lang` in layouts; HE/EN switch persisted (cookie, then user preference)
 - [ ] Move UI strings to resources; no Hebrew-only literals in new pages
-- [ ] Couple language mode (`HebrewOnly`/`EnglishOnly`/`Both`) + `DefaultPageLanguage`; per-language templates and
+      (decision in practice: strings are inline `Ui.T("עברית", "English")` pairs, so no Hebrew-only literals; no resource files)
+- [x] Couple language mode (`HebrewOnly`/`EnglishOnly`/`Both`) + `DefaultPageLanguage`; per-language templates and
       invitation images; he/en toggle on the guest page when `Both` (Hebrew default); bilingual single-SMS composition
       and its segment/allocation cost preview; GSM-7 vs UCS-2 segment counting
 
@@ -313,31 +317,34 @@ validation error · RSVP closed · unknown link.
 - [x] Replace `ISmsSender` with the provider-neutral `ISmsProvider` + registry (see §6 A/B)
 - [x] `SmsSendResult` failure kinds; dispatcher handling per kind; platform circuit breaker + site-admin banner
 - [x] Fake provider and tests for every failure kind
-- [ ] Open an account (whose? see open questions); note `user`, `pass`, `key` from the API page
-- [ ] Ask support: (1) exact send field names and status/error codes, (2) are DLR webhooks available and how do
-      they identify a message, (3) international recipients
-- [x] Implement `HttpSmsSender` per §6 (E.164 → `05…`, one recipient per request, status parsing)
+- [x] Open an account (the owner's, with a purchased package); `user`, `pass`, `key` are in `.env`
+- [x] Support questions answered by the API docs and live tests: (1) field names and status codes are on the docs page, (2) delivery
+      reports exist and `msgId` echoes our `usermsgid` (verified live), (3) Israeli numbers only
+- [x] Implement the SMS4FREE provider (`Sms4FreeProvider`): recipient sent as `+9725…`, one recipient per request, status parsing
 - [x] Change dispatcher retry policy per §6: auto-retry only on provable non-delivery to the provider
 - [x] Auto-pause on account-level refusals; surface it on `/admin/messages`
-- [ ] Balance on `/admin/messages` + pre-flight warning before "send invitations"
+- [x] Balance and pre-flight warning: couples see their remaining allocation and must confirm "send invitations" when it will not cover everyone; the provider balance is on the site-admin pages
 - [x] Unit tests: phone conversion, response parsing, retry classification
 - [x] Live test (2026-10-28): credits per Hebrew SMS confirmed by balance diff: 62 chars = 1, 138 = 2, 163 = 2 (134 + 67 rule holds)
-- [ ] Decide on the DLR endpoint per support's answer (implement or remove)
+- [x] DLR endpoint implemented and verified live (§6, "Delivery signal")
 
 ### Phase 2 — Design integration
-- [ ] Apply the guest portal design (done in Claude Design) to `_PublicLayout`, `Rsvp`, `Index`, `NotFound`, `public.css`;
+- [ ] Apply the guest portal design (applied and checked in headless Chromium at 320/360/390 and landscape; the real iPhone Safari and
+      Android Chrome check is still open) (done in Claude Design) to `_PublicLayout`, `Rsvp`, `Index`, `NotFound`, `public.css`;
       add the couple-chosen page look to `EventSettings` and the Event page; check on real iPhone Safari + Android Chrome, 320px width, landscape
-- [ ] Apply the existing admin / site-admin / sign-in designs to `_AdminLayout`, `Pages/Admin/**`, new site-admin and sign-in pages, `admin.css`
+- [x] Apply the existing admin / site-admin / sign-in designs to `_AdminLayout`, `Pages/Admin/**`, new site-admin and sign-in pages, `admin.css`
 - [ ] Check every guest-page state on a real phone (iOS Safari + Android Chrome), RTL, and in dark mode if designed
 - [ ] `/event.ics` opens in iOS Calendar; Google link prefills correctly; Waze opens to the venue
 - [ ] Keyboard focus visible, form usable at 320 px width
 
 ### Phase 3 — Deploy
-- [ ] `.env` from `.env.example` (SMS4FREE `user`/`pass`/`key`, `NPM_NETWORK`, bootstrap site-admin email/password)
+- [ ] `.env` from `.env.example` (SMS4FREE `user`/`pass`/`key`, ports, `DATA_DIR`, `APP_UID`, bootstrap site-admin email/password)
+      (done on the test machine; repeat on TrueNAS)
 - [ ] `docker compose up -d --build`; `/healthz` OK through NPM
+      (done on the test machine through the real domain; untested on TrueNAS, where a custom app may need a pre-built image)
 - [ ] NPM: public host → 8080 with SSL; `admin.example.com` → 8081 restricted to LAN/VPN (or not proxied at all)
-- [ ] Confirm `https://rsvp.example.com/admin` → 404 and admin requires sign-in
-- [ ] Register the DLR URL with SMS4FREE (only if Phase 1 confirmed DLRs)
+- [x] Confirm `https://<public host>/admin/site/couples` → 404 and the site admin signs in only on the private port (checked through the domain)
+- [x] Register the DLR URL with SMS4FREE: automatic, sent as `returnUrl` on every send once `App__DeliveryWebhookSecret` is set
 - [ ] Back up `./data` (cron copy of `rsvp.db` + `media/`)
 
 ### Phase 4 — Go-live with the client
