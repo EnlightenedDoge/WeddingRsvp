@@ -21,7 +21,7 @@ public sealed class AppOptions
 
 public sealed class SmsOptions
 {
-    /// <summary>"Log" (dev: writes messages to the log) or "Http" (real provider, see HttpSmsSender).</summary>
+    /// <summary>"Log" (dev: writes messages to the log) or "Sms4Free" (see Sms4FreeProvider).</summary>
     public string Provider { get; set; } = "Log";
     /// <summary>SMS4FREE send endpoint (see SPEC.md §6).</summary>
     public string ApiUrl { get; set; } = "https://api.sms4free.co.il/ApiSMS/v2/SendSMS";

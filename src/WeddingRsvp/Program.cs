@@ -59,10 +59,14 @@ builder.Services.AddScoped<DashboardService>();
 builder.Services.AddHostedService<MessagingWorker>();
 
 var smsProvider = builder.Configuration["Sms:Provider"] ?? "Log";
-if (smsProvider.Equals("Http", StringComparison.OrdinalIgnoreCase))
-    builder.Services.AddHttpClient<ISmsSender, HttpSmsSender>();
+if (smsProvider.Equals("Sms4Free", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddHttpClient<ISmsProvider, Sms4FreeProvider>(c => c.Timeout = TimeSpan.FromSeconds(30));
+else if (smsProvider.Equals("Log", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddSingleton<ISmsProvider, LogSmsProvider>();
 else
-    builder.Services.AddSingleton<ISmsSender, LogSmsSender>();
+    throw new InvalidOperationException($"Unknown Sms:Provider '{smsProvider}' (expected Log or Sms4Free).");
+builder.Services.AddScoped<ProviderCircuitBreaker>();
+builder.Services.AddScoped<AllocationService>();
 
 // --- Identity: the data here is very sensitive, so accounts are locked down.
 builder.Services.AddIdentityCore<AppUser>(o =>

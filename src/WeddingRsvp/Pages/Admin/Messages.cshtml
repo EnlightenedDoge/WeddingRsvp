@@ -20,6 +20,14 @@
     <p class="banner">@Ui.T("מחוץ לשעות השליחה (לילה או שבת). הודעות בתור ייצאו כשהחלון ייפתח.", "Outside the sending hours (night or Saturday). Queued messages go out when the window opens.")</p>
 }
 
+@if (Model.Delayed)
+{
+    <p class="banner" role="status">@Ui.T("שליחת ההודעות מתעכבת כרגע. ההודעות בתור יישלחו אוטומטית.", "Messages are delayed right now. Queued messages will go out automatically.")</p>
+}
+<p class="banner @(Model.Remaining < Model.ReadyToInvite ? "err" : "ok")">@Ui.T("הודעות שנותרו בהקצאה שלכם", "Messages left in your allocation"): <b>@Model.Remaining</b>
+    @if (Model.Remaining < Model.ReadyToInvite) { <span> · @Ui.T("פחות ממספר האורחים שטרם הוזמנו; הודעות יישארו בתור עד להגדלת ההקצאה.", "fewer than the guests still to invite; messages will wait in the queue until the allocation is raised.")</span> }
+</p>
+
 <div class="grid2">
 <section class="card wide">
     <h2>@Ui.T("הזמנות", "Invitations")</h2>

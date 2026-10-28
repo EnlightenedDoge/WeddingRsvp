@@ -8,11 +8,16 @@ using WeddingRsvp.Services;
 namespace WeddingRsvp.Pages.Admin;
 
 public class MessagesModel(
-    AppDbContext db, CampaignService campaign, SettingsService settings, SendingWindow window, IsraelClock clock, Ui ui) : PageModel
+    AppDbContext db, CampaignService campaign, SettingsService settings, SendingWindow window, IsraelClock clock, Ui ui,
+    AllocationService allocation, ProviderCircuitBreaker breaker) : PageModel
 {
     public EventSettings Event { get; private set; } = null!;
     public bool InSendingWindow { get; private set; }
     public int ReadyToInvite { get; private set; }
+    /// <summary>The couple's remaining SMS credits.</summary>
+    public int Remaining { get; private set; }
+    /// <summary>Platform-wide provider problem. Couples only ever see a neutral "delayed" note.</summary>
+    public bool Delayed { get; private set; }
     /// <summary>Event details the invitation text uses that haven't been filled in (e.g. "{couple}"). Blocks sending.</summary>
     public IReadOnlyList<string> MissingForInvite { get; private set; } = [];
     public Dictionary<MessageStatus, int> Counts { get; private set; } = new();
@@ -24,6 +29,8 @@ public class MessagesModel(
     public async Task OnGetAsync()
     {
         Event = await settings.GetAsync();
+        Remaining = await allocation.BalanceAsync();
+        Delayed = await breaker.IsOpenAsync();
         InSendingWindow = window.IsAllowed(clock.LocalNow);
         MissingForInvite = MessageTemplates.MissingFields(Event, MessageKind.Invite);
         ReadyToInvite = await db.Guests.CountAsync(g => g.PhoneE164 != null && g.InviteSentAtUtc == null);

@@ -5,16 +5,23 @@ using Microsoft.EntityFrameworkCore;
 using WeddingRsvp.Data;
 using WeddingRsvp.Domain;
 using WeddingRsvp.Services;
+using WeddingRsvp.Services.Sms;
 
 namespace WeddingRsvp.Pages.SiteAdmin;
 
 public class CoupleDetailModel(AppDbContext db, CoupleAdminService couples, UserManager<AppUser> users,
-    SignInManager<AppUser> signIn, AuditLog audit) : PageModel
+    SignInManager<AppUser> signIn, AuditLog audit, AllocationService allocation, ISmsProvider sms, Ui ui) : PageModel
 {
     public Couple Couple { get; private set; } = null!;
     public string? Email { get; private set; }
     public bool HasPassword { get; private set; }
     public string? Link { get; private set; }
+    public int Remaining { get; private set; }
+    public int TotalAllocated { get; private set; }
+    public int? ProviderBalance { get; private set; }
+    public List<SmsAllocationEntry> Ledger { get; private set; } = [];
+
+    [BindProperty] public int Amount { get; set; }
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
@@ -28,6 +35,18 @@ public class CoupleDetailModel(AppDbContext db, CoupleAdminService couples, User
         if (!await LoadAsync(id)) return NotFound();
         var owner = (await couples.PrimaryUserAsync(id))!;
         TempData["SetPasswordLink"] = await couples.IssueSetPasswordLinkAsync(owner, (await users.GetUserAsync(User))!);
+        return Redirect($"/admin/site/couples/{id}");
+    }
+
+    public Task<IActionResult> OnPostGrantAsync(int id) => AdjustAsync(id, 1);
+    public Task<IActionResult> OnPostReduceAsync(int id) => AdjustAsync(id, -1);
+
+    private async Task<IActionResult> AdjustAsync(int id, int sign)
+    {
+        if (!await LoadAsync(id)) return NotFound();
+        var ok = Amount > 0 && await allocation.AdjustAsync(id, sign * Amount, (await users.GetUserAsync(User))!);
+        TempData["Flash"] = ok ? ui.T("ההקצאה עודכנה", "Allocation updated")
+            : ui.T("לא ניתן לעדכן: הכמות חייבת להיות חיובית ואי אפשר לרדת מתחת לאפס", "Can't update: the amount must be positive and the balance can't go below zero");
         return Redirect($"/admin/site/couples/{id}");
     }
 
@@ -66,6 +85,10 @@ public class CoupleDetailModel(AppDbContext db, CoupleAdminService couples, User
         var owner = await couples.PrimaryUserAsync(id);
         Email = owner?.Email;
         HasPassword = owner?.PasswordHash != null;
+        Remaining = await allocation.BalanceForAsync(id);
+        Ledger = await allocation.LedgerForAsync(id);
+        TotalAllocated = await db.SmsAllocations.IgnoreQueryFilters().SumAsync(e => e.Delta);
+        ProviderBalance = await sms.GetBalanceAsync(HttpContext.RequestAborted);
         return true;
     }
 }

@@ -1,0 +1,19 @@
+@page "/admin/site/provider"
+@model WeddingRsvp.Pages.SiteAdmin.ProviderModel
+@{ ViewData["Title"] = Ui.T("ספק SMS", "SMS provider"); }
+<header class="page-head"><div><h1>@Ui.T("ספק SMS", "SMS provider")</h1><div class="sub">@Model.Name</div></div></header>
+<section class="card">
+    <p><b>@Ui.T("יתרה אצל הספק", "Provider balance"):</b> @(Model.Balance?.ToString() ?? "?")</p>
+    @if (Model.State.ProviderOpen)
+    {
+        <p class="banner err" role="alert">@Ui.T("השליחה נעצרה לכולם.", "Sending is stopped for everyone."):
+            @Model.State.Reason (@Model.State.OpenedAtUtc?.ToString("yyyy-MM-dd HH:mm") UTC)</p>
+        <p>@Ui.T("הודעות נשארות בתור ויישלחו אחרי החידוש. המערכת בודקת את הספק כל כמה דקות וחוזרת לעבוד לבד כשהיתרה חיובית.",
+            "Queued messages wait and go out after resuming. The system re-checks the provider every few minutes and resumes by itself once the balance is positive.")</p>
+        <form method="post" asp-page-handler="Resume"><button type="submit" class="btn primary">@Ui.T("חידוש שליחה", "Resume sending")</button></form>
+    }
+    else
+    {
+        <p class="pill ok">@Ui.T("הספק פעיל", "Provider is working")</p>
+    }
+</section>

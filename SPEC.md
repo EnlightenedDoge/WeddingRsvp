@@ -294,17 +294,17 @@ validation error · RSVP closed · unknown link.
       and its segment/allocation cost preview; GSM-7 vs UCS-2 segment counting
 
 ### Phase 1 — SMS provider layer + SMS4FREE
-- [ ] Replace `ISmsSender` with the provider-neutral `ISmsProvider` + registry (see §6 A/B)
-- [ ] `SmsSendResult` failure kinds; dispatcher handling per kind; platform circuit breaker + site-admin banner
-- [ ] Fake provider and tests for every failure kind
+- [x] Replace `ISmsSender` with the provider-neutral `ISmsProvider` + registry (see §6 A/B)
+- [x] `SmsSendResult` failure kinds; dispatcher handling per kind; platform circuit breaker + site-admin banner
+- [x] Fake provider and tests for every failure kind
 - [ ] Open an account (whose? see open questions); note `user`, `pass`, `key` from the API page
 - [ ] Ask support: (1) exact send field names and status/error codes, (2) are DLR webhooks available and how do
       they identify a message, (3) international recipients
-- [ ] Implement `HttpSmsSender` per §6 (E.164 → `05…`, one recipient per request, status parsing)
-- [ ] Change dispatcher retry policy per §6: auto-retry only on provable non-delivery to the provider
-- [ ] Auto-pause on account-level refusals; surface it on `/admin/messages`
+- [x] Implement `HttpSmsSender` per §6 (E.164 → `05…`, one recipient per request, status parsing)
+- [x] Change dispatcher retry policy per §6: auto-retry only on provable non-delivery to the provider
+- [x] Auto-pause on account-level refusals; surface it on `/admin/messages`
 - [ ] Balance on `/admin/messages` + pre-flight warning before "send invitations"
-- [ ] Unit tests: phone conversion, response parsing, retry classification
+- [x] Unit tests: phone conversion, response parsing, retry classification
 - [ ] Live test with the free messages (sender = registered number); confirm credits per Hebrew invite via balance diff
 - [ ] Decide on the DLR endpoint per support's answer (implement or remove)
 

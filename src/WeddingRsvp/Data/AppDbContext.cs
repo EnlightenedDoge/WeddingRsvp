@@ -14,6 +14,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
     public DbSet<Guest> Guests => Set<Guest>();
     public DbSet<MessageLog> Messages => Set<MessageLog>();
     public DbSet<EventSettings> EventSettings => Set<EventSettings>();
+    public DbSet<PlatformState> PlatformStates => Set<PlatformState>();
+    public DbSet<SmsAllocationEntry> SmsAllocations => Set<SmsAllocationEntry>();
 
     // Read by the global query filters; EF re-evaluates it per context instance.
     private int? CurrentCoupleId => tenant.CoupleId;
@@ -57,6 +59,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
         b.Entity<Guest>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);
         b.Entity<MessageLog>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);
         b.Entity<EventSettings>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);
+        b.Entity<SmsAllocationEntry>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);
+        b.Entity<SmsAllocationEntry>().HasIndex(x => x.CoupleId);
+        b.Entity<SmsAllocationEntry>().HasOne<Couple>().WithMany().HasForeignKey(x => x.CoupleId).OnDelete(DeleteBehavior.Cascade);
 
         b.Entity<Guest>().HasOne<Couple>().WithMany().HasForeignKey(x => x.CoupleId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<MessageLog>().HasOne<Couple>().WithMany().HasForeignKey(x => x.CoupleId).OnDelete(DeleteBehavior.Cascade);

@@ -38,4 +38,29 @@
         </form>
     </div>
 </section>
+<section class="card">
+    <h2>@Ui.T("הקצאת הודעות", "SMS allocation")</h2>
+    <p><b>@Model.Remaining</b> @Ui.T("הודעות נותרו לזוג", "credits remaining for this couple")</p>
+    <p class="muted">@Ui.T("מוקצה לכל הזוגות", "Allocated across all couples"): @Model.TotalAllocated ·
+        @Ui.T("יתרה אצל הספק", "Provider balance"): @(Model.ProviderBalance?.ToString() ?? "?")</p>
+    @if (Model.ProviderBalance is { } pb && Model.TotalAllocated > pb)
+    {
+        <p class="banner">@Ui.T("שימו לב: סך ההקצאות גבוה מהיתרה אצל הספק. מותר, ומנגנון ההגנה עוצר שליחה אם הקרדיט נגמר.",
+            "Heads up: total allocations exceed the provider balance. That is allowed; the circuit breaker stops sending if credit runs out.")</p>
+    }
+    <form method="post" class="row">
+        <input name="Amount" type="number" min="1" required placeholder="@Ui.T("כמות", "Amount")" />
+        <button type="submit" asp-page-handler="Grant" class="btn primary">@Ui.T("הוספה", "Grant")</button>
+        <button type="submit" asp-page-handler="Reduce" class="btn danger">@Ui.T("הפחתה", "Reduce")</button>
+    </form>
+    <div class="tablewrap"><table>
+        <thead><tr><th>@Ui.T("זמן (UTC)", "Time (UTC)")</th><th>@Ui.T("שינוי", "Change")</th><th>@Ui.T("סיבה", "Reason")</th><th>@Ui.T("מבצע", "By")</th></tr></thead>
+        <tbody>
+        @foreach (var e in Model.Ledger)
+        {
+            <tr><td class="ltr">@e.AtUtc.ToString("yyyy-MM-dd HH:mm")</td><td class="ltr">@e.Delta.ToString("+#;-#")</td><td>@e.Reason</td><td class="ltr">@e.ActorEmail</td></tr>
+        }
+        </tbody>
+    </table></div>
+</section>
 <p><a class="link" href="/admin/site/couples">← @Ui.T("חזרה לרשימה", "Back to the list")</a></p>

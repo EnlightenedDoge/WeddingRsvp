@@ -9,7 +9,7 @@ creates **couple** accounts; each couple sees only its own guests/messages/setti
 link (`/{token}`) to a phone-first RSVP page. Hebrew RTL / English LTR throughout.
 
 ## State
-- Builds with 0 errors, **59 tests pass** (`DOTNET_ROLL_FORWARD=Major dotnet test` while only .NET 10 runtime is installed).
+- Builds with 0 errors, **85 tests pass** (`DOTNET_ROLL_FORWARD=Major dotnet test` while only .NET 10 runtime is installed).
 - Built: tenancy (EF query filters via `ITenantContext`), Identity sign-in (lockout 5/15 min, 10-char passwords, cookie
   `wr.auth`), one-time set-password links the site admin passes on, TOTP for the site admin, audit log, "open as couple"
   (audited, banner, account page blocked while acting), "delete all information" (deletes the account, keeps a tombstone),
@@ -19,11 +19,10 @@ link (`/{token}`) to a phone-first RSVP page. Hebrew RTL / English LTR throughou
 - The user was mid manual test from a phone over the LAN (see recipe below).
 
 ## Deferred / open (priority order)
-1. **SMS provider layer** — the user explicitly deferred this ("We'd do the providers later"): `ISmsProvider`, failure kinds
-   `Sent/Transient/Rejected/Unknown/AccountLevel`, platform circuit breaker (AccountLevel => stop all sending, messages stay
-   Queued, attempts untouched, site-admin banner), `Sms4FreeProvider` (SPEC §6), per-couple append-only allocation ledger and
-   the allocation card on the site-admin couple page. Only `LogSmsSender` exists now.
-2. First EF migration (`dotnet tool install --global dotnet-ef`; then delete `src/WeddingRsvp/data/rsvp.db` once).
+1. **SMS provider layer: built 2026-10-28** (providers, breaker, ledger, 85 tests). Remaining: live test with the 10 free
+   SMS4FREE messages (confirm credits per Hebrew SMS via balance diff), pre-flight confirm on "send invitations" is only a
+   banner for now, DLR webhook still disabled. Couples start with 0 allocation; delete `data/rsvp.db` once (new tables).
+2. ~~First EF migration~~ done: `InitialCreate` (run `dotnet ef migrations add <Name> -p src/WeddingRsvp` for later schema changes).
 3. TOTP-required banner for the site admin; audit-log viewer page.
 4. Visual QA of the guest page at 320/360/390 and landscape 844x390 in a real browser.
 5. Jewish holidays in `SendingWindow`; optional WhatsApp share link; live SMS segment counter.

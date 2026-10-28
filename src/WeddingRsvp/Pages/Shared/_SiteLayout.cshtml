@@ -1,4 +1,13 @@
 @using WeddingRsvp.Auth
+@using Microsoft.AspNetCore.Identity
+@using WeddingRsvp.Domain
+@inject UserManager<AppUser> Users
+@inject WeddingRsvp.Services.ProviderCircuitBreaker Breaker
+@{
+    var me = await Users.GetUserAsync(Context.User);
+    var providerState = await Breaker.GetAsync();
+    var needsTotp = me is not null && !await Users.GetTwoFactorEnabledAsync(me);
+}
 <!DOCTYPE html>
 <html lang="@Ui.Lang" dir="@Ui.Dir">
 <head>
@@ -16,7 +25,9 @@
             <div class="brand"><span class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></span>@Ui.T("ניהול האתר", "Site admin")</div>
             <nav class="nav">
             <a href="/admin/site/couples" class="@(Context.Request.Path.StartsWithSegments("/admin/site/couples") ? "active" : "")"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>@Ui.T("זוגות", "Couples")</a>
+            <a href="/admin/site/provider" class="@(Context.Request.Path.StartsWithSegments("/admin/site/provider") ? "active" : "")"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"/></svg>@Ui.T("ספק SMS", "SMS provider")</a>
             <a href="/admin/site/security" class="@(Context.Request.Path.StartsWithSegments("/admin/site/security") ? "active" : "")"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg>@Ui.T("אבטחה", "Security")</a>
+            <a href="/admin/site/audit" class="@(Context.Request.Path.StartsWithSegments("/admin/site/audit") ? "active" : "")"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8l3 3v13H5V4zM9 12h6M9 16h6"/></svg>@Ui.T("יומן פעולות", "Audit log")</a>
             </nav>
             <div class="side-foot">
                 <div class="langsw">
@@ -27,6 +38,14 @@
             </div>
         </aside>
         <main class="main">
+            @if (providerState.ProviderOpen && !Context.Request.Path.StartsWithSegments("/admin/site/provider"))
+            {
+                <p class="banner err" role="alert">@Ui.T("שליחת ה-SMS נעצרה: ", "SMS sending is stopped: ")@providerState.Reason <a class="link" href="/admin/site/provider">@Ui.T("פרטים וחידוש", "Details and resume")</a></p>
+            }
+            @if (needsTotp && !Context.Request.Path.StartsWithSegments("/admin/site/security"))
+            {
+                <p class="banner err" role="alert">@Ui.T("האימות הדו-שלבי כבוי בחשבון שלך. ", "Two-factor authentication is off for your account. ")<a class="link" href="/admin/site/security">@Ui.T("הפעלה", "Turn it on")</a></p>
+            }
             @if (TempData["Flash"] is string flash)
             {
                 <p class="flash" role="status">@flash</p>

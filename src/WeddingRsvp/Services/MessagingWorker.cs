@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using WeddingRsvp.Data;
 using WeddingRsvp.Options;
+using WeddingRsvp.Services.Sms;
 using WeddingRsvp.Tenancy;
 
 namespace WeddingRsvp.Services;
@@ -35,6 +36,8 @@ public sealed class MessagingWorker(
             return;
         }
 
+        await ProbeProviderAsync(ct);
+
         foreach (var id in coupleIds)
         {
             try
@@ -48,6 +51,23 @@ public sealed class MessagingWorker(
             {
                 log.LogError(ex, "Messaging tick failed for couple {CoupleId}", id);
             }
+        }
+    }
+
+    /// <summary>While the breaker is open, ask the provider for its balance now and then; a positive answer closes it.</summary>
+    private async Task ProbeProviderAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var scope = scopes.CreateScope();
+            var breaker = scope.ServiceProvider.GetRequiredService<ProviderCircuitBreaker>();
+            if (!await breaker.ProbeDueAsync(ct)) return;
+            var balance = await scope.ServiceProvider.GetRequiredService<ISmsProvider>().GetBalanceAsync(ct);
+            if (balance is > 0) await breaker.ResumeAsync(ct: ct);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            log.LogError(ex, "Provider probe failed");
         }
     }
 }

@@ -1,0 +1,32 @@
+@page "/admin/site/audit"
+@model WeddingRsvp.Pages.SiteAdmin.AuditModel
+@{ ViewData["Title"] = Ui.T("יומן פעולות", "Audit log"); }
+<header class="page-head"><div><h1>@Ui.T("יומן פעולות", "Audit log")</h1><div class="sub">@Ui.T("מי עשה מה ומתי. ללא שמות אורחים, טלפונים או תוכן הודעות.", "Who did what, and when. No guest names, phone numbers or message text.")</div></div></header>
+<section class="card">
+    <form method="get" class="row">
+        <input name="Action" value="@Model.Action" placeholder="@Ui.T("פעולה (למשל 2fa)", "Action (e.g. 2fa)")" />
+        <input name="CoupleId" type="number" value="@Model.CoupleId" placeholder="@Ui.T("מזהה זוג", "Couple id")" />
+        <button class="btn" type="submit">@Ui.T("סינון", "Filter")</button>
+    </form>
+    <div class="tablewrap"><table>
+        <thead><tr><th>@Ui.T("זמן (UTC)", "Time (UTC)")</th><th>@Ui.T("פעולה", "Action")</th><th>@Ui.T("מבצע", "Actor")</th><th>@Ui.T("זוג", "Couple")</th><th>@Ui.T("פרטים", "Detail")</th><th>IP</th></tr></thead>
+        <tbody>
+        @foreach (var a in Model.Rows)
+        {
+            <tr>
+                <td class="ltr">@a.AtUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td class="ltr">@a.Action</td>
+                <td class="ltr">@a.ActorEmail</td>
+                <td>@a.CoupleId</td>
+                <td>@a.Detail</td>
+                <td class="ltr">@a.Ip</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+    @if (Model.Rows.Count == 0) { <p class="muted">@Ui.T("אין רשומות.", "No entries.")</p> }
+    <p>
+        @if (Model.PageNo > 1) { <a class="link" asp-route-PageNo="@(Model.PageNo - 1)" asp-route-Action="@Model.Action" asp-route-CoupleId="@Model.CoupleId">@Ui.T("הקודם", "Newer")</a> }
+        @if (Model.HasNext) { <a class="link" asp-route-PageNo="@(Model.PageNo + 1)" asp-route-Action="@Model.Action" asp-route-CoupleId="@Model.CoupleId">@Ui.T("הבא", "Older")</a> }
+    </p>
+</section>
