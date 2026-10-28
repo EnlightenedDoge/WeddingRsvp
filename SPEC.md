@@ -355,6 +355,14 @@ validation error · RSVP closed · unknown link.
 
 ---
 
+### Phase T — Bot protection (Cloudflare Turnstile) — requirement, not built yet
+- [ ] Turnstile support on the **internet-facing login pages** (the couples' `/signin`, `/set-password`, `/signin/2fa` on the public host)
+- [ ] Turnstile support on the **invitation** (guest page `/{token}`), as an invisible challenge attached to the "seen" report
+- [ ] Settings `App__TurnstileSiteKey` / `App__TurnstileSecretKey`; both empty = feature off (local runs and tests unaffected)
+- [ ] Server-side token verification against Cloudflare's siteverify endpoint; strict on sign-in, lenient on "seen"
+- [ ] Tests with a fake verifier (pass, fail, unreachable, keys unset) and with Cloudflare's published always-pass test keys
+- [ ] Privacy note for couples (Cloudflare's script sees each visitor's IP address and browser details)
+
 ## 9. Open questions for the client
 
 1. Does the list include how many people each invitation covers? If not, who fills it in?
@@ -412,6 +420,40 @@ Proposed design. Decisions still open are in §12.
   - Single-language modes: SMS and page are that language only, no toggle.
 - Couples upload **two invitation images**, one per language, and write templates per language (only the languages
   their mode uses are required).
+
+## 13. Bot protection: Cloudflare Turnstile (requirement, 2026-10-28)
+
+**Why.** Two problems on the internet-facing public host:
+1. *Sign-in abuse.* Anyone can lock a couple's account by failing the password five times (lockout), and bots will try
+   credentials. Per-IP rate limits and lockout stay, but a challenge before the password is checked removes the cheap attacks.
+2. *Link scanners.* On 2026-10-28 two invitations were marked "Opened" 0.3 s after sending, by an automated request.
+   Counting an open only after a browser reported back (§6, "Delivery signal") already fixes plain fetchers; scanners that run
+   JavaScript can still trigger it, and Turnstile is meant to stop those.
+
+**Requirement.** Support Cloudflare Turnstile on:
+- **The internet-facing login pages:** `/signin`, `/signin/2fa` and `/set-password` on the public port. The token is verified
+  *before* the credentials are looked at. A missing or failed token is a generic failure (the same neutral message as a wrong
+  password), is audited, and does not count toward lockout.
+- **The invitation (guest page):** the widget runs invisibly (no tap, no visible step) and its token is sent with the `/{token}/seen`
+  report. An "Opened" is recorded only when the token verifies. The page itself, the RSVP form and the calendar/Waze links are not
+  challenged: guests see no extra step. The unguessable token and the form's own antiforgery token already protect those.
+- **Not covered:** the private admin port (site admin; LAN or VPN only) and the delivery-report webhook (server to server).
+
+**Behaviour.**
+- Configured by `App__TurnstileSiteKey` (public) and `App__TurnstileSecretKey` (secret, `.env` only). **Both empty = off**: no script
+  is loaded and nothing is verified, so development, tests and installs without Cloudflare keep working.
+- Failure policy: **strict on sign-in** (an unreachable verifier or a failed token blocks the attempt) and **lenient on "seen"**
+  (an unreachable verifier only means that open is not counted; it never blocks the guest).
+- The widget uses the page language (Hebrew or English) and respects the couple-chosen page look.
+- Verification is a server-side POST to Cloudflare's `siteverify` with the token and the visitor IP. The result is not trusted from the client.
+- Tests use a fake verifier plus Cloudflare's published test keys, which always pass or always fail.
+
+**Privacy.** Cloudflare's script sees each visitor's IP address and browser details. Guests therefore reach a third party when they
+open an invitation. This must be disclosed to couples (a note in the site-admin and couple account pages) and is the reason the
+challenge is invisible and limited to the "seen" report.
+
+**Out of scope for this requirement:** proxying the domain through Cloudflare (a DNS change that would also need the visitor-IP
+header for rate limits), and any visible CAPTCHA on guest-facing pages.
 
 ## 12. Decisions
 

@@ -209,6 +209,7 @@ Don't move logic into views; if a design needs data the model doesn't expose, ad
 - [x] Couple language mode + per-language images/templates + guest-page toggle (SPEC.md §11).
 - [x] "Delete all information" + audit log + site-admin TOTP are built.
 - [x] Jewish yom tov days are in `SendingWindow` (computed from the Hebrew calendar). Other special days: the pause switch.
+- [ ] **Turnstile** (Cloudflare) on the public login pages and on the invitation's "seen" report. Requirement only, not built: see SPEC.md §13 and Phase T. Keys `App__TurnstileSiteKey` / `App__TurnstileSecretKey`, both empty = off.
 - [x] Live SMS length/credit counter in the event-settings template boxes, driven by the active provider's cost rule. (WhatsApp share link is out of scope.)
 
 ## Commands
