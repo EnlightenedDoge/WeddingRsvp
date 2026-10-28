@@ -33,7 +33,7 @@ link (`/{token}`) to a phone-first RSVP page. Hebrew RTL / English LTR throughou
 Identity cookie auth (data is very sensitive); no email provider (admin copies a set-password link); couples change
 password but not email; over-allocation of SMS allowed, the circuit breaker makes it safe; couples never see provider
 details, only a neutral "messages are delayed" note; English templates fall back to Hebrew couple/venue names unless the
-`*En` fields are set; both-mode SMS = Hebrew text, newline, English text, each with its own link.
+`*En` fields are set; both-mode SMS = Hebrew text, an empty line, English text, each with its own link.
 
 ## Run / test
 ```bash

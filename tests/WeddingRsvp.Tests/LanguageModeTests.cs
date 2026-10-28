@@ -38,6 +38,28 @@ public class LanguageModeTests
     }
 
     [Fact]
+    public void Both_separates_the_two_texts_with_exactly_one_empty_line()
+    {
+        var s = Ready(LanguageMode.Both);
+        foreach (var kind in new[] { MessageKind.Invite, MessageKind.Reminder, MessageKind.ThankYou })
+        {
+            var body = MessageTemplates.Body(s, kind, "Ruth", "https://x/AbCdEfGhJk");
+            var parts = body.Split("\n\n");
+            Assert.Equal(2, parts.Length);                      // Hebrew, empty line, English
+            Assert.DoesNotContain("\n\n\n", body);              // never more than one empty line
+            Assert.DoesNotContain("\n", parts[0] + parts[1]);     // each text is a single block with no stray line breaks
+            Assert.Equal(MessageTemplates.Render(MessageTemplates.TemplateFor(s, kind), "Ruth", s, "https://x/AbCdEfGhJk"), parts[0]);
+            Assert.Equal(MessageTemplates.Render(MessageTemplates.TemplateEnFor(s, kind), "Ruth", s, "https://x/AbCdEfGhJk", english: true), parts[1]);
+        }
+    }
+
+    [Theory]
+    [InlineData(LanguageMode.HebrewOnly)]
+    [InlineData(LanguageMode.EnglishOnly)]
+    public void Single_language_bodies_have_no_line_breaks(LanguageMode mode) =>
+        Assert.DoesNotContain("\n", MessageTemplates.Body(Ready(mode), MessageKind.Invite, "Ruth", "https://x/AbCdEfGhJk"));
+
+    [Fact]
     public void English_text_falls_back_to_the_hebrew_names_but_still_needs_some_name()
     {
         var s = new EventSettings

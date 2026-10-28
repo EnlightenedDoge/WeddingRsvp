@@ -33,11 +33,11 @@ public static class MessageTemplates
         };
 
     /// <summary>
-    /// The SMS text. In Both mode it carries the Hebrew and the English text one after the other
+    /// The SMS text. In Both mode it carries the Hebrew and the English text one after the other, separated by an empty line
     /// (the single link opens a page with a language toggle).
     /// </summary>
     public static string Body(EventSettings s, MessageKind kind, string guestName, string link) =>
-        string.Join("\n", ActiveTemplates(s, kind).Select(t => Render(t.Template, guestName, s, link, t.English)));
+        string.Join("\n\n", ActiveTemplates(s, kind).Select(t => Render(t.Template, guestName, s, link, t.English)));
 
     public static string CoupleFor(EventSettings s, bool en) =>
         en && !string.IsNullOrWhiteSpace(s.CoupleNamesEn) ? s.CoupleNamesEn : s.CoupleNames;
