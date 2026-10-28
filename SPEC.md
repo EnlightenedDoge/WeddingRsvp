@@ -362,13 +362,15 @@ validation error · RSVP closed · unknown link.
 
 ---
 
-### Phase T — Bot protection (Cloudflare Turnstile) — requirement, not built yet
-- [ ] Turnstile support on the **internet-facing login pages** (the couples' `/signin`, `/set-password`, `/signin/2fa` on the public host)
-- [ ] Turnstile support on the **invitation** (guest page `/{token}`), as an invisible challenge attached to the "seen" report
-- [ ] Settings `App__TurnstileSiteKey` / `App__TurnstileSecretKey`; both empty = feature off (local runs and tests unaffected)
-- [ ] Server-side token verification against Cloudflare's siteverify endpoint; strict on sign-in, lenient on "seen"
-- [ ] Tests with a fake verifier (pass, fail, unreachable, keys unset) and with Cloudflare's published always-pass test keys
-- [ ] Privacy note for couples (Cloudflare's script sees each visitor's IP address and browser details)
+### Phase T — Bot protection (Cloudflare Turnstile) — built 2026-10-28
+- [x] Turnstile on the **internet-facing login pages** (the couples' `/signin`, `/signin/2fa`, `/set-password` on the public port)
+- [x] Turnstile on the **invitation** (guest page `/{token}`), an invisible challenge attached to the "seen" report
+- [x] Settings `App__TurnstileSiteKey` / `App__TurnstileSecretKey`; both empty = off (one alone = off plus a startup warning)
+- [x] Server-side token verification against siteverify (action and hostname checked); strict on sign-in, lenient on "seen"
+- [x] Tests: fake Cloudflare for every outcome (pass, refused, wrong action, wrong host, unreachable, keys unset) and an end-to-end run
+- [x] Privacy note for couples on their account page
+- [x] `scripts/check-turnstile.sh` validates the secret key without printing it (verified: the owner's key is accepted by Cloudflare)
+- [ ] Live check on the real domain with the real widget: one real token accepted, the same token refused on replay
 
 ## 9. Open questions for the client
 
@@ -428,7 +430,7 @@ Proposed design. Decisions still open are in §12.
 - Couples upload **two invitation images**, one per language, and write templates per language (only the languages
   their mode uses are required).
 
-## 13. Bot protection: Cloudflare Turnstile (requirement, 2026-10-28)
+## 13. Bot protection: Cloudflare Turnstile (built 2026-10-28)
 
 **Why.** Two problems on the internet-facing public host:
 1. *Sign-in abuse.* Anyone can lock a couple's account by failing the password five times (lockout), and bots will try
@@ -439,8 +441,10 @@ Proposed design. Decisions still open are in §12.
 
 **Requirement.** Support Cloudflare Turnstile on:
 - **The internet-facing login pages:** `/signin`, `/signin/2fa` and `/set-password` on the public port. The token is verified
-  *before* the credentials are looked at. A missing or failed token is a generic failure (the same neutral message as a wrong
-  password), is audited, and does not count toward lockout.
+  *before* the credentials are looked at. A missing or failed token is refused, audited (`signin.failed` / `turnstile`) and does not
+  count toward lockout. The page says "The security check failed. Reload the page and try again." rather than the wrong-password
+  message: the check does not depend on the account, so it reveals nothing about which emails exist, and a visitor whose widget was
+  blocked learns what to do.
 - **The invitation (guest page):** the widget runs invisibly (no tap, no visible step) and its token is sent with the `/{token}/seen`
   report. An "Opened" is recorded only when the token verifies. The page itself, the RSVP form and the calendar/Waze links are not
   challenged: guests see no extra step. The unguessable token and the form's own antiforgery token already protect those.
@@ -451,12 +455,21 @@ Proposed design. Decisions still open are in §12.
   is loaded and nothing is verified, so development, tests and installs without Cloudflare keep working.
 - Failure policy: **strict on sign-in** (an unreachable verifier or a failed token blocks the attempt) and **lenient on "seen"**
   (an unreachable verifier only means that open is not counted; it never blocks the guest).
-- The widget uses the page language (Hebrew or English) and respects the couple-chosen page look.
+- The widget uses the page language (Hebrew or English). On the guest page it is `interaction-only`, so it shows only if Cloudflare
+  needs a tap.
+- **Actions** (`data-action`, checked on the server): `signin`, `signin-2fa`, `set-password`, `seen`. A token for another action is
+  refused. The reported **hostname** must be the host of `App__PublicBaseUrl` or one in `App__TurnstileAllowedHostnames`
+  (comma-separated); never `localhost` in production (the app warns).
+- Turnstile is active only on the **public port**. The private admin port never loads the widget or calls Cloudflare, so the site
+  admin can always sign in.
+- `App__TurnstileVerifyUrl` replaces Cloudflare's siteverify address with a local fake. **Tests only**; the app warns loudly when it is set.
 - Verification is a server-side POST to Cloudflare's `siteverify` with the token and the visitor IP. The result is not trusted from the client.
-- Tests use a fake verifier plus Cloudflare's published test keys, which always pass or always fail.
+- Tests use a stub for Cloudflare (`TurnstileTests`) and an end-to-end run against a local fake siteverify. Cloudflare's published test
+  keys cannot prove the action check (their replies carry no `action`); with real keys Cloudflare echoes the widget's `data-action`.
+- The secret key is stored only in `.env` (git-ignored) and is never logged, printed or sent in a URL. Check it with `scripts/check-turnstile.sh`.
 
 **Privacy.** Cloudflare's script sees each visitor's IP address and browser details. Guests therefore reach a third party when they
-open an invitation. This must be disclosed to couples (a note in the site-admin and couple account pages) and is the reason the
+open an invitation. This is disclosed to couples in a note on their account page (shown when Turnstile is on), and is the reason the
 challenge is invisible and limited to the "seen" report.
 
 **Out of scope for this requirement:** proxying the domain through Cloudflare (a DNS change that would also need the visitor-IP

@@ -22,13 +22,17 @@ See `HANDOFF.md` for session context, deferred work, run recipes and pitfalls.
   audited, account page blocked while acting), guest portal (`Rsvp.cshtml`, `public.css`, he/en toggle, couple-chosen look),
   Event page with language mode, per-language templates/images and page look. Language mode renders SMS via `MessageTemplates.Body`.
 - **Delivery signal:** message status goes Sent -> Delivered (SMS4FREE delivery report via `/webhooks/sms-delivery/{secret}`, `DeliveryReports`) -> Opened (a person actually looked at the guest page: the page reports back with a "seen" beacon, `RsvpService.SeenAsync`; also implies delivered. Merely loading the page does NOT count, because scanners fetch it within a second of sending). Reports need `App__DeliveryWebhookSecret` and a public base URL. Verified live 2026-10-28: the callback `msgId` echoes our `usermsgid`.
+- **Turnstile (built 2026-10-28):** `TurnstileVerifier` (siteverify; action and hostname checked; secret never logged) and `TurnstileGate` (active only on the
+  public port; `Active`, `CheckFormAsync(action)`). Widget partial `Pages/Shared/_Turnstile.cshtml` on `/signin`, `/signin/2fa`, `/set-password`; token verified
+  **before** any credential is looked at, refusals audited (`signin.failed` / `turnstile`) and never counted towards lockout; the guest page's invisible widget feeds the
+  `/{token}/seen` report, which counts only when Cloudflare confirms (fails open for the guest). Strict on sign-in, lenient on "seen". On only when both keys are set.
+  `scripts/check-turnstile.sh` validates the secret without printing it. `App__TurnstileVerifyUrl` is for tests only.
 - **Docker:** `docker-compose.yml` publishes the ports (host ports, bind address and data path come from `.env`); `docker-compose.npm.yml` is an optional shared-network override. Data-protection keys persist in `{DataDir}/keys`. See README "Deploy".
 - **SMS provider layer built (2026-10-28):** `ISmsProvider` + `Log`/`Sms4Free` providers (`Sms:Provider`), failure kinds, persisted circuit
   breaker (`PlatformState`, `/admin/site/provider`, banner), per-couple allocation ledger (`SmsAllocationEntry`, card on the couple page,
   couples start at 0). Needs a fresh DB. Live-tested 2026-10-28: billing matches 1 credit up to 134 chars, +1 per 67 (138 chars = 2, 62 = 1, 163 = 2); sender name `Invitation` accepted.
 - **Still open before go-live:** a full run with a real couple on the public host (reminders and thank-you have never run live), backups of
-  the data folder, TrueNAS deployment (untested; may need a pre-built image), real-phone QA (iOS Safari, Android Chrome), Turnstile
-  (requirement only, SPEC.md §13), privacy note and data-retention agreement. See SPEC.md §8.
+  the data folder, TrueNAS deployment (untested; may need a pre-built image), real-phone QA (iOS Safari, Android Chrome), the live Turnstile check on the real domain, privacy note and data-retention agreement. See SPEC.md §8.
 - Git repo exists. Couples sign in on the public host; the site admin signs in only on the private admin port (8081). Identity is the real protection.
 - The projects target net10.0 (.NET 10 SDK/runtime). Run tests with `dotnet test`.
 
@@ -211,7 +215,7 @@ Don't move logic into views; if a design needs data the model doesn't expose, ad
 - [x] Couple language mode + per-language images/templates + guest-page toggle (SPEC.md §11).
 - [x] "Delete all information" + audit log + site-admin TOTP are built.
 - [x] Jewish yom tov days are in `SendingWindow` (computed from the Hebrew calendar). Other special days: the pause switch.
-- [ ] **Turnstile** (Cloudflare) on the public login pages and on the invitation's "seen" report. Requirement only, not built: see SPEC.md §13 and Phase T. Keys `App__TurnstileSiteKey` / `App__TurnstileSecretKey`, both empty = off.
+- [x] **Turnstile** (Cloudflare) on the public login pages and on the invitation's "seen" report (SPEC.md §13, Phase T). Keys `App__TurnstileSiteKey` / `App__TurnstileSecretKey`, both empty = off. Live check on the real domain still to do.
 - [x] Live SMS length/credit counter in the event-settings template boxes, driven by the active provider's cost rule. (WhatsApp share link is out of scope.)
 
 ## Commands
