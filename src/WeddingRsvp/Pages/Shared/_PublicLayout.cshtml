@@ -5,6 +5,8 @@
     var accent = ViewData["Accent"] as string ?? "#2E5E4E";
     var dark = ViewData["Dark"] as bool? ?? false;
     var bgImage = ViewData["BgImage"] as string;
+    // Text on accent-coloured buttons flips by luminance, like the page text does.
+    var onAccent = HexColor.IsDark(accent) ? "#fff" : "#1E2321";
 }
 <!DOCTYPE html>
 <html lang="@lang" dir="@(lang == "en" ? "ltr" : "rtl")">
@@ -18,7 +20,7 @@
     <link rel="stylesheet" href="~/css/public.css" asp-append-version="true" />
 </head>
 @* bg/accent come from HexColor-validated values only; bgImage is a server-built path. *@
-<body class="@(dark ? "dark" : "")" style="--bg: @bg; --accent: @accent;@(bgImage is null ? "" : $" --bg-image: url('{bgImage}');")">
+<body class="@(dark ? "dark" : "")" style="--bg: @bg; --accent: @accent; --on-accent: @onAccent;@(bgImage is null ? "" : $" --bg-image: url('{bgImage}');")">
     @RenderBody()
 </body>
 </html>

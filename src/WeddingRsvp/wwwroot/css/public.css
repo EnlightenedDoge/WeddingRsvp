@@ -10,9 +10,9 @@ a { color: inherit; text-decoration: none; }
 button, input { font: inherit; }
 .wrap { max-width: 1040px; margin-inline: auto; padding: 16px 16px 40px; display: flex; flex-direction: column; gap: 20px; }
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.top .hello { color: var(--muted); }
+.top .hello { color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
 .top .hello b { color: var(--ink); }
-.toggle { display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: rgba(30,35,33,.08); }
+.toggle { flex: none; display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: rgba(30,35,33,.08); }
 .dark .toggle { background: rgba(255,255,255,.16); }
 .toggle a { min-width: 44px; min-height: 40px; padding: 0 12px; display: grid; place-items: center; border-radius: 9px; font-weight: 500; color: var(--muted); }
 .dark .toggle a { color: #E2E7E4; }
@@ -29,17 +29,17 @@ button, input { font: inherit; }
 .noimage hr { width: 40px; border: 0; border-top: 1px solid #C9BE9F; margin: 0; }
 .jump { display: flex; position: sticky; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); height: 0; justify-content: center; z-index: 2; }
 .jump a { transform: translateY(-100%); display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 20px;
-  border-radius: 24px; background: var(--accent); color: #fff; font-weight: 700; box-shadow: 0 6px 18px rgba(30,35,33,.28); }
+  border-radius: 24px; background: var(--accent); color: var(--on-accent, #fff); font-weight: 700; box-shadow: 0 6px 18px rgba(30,35,33,.28); }
 @media (min-width: 900px) { .jump { display: none; } }
 h1 { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
 .when { margin-block-start: 6px; color: var(--ink2); }
 .where { color: var(--muted); }
-.card { padding: 20px; border-radius: 16px; color: #1E2321; background: #fff; border: 1px solid var(--card-line); display: flex; flex-direction: column; gap: 16px; }
+.card { --ink: #1E2321; --ink2: #3C4642; --muted: #5E6663; padding: 20px; border-radius: 16px; color: #1E2321; background: #fff; border: 1px solid var(--card-line); display: flex; flex-direction: column; gap: 16px; }
 .card h2 { margin: 0; font-size: 20px; font-weight: 700; }
 .card .hint { color: var(--muted); font-size: 14px; margin-block-start: 2px; }
 .card.notice { background: #ECEAE3; border-color: transparent; gap: 4px; }
 .card.saved { align-items: center; text-align: center; gap: 10px; padding: 22px 20px; }
-.tick { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; }
+.tick { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: var(--on-accent, #fff); display: grid; place-items: center; }
 .tick.no { background: #6B7571; }
 .saved b { font-size: 20px; }
 .summary { padding: 10px 14px; border-radius: 10px; background: #E6F1EC; color: #1F4D3E; font-weight: 500; }
@@ -55,11 +55,11 @@ h1 { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.25; overflow-w
 .chip { position: relative; min-width: 56px; min-height: 56px; display: grid; place-items: center; border-radius: 14px; cursor: pointer;
   font-size: 20px; font-weight: 700; background: #fff; border: 1px solid #CBD3CF; }
 .chip input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
-.chip:has(input:checked) { background: var(--accent); color: #fff; border: 2px solid var(--accent); }
+.chip:has(input:checked) { background: var(--accent); color: var(--on-accent, #fff); border: 2px solid var(--accent); }
 .chip:has(input:focus-visible), .choice:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
 .submit { position: sticky; bottom: 0; z-index: 1; margin: 0 -20px -20px; padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
   background: #fff; border-top: 1px solid #ECEFEC; border-radius: 0 0 16px 16px; }
-.submit button { width: 100%; min-height: 56px; border-radius: 14px; border: 0; background: var(--accent); color: #fff; font-size: 18px; font-weight: 700; cursor: pointer; }
+.submit button { width: 100%; min-height: 56px; border-radius: 14px; border: 0; background: var(--accent); color: var(--on-accent, #fff); font-size: 18px; font-weight: 700; cursor: pointer; }
 .links { display: flex; flex-direction: column; gap: 10px; }
 .links a { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; border-radius: 14px; background: #fff; border: 1px solid var(--card-line); color: #1E2321; font-weight: 500; }
 .links svg { stroke: var(--accent); flex: none; }
