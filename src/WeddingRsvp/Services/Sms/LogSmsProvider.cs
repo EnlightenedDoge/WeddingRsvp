@@ -11,5 +11,8 @@ public sealed class LogSmsProvider(ILogger<LogSmsProvider> log) : ISmsProvider
         return Task.FromResult(SmsSendResult.Ok("log-" + Guid.NewGuid().ToString("N")[..12]));
     }
 
+    /// <summary>Dev provider: plain network segments (UCS-2 70/67, GSM-7 160/153).</summary>
+    public SmsCostRule CostRule(bool unicode) => unicode ? new(70, 67) : new(160, 153);
+
     public Task<int?> GetBalanceAsync(CancellationToken ct) => Task.FromResult<int?>(null);
 }

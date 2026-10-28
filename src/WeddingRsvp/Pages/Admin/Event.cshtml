@@ -4,9 +4,17 @@
 @{
     ViewData["Title"] = Ui.T("פרטי האירוע", "Event details");
     var s = Model.Settings;
-    string SegText(SegmentInfo i) => Ui.IsHebrew
-        ? $"{i.Length} תווים · {i.Segments} מקטעים"
-        : $"{i.Length} characters · {i.Segments} segment{(i.Segments == 1 ? "" : "s")}";
+    // What a message costs in credits, by the active provider's own rule. An unverified rule is shown as "about".
+    var ruleU = Model.CostRule(true);
+    var ruleG = Model.CostRule(false);
+    string SegText(SegmentInfo i)
+    {
+        var rule = Model.CostRule(i.Unicode);
+        var c = rule.Credits(i.Length);
+        return Ui.IsHebrew
+            ? $"{i.Length} תווים · {(rule.Estimated ? "כ-" : "")}{c} {(c == 1 ? "קרדיט" : "קרדיטים")}"
+            : $"{i.Length} characters · {(rule.Estimated ? "about " : "")}{c} credit{(c == 1 ? "" : "s")}";
+    }
     var presets = new[] { "#FFFFFF", "#F6F1E7", "#FBE9E7", "#E7F0EC", "#E8EEF6", "#1B2A2F", "#2B2237" };
 }
 <header class="page-head">
@@ -57,20 +65,21 @@
 <section class="card">
     <h2>@Ui.T("ההודעות", "Messages")</h2>
     <p class="muted">@Ui.T("אפשר להשתמש ב:", "You can use:") <code class="ltr">@MessageTemplates.Placeholders</code>.
-        @Ui.T("כל עברית בהודעה מגבילה כל מקטע ל-70 תווים (באנגלית בלבד: 160).", "Any Hebrew makes each segment 70 characters (English only: 160).")</p>
+        @Ui.T($"הודעה עד {ruleU.SingleLimit} תווים (עברית) עולה קרדיט אחד, וכל {ruleU.PartLimit} תווים נוספים עולים קרדיט נוסף. באנגלית בלבד: {ruleG.SingleLimit} ו-{ruleG.PartLimit}. הקישור נספר כחלק מההודעה.",
+            $"A message costs 1 credit up to {ruleU.SingleLimit} characters (Hebrew), plus 1 for each further {ruleU.PartLimit}. English only: {ruleG.SingleLimit} and {ruleG.PartLimit}. The link counts as part of the message.")</p>
     <label class="field"><span>@Ui.T("שם השולח", "Sender name")</span><input asp-for="Settings.SmsSenderName" class="ltr" maxlength="11" /></label>
     <div class="fields">
         <div>
             <h3>עברית</h3>
-            <label class="field"><span>@Ui.T("הזמנה", "Invitation")</span><textarea asp-for="Settings.InviteTemplate" rows="3"></textarea><small>@SegText(Model.InviteSegments)</small></label>
-            <label class="field"><span>@Ui.T("תזכורת", "Reminder")</span><textarea asp-for="Settings.ReminderTemplate" rows="3"></textarea><small>@SegText(Model.ReminderSegments)</small></label>
-            <label class="field"><span>@Ui.T("תודה", "Thank-you")</span><textarea asp-for="Settings.ThankYouTemplate" rows="2"></textarea><small>@SegText(Model.ThankYouSegments)</small></label>
+            <label class="field"><span>@Ui.T("הזמנה", "Invitation")</span><textarea asp-for="Settings.InviteTemplate" data-count="he" rows="3"></textarea><small>@SegText(Model.InviteSegments)</small></label>
+            <label class="field"><span>@Ui.T("תזכורת", "Reminder")</span><textarea asp-for="Settings.ReminderTemplate" data-count="he" rows="3"></textarea><small>@SegText(Model.ReminderSegments)</small></label>
+            <label class="field"><span>@Ui.T("תודה", "Thank-you")</span><textarea asp-for="Settings.ThankYouTemplate" data-count="he" rows="2"></textarea><small>@SegText(Model.ThankYouSegments)</small></label>
         </div>
         <div>
             <h3>English</h3>
-            <label class="field"><span>@Ui.T("הזמנה", "Invitation")</span><textarea asp-for="Settings.InviteTemplateEn" rows="3" class="ltr"></textarea><small>@SegText(Model.InviteSegmentsEn)</small></label>
-            <label class="field"><span>@Ui.T("תזכורת", "Reminder")</span><textarea asp-for="Settings.ReminderTemplateEn" rows="3" class="ltr"></textarea><small>@SegText(Model.ReminderSegmentsEn)</small></label>
-            <label class="field"><span>@Ui.T("תודה", "Thank-you")</span><textarea asp-for="Settings.ThankYouTemplateEn" rows="2" class="ltr"></textarea><small>@SegText(Model.ThankYouSegmentsEn)</small></label>
+            <label class="field"><span>@Ui.T("הזמנה", "Invitation")</span><textarea asp-for="Settings.InviteTemplateEn" data-count="en" rows="3" class="ltr"></textarea><small>@SegText(Model.InviteSegmentsEn)</small></label>
+            <label class="field"><span>@Ui.T("תזכורת", "Reminder")</span><textarea asp-for="Settings.ReminderTemplateEn" data-count="en" rows="3" class="ltr"></textarea><small>@SegText(Model.ReminderSegmentsEn)</small></label>
+            <label class="field"><span>@Ui.T("תודה", "Thank-you")</span><textarea asp-for="Settings.ThankYouTemplateEn" data-count="en" rows="2" class="ltr"></textarea><small>@SegText(Model.ThankYouSegmentsEn)</small></label>
         </div>
     </div>
     <h3>@Ui.T("תצוגה מקדימה של ההזמנה", "Invitation preview")</h3>
@@ -127,6 +136,25 @@
 </section>
 
 <script>
+    // Live length and credit count while typing, using the active provider's rule (SmsCostRule), not a hardcoded one.
+    (function () {
+        var rules = { u: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { single = ruleU.SingleLimit, part = ruleU.PartLimit, est = ruleU.Estimated })),
+                      g: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { single = ruleG.SingleLimit, part = ruleG.PartLimit, est = ruleG.Estimated })) };
+        var samples = { he: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleHe)), en: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SampleEn)) };
+        var text = { chars: '@Ui.T("תווים", "characters")', one: '@Ui.T("קרדיט", "credit")', many: '@Ui.T("קרדיטים", "credits")', about: '@Ui.T("כ-", "about ")' };
+        function update(area) {
+            var s = samples[area.dataset.count];
+            var rendered = area.value.split('{name}').join(s.name).split('{couple}').join(s.couple).split('{link}').join(s.link)
+                .split('{date}').join(s.date).split('{venue}').join(s.venue).trim();
+            var len = rendered.length;
+            var unicode = /[^\x00-\x7F]/.test(rendered); // any non-ASCII is treated as UCS-2 (a safe over-estimate for accented Latin)
+            var r = unicode ? rules.u : rules.g;
+            var credits = len <= r.single ? 1 : 1 + Math.ceil((len - r.single) / r.part);
+            area.parentElement.querySelector('small').textContent =
+                len + ' ' + text.chars + ' · ' + (r.est ? text.about : '') + credits + ' ' + (credits === 1 ? text.one : text.many);
+        }
+        document.querySelectorAll('textarea[data-count]').forEach(function (a) { a.addEventListener('input', function () { update(a); }); });
+    })();
     document.querySelectorAll('.swatch').forEach(function (b) {
         b.addEventListener('click', function () { document.getElementById(b.dataset.target).value = b.dataset.color; });
     });

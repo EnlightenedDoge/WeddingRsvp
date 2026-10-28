@@ -10,9 +10,12 @@ namespace WeddingRsvp.Services.Sms;
 /// SMS4FREE (https://sms4free.co.il/docs/otp-api.html). One recipient per request. The API returns an accepted count,
 /// not a message id, so ProviderMessageId stays null.
 /// </summary>
-public sealed class Sms4FreeProvider(HttpClient http, IOptions<SmsOptions> options) : ISmsProvider
+public sealed class Sms4FreeProvider(HttpClient http, IOptions<SmsOptions> options, IOptions<AppOptions> app) : ISmsProvider
 {
     public string Name => "Sms4Free";
+
+    /// <summary>1 credit up to 134 characters, +1 per further 67. Confirmed live for Hebrew; GSM-7 text is still unverified.</summary>
+    public SmsCostRule CostRule(bool unicode) => new(134, 67, Estimated: !unicode);
 
     public async Task<SmsSendResult> SendAsync(SmsMessage m, CancellationToken ct)
     {
@@ -20,7 +23,17 @@ public sealed class Sms4FreeProvider(HttpClient http, IOptions<SmsOptions> optio
             return SmsSendResult.Rejected("Non-Israeli number: send manually");
 
         var o = options.Value;
-        var body = new { key = o.ApiKey, user = o.ApiUser, pass = o.ApiPassword, sender = m.SenderName ?? "", recipient, msg = m.Body };
+        var body = new Dictionary<string, object?>
+        {
+            ["key"] = o.ApiKey, ["user"] = o.ApiUser, ["pass"] = o.ApiPassword,
+            ["sender"] = m.SenderName ?? "", ["recipient"] = recipient, ["msg"] = m.Body,
+        };
+        // Delivery reports: SMS4FREE POSTs (to, status, msgId) to returnUrl; usermsgid is the id it echoes back as msgId.
+        if (m.ClientMessageId is not null && DeliveryUrl(app.Value) is { } returnUrl)
+        {
+            body["usermsgid"] = m.ClientMessageId;
+            body["returnUrl"] = returnUrl;
+        }
         try
         {
             using var res = await http.PostAsJsonAsync(o.ApiUrl, body, ct);
@@ -54,6 +67,16 @@ public sealed class Sms4FreeProvider(HttpClient http, IOptions<SmsOptions> optio
             return null;
         }
     }
+
+    /// <summary>
+    /// Where SMS4FREE should send delivery reports. Null (reports off) until a webhook secret is configured and the public
+    /// base URL is a real, non-local address, because the provider has to be able to reach it.
+    /// </summary>
+    public static string? DeliveryUrl(AppOptions app) =>
+        !string.IsNullOrEmpty(app.DeliveryWebhookSecret)
+        && Uri.TryCreate(app.PublicBaseUrl, UriKind.Absolute, out var u) && !u.IsLoopback
+            ? app.PublicBaseUrl.TrimEnd('/') + "/webhooks/sms-delivery/" + Uri.EscapeDataString(app.DeliveryWebhookSecret)
+            : null;
 
     /// <summary>Maps the API's status codes (see the docs page).</summary>
     public static SmsSendResult Classify(int status, string? message)

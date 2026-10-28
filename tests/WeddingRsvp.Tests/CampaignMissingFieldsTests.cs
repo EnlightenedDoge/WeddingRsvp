@@ -30,7 +30,7 @@ public sealed class CampaignMissingFieldsTests : IDisposable
         _settings = new SettingsService(_db, tenant);
         var clock = new IsraelClock(TimeProvider.System);
         _campaign = new CampaignService(_db, _settings, clock, Microsoft.Extensions.Options.Options.Create(new AppOptions()),
-            NullLogger<CampaignService>.Instance);
+            new WeddingRsvp.Services.Sms.LogSmsProvider(NullLogger<WeddingRsvp.Services.Sms.LogSmsProvider>.Instance), NullLogger<CampaignService>.Instance);
 
         _db.Guests.Add(new Guest { Name = "אורח", PhoneRaw = "050-1234567", PhoneE164 = "+972501234567", Token = "AbCdEfGhJk" });
         _db.SaveChanges();

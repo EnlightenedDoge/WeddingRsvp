@@ -24,10 +24,4 @@ public static class SmsSegments
         var l = text.Length; // UTF-16 code units == UCS-2 units
         return new(l <= 70 ? 1 : (int)Math.Ceiling(l / 67.0), true, l);
     }
-
-    /// <summary>
-    /// What SMS4FREE bills for a message: 1 up to 134 characters, +1 for each further 67. Unofficial for
-    /// GSM-7 bodies; verify with a balance diff on a live test.
-    /// </summary>
-    public static int Credits(string text) => text.Length <= 134 ? 1 : 1 + (int)Math.Ceiling((text.Length - 134) / 67.0);
 }

@@ -21,6 +21,8 @@ See `HANDOFF.md` for session context, deferred work, run recipes and pitfalls.
   couple/site/sign-in page bilingual, "open as couple" (cookie re-issued with `couple_id` + `acting_as_couple`, banner,
   audited, account page blocked while acting), guest portal (`Rsvp.cshtml`, `public.css`, he/en toggle, couple-chosen look),
   Event page with language mode, per-language templates/images and page look. Language mode renders SMS via `MessageTemplates.Body`.
+- **Delivery signal:** message status goes Sent -> Delivered (SMS4FREE delivery report via `/webhooks/sms-delivery/{secret}`, `DeliveryReports`) -> Opened (guest opened the link, `RsvpService.OpenAsync`; also implies delivered). Reports need `App__DeliveryWebhookSecret` and a public base URL. Verified live 2026-10-28: the callback `msgId` echoes our `usermsgid`.
+- **Docker:** `docker-compose.yml` publishes the ports (host ports, bind address and data path come from `.env`); `docker-compose.npm.yml` is an optional shared-network override. Data-protection keys persist in `{DataDir}/keys`. See README "Deploy".
 - **SMS provider layer built (2026-10-28):** `ISmsProvider` + `Log`/`Sms4Free` providers (`Sms:Provider`), failure kinds, persisted circuit
   breaker (`PlatformState`, `/admin/site/provider`, banner), per-couple allocation ledger (`SmsAllocationEntry`, card on the couple page,
   couples start at 0). Needs a fresh DB. Live-tested 2026-10-28: billing matches 1 credit up to 134 chars, +1 per 67 (138 chars = 2, 62 = 1, 163 = 2); sender name `Invitation` accepted.
@@ -68,7 +70,7 @@ non-responders, dashboard "X of Y", thank-you the day after.
 - `Services/MessagingWorker` — BackgroundService tick: `PlanAsync()` then `DispatchAsync()`.
 - `Services/MessageTemplates` — placeholders `{name} {couple} {link} {date} {venue}`; `MissingFields()` reports
   event-level placeholders a template uses but that have no value yet.
-- `Services/Sms/ISmsSender` — `LogSmsProvider` (dev) and `Sms4FreeProvider`.
+- `Services/Sms/ISmsProvider` — `LogSmsProvider` (dev) and `Sms4FreeProvider`. **Character limits and credit cost are per provider**: `ISmsProvider.CostRule(unicode)` returns an `SmsCostRule` (single limit, part limit, estimated flag); use `provider.Credits(text)`, never a hardcoded 134/67 (dispatcher, `CampaignService.InviteCostAsync` and the Event page counter all do).
 - Two Kestrel ports: **8080 public**, **8081 admin**. Middleware in Program.cs returns 404 for `/admin*`
   on the public port.
 
@@ -113,7 +115,7 @@ Proposed design, confirm open decisions in SPEC.md §12 before building:
 - Reminders are never sent to someone who already answered (cancelled at submit time **and** re-checked at dispatch).
 - **Provider outages never lose or double-send:** an `AccountLevel` failure leaves the message Queued (no attempt
   consumed); an `Unknown` outcome (timeout) is never auto-retried.
-- Nothing is sent outside `SendingWindow` (Israel time: 09–21, Friday until 13, never Saturday) or while `SendingPaused`.
+- Nothing is sent outside `SendingWindow` (Israel time: 09–21, Friday and the eve of a yom tov until 13, never Saturday or a yom tov; see `JewishHolidays`) or while `SendingPaused`.
 - **Message fields:** nothing about a couple is hardcoded or defaulted (`CoupleNames`/`Title` default to empty,
   `StartsAtLocal`/`EndsAtLocal` are nullable). No invitation, reminder or thank-you is queued while a placeholder
   its template uses (`{couple}`, `{date}`, `{venue}`) has no value. Enforced in `CampaignService` (not just the UI).
@@ -201,9 +203,8 @@ Don't move logic into views; if a design needs data the model doesn't expose, ad
 - [x] SMS provider layer, `Sms4FreeProvider` and per-couple allocations (live-tested 2026-10-28).
 - [x] Couple language mode + per-language images/templates + guest-page toggle (SPEC.md §11).
 - [x] "Delete all information" + audit log + site-admin TOTP are built.
-- [ ] Jewish holidays aren't in `SendingWindow`; couples use the pause switch. Could add a holiday list.
-- [ ] Optional: "send me this on WhatsApp" share link on the guest page.
-- [ ] Optional: live SMS segment counter in the event-settings textareas (server-side count exists).
+- [x] Jewish yom tov days are in `SendingWindow` (computed from the Hebrew calendar). Other special days: the pause switch.
+- [x] Live SMS length/credit counter in the event-settings template boxes, driven by the active provider's cost rule. (WhatsApp share link is out of scope.)
 
 ## Commands
 

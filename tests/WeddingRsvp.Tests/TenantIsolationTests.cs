@@ -136,6 +136,7 @@ public sealed class TenantIsolationTests : IDisposable
 
         var campaign = new CampaignService(scoped, settings, new IsraelClock(TimeProvider.System),
             Microsoft.Extensions.Options.Options.Create(new WeddingRsvp.Options.AppOptions()),
+            new WeddingRsvp.Services.Sms.LogSmsProvider(NullLogger<WeddingRsvp.Services.Sms.LogSmsProvider>.Instance),
             NullLogger<CampaignService>.Instance);
         Assert.Equal(1, await campaign.QueueInvitesAsync());
 

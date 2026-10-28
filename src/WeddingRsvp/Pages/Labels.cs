@@ -35,14 +35,15 @@ public static class Labels
     {
         MessageStatus.Queued => T("בתור", "Queued"),
         MessageStatus.Sent => T("נשלח", "Sent"),
-        MessageStatus.Delivered => T("התקבל", "Delivered"),
+        MessageStatus.Delivered => T("נמסר", "Delivered"),
+        MessageStatus.Opened => T("נפתח", "Opened"),
         MessageStatus.Failed => T("נכשל", "Failed"),
         _ => T("בוטל", "Cancelled"),
     };
 
     public static string DeliveryPill(MessageStatus s) => s switch
     {
-        MessageStatus.Sent or MessageStatus.Delivered => "ok",
+        MessageStatus.Sent or MessageStatus.Delivered or MessageStatus.Opened => "ok",
         MessageStatus.Failed => "no",
         MessageStatus.Queued => "wait",
         _ => "",

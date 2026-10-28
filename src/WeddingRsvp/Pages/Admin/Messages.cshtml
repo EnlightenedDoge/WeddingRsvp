@@ -17,7 +17,7 @@
 
 @if (!Model.Event.SendingPaused && !Model.InSendingWindow)
 {
-    <p class="banner">@Ui.T("מחוץ לשעות השליחה (לילה או שבת). הודעות בתור ייצאו כשהחלון ייפתח.", "Outside the sending hours (night or Saturday). Queued messages go out when the window opens.")</p>
+    <p class="banner">@Ui.T("מחוץ לשעות השליחה (לילה, שבת או חג). הודעות בתור ייצאו כשהחלון ייפתח.", "Outside the sending hours (night, Saturday or a holiday). Queued messages go out when the window opens.")</p>
 }
 
 @if (Model.Delayed)
@@ -80,7 +80,8 @@
     <div class="row" style="gap: 28px; margin-block-end: 8px">
         <div><b style="font-size: 26px">@C(MessageStatus.Queued)</b><div class="muted">@Ui.T("בתור", "Queued")</div></div>
         <div><b style="font-size: 26px">@C(MessageStatus.Sent)</b><div class="muted">@Ui.T("נשלחו", "Sent")</div></div>
-        <div><b style="font-size: 26px">@C(MessageStatus.Delivered)</b><div class="muted">@Ui.T("התקבלו", "Delivered")</div></div>
+        <div><b style="font-size: 26px">@C(MessageStatus.Delivered)</b><div class="muted" title="@Ui.T("הספק אישר שההודעה נמסרה", "The provider confirmed delivery")">@Ui.T("נמסרו", "Delivered")</div></div>
+        <div><b style="font-size: 26px">@C(MessageStatus.Opened)</b><div class="muted" title="@Ui.T("הקישור בהודעה נפתח", "The link in the message was opened")">@Ui.T("נפתחו", "Opened")</div></div>
         <div><b style="font-size: 26px; color: @(C(MessageStatus.Failed) > 0 ? "var(--danger)" : "inherit")">@C(MessageStatus.Failed)</b><div class="muted">@Ui.T("נכשלו", "Failed")</div></div>
         <div><b style="font-size: 26px">@C(MessageStatus.Cancelled)</b><div class="muted">@Ui.T("בוטלו", "Cancelled")</div></div>
     </div>

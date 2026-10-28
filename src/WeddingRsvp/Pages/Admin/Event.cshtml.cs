@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Options;
@@ -5,12 +6,13 @@ using WeddingRsvp.Data;
 using WeddingRsvp.Domain;
 using WeddingRsvp.Options;
 using WeddingRsvp.Services;
+using WeddingRsvp.Services.Sms;
 
 namespace WeddingRsvp.Pages.Admin;
 
 public sealed record ImageSlot(string Kind, string Title, bool Has, long? Ticks, string? Lang);
 
-public class EventModel(AppDbContext db, SettingsService settings, IsraelClock clock, IOptions<AppOptions> app, Ui ui) : PageModel
+public class EventModel(AppDbContext db, SettingsService settings, IsraelClock clock, IOptions<AppOptions> app, Ui ui, ISmsProvider sms) : PageModel
 {
     private static readonly string[] AllowedImageTypes = [".jpg", ".jpeg", ".png", ".webp"];
 
@@ -26,6 +28,11 @@ public class EventModel(AppDbContext db, SettingsService settings, IsraelClock c
     /// <summary>What the invitation SMS looks like right now (empty fields shown as blanks), for the preview.</summary>
     public string PreviewBody { get; private set; } = "";
     public SegmentInfo PreviewSegments { get; private set; }
+    /// <summary>Sample values for each placeholder, per language, so the page can count a template's rendered length while typing.</summary>
+    /// <summary>How the active SMS provider bills a message (differs per provider and per encoding).</summary>
+    public SmsCostRule CostRule(bool unicode) => sms.CostRule(unicode);
+    public object SampleHe { get; private set; } = new();
+    public object SampleEn { get; private set; } = new();
     public SegmentInfo InviteSegments { get; private set; }
     public SegmentInfo ReminderSegments { get; private set; }
     public SegmentInfo ThankYouSegments { get; private set; }
@@ -126,5 +133,15 @@ public class EventModel(AppDbContext db, SettingsService settings, IsraelClock c
         PreviewBody = MessageTemplates.Body(s, MessageKind.Invite,
             s.LanguageMode == LanguageMode.EnglishOnly ? "Cohen family" : "משפחת ישראלי", sampleLink);
         PreviewSegments = SmsSegments.Count(PreviewBody);
+        object Sample(string name, bool en) => new
+        {
+            name,
+            couple = MessageTemplates.CoupleFor(s, en),
+            date = s.StartsAtLocal?.ToString("dd/MM", CultureInfo.InvariantCulture) ?? "",
+            venue = MessageTemplates.VenueFor(s, en),
+            link = sampleLink,
+        };
+        SampleHe = Sample("משפחת ישראלי", false);
+        SampleEn = Sample("Cohen family", true);
     }
 }

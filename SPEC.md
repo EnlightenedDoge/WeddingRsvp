@@ -207,7 +207,7 @@ The provider may ask for ID verification after a purchase (Ministry of Communica
 
 **A. Interchangeable providers.** The dispatcher talks only to a provider-neutral interface; SMS4FREE is one
 implementation. Provider choice and credentials are configuration, not code.
-- `ISmsProvider`: `Name`, `SendAsync(SmsMessage)` → `SmsSendResult`, optional `GetBalanceAsync()`,
+- `ISmsProvider`: `Name`, `CostRule(unicode)` (per-provider character limits and credit cost), `SendAsync(SmsMessage)` → `SmsSendResult`, optional `GetBalanceAsync()`,
   optional `ParseDeliveryReport(...)`. `ISmsSender` today becomes this. A registry resolves the active provider
   from `Sms:Provider` (`Log`, `Sms4Free`, future ones). Adding a provider = one class + one config value.
 - Provider-specific details (field names, phone format like `05…`, status codes) stay inside the provider class.
@@ -231,7 +231,19 @@ separately in our ledger, so the admin can grant more allocation than the provid
 is what makes that safe.
 Tests: a fake provider returning each failure kind; assert queue state, attempts, ledger, breaker.
 
-### Delivery-report endpoint
+### Delivery signal (decision, 2026-10-28): both "Delivered" and "Opened"
+
+A message moves Sent -> Delivered -> Opened and only forward:
+- **Delivered**: SMS4FREE's delivery report. Every send includes `usermsgid` (our `MessageLog.Id`) and `returnUrl`
+  (`<PublicBaseUrl>/webhooks/sms-delivery/<App__DeliveryWebhookSecret>`); the provider POSTs `to`, `status`, `msgId` back
+  (status 1 = delivered, 5 = not delivered, 6 = kosher voice call). Not delivered -> `Failed`. Off until the secret is set and the
+  public URL is not localhost. `DeliveryReports.ApplyAsync` matches on `msgId` and checks the phone's last 9 digits.
+- **Opened**: the guest opened the personal link (`RsvpService.OpenAsync`). It also proves delivery, so `DeliveredAtUtc` is filled
+  if no report came first. Link-preview bots and scanners can open the link, so "Opened" can over-report.
+- **Verified live (2026-10-28):** `msgId` in the callback echoes our `usermsgid`. A real send reached Delivered about two minutes
+  later through the public domain. An unmatched report is still logged as a warning with its status and phone.
+
+### Delivery-report endpoint (`/webhooks/sms-delivery/{secret}`)
 
 Keep `/webhooks/sms-delivery/{secret}` disabled (empty secret) until support confirms DLR availability and
 payload format. If DLRs exist but can't identify individual messages, drop the endpoint.

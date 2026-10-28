@@ -39,9 +39,9 @@ public static class MessageTemplates
     public static string Body(EventSettings s, MessageKind kind, string guestName, string link) =>
         string.Join("\n", ActiveTemplates(s, kind).Select(t => Render(t.Template, guestName, s, link, t.English)));
 
-    private static string CoupleFor(EventSettings s, bool en) =>
+    public static string CoupleFor(EventSettings s, bool en) =>
         en && !string.IsNullOrWhiteSpace(s.CoupleNamesEn) ? s.CoupleNamesEn : s.CoupleNames;
-    private static string VenueFor(EventSettings s, bool en) =>
+    public static string VenueFor(EventSettings s, bool en) =>
         en && !string.IsNullOrWhiteSpace(s.VenueNameEn) ? s.VenueNameEn : s.VenueName;
 
     public static string Render(string template, string guestName, EventSettings s, string link, bool english = false) =>

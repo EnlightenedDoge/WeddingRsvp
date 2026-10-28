@@ -15,7 +15,7 @@ namespace WeddingRsvp.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "8.0.10");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
@@ -463,6 +463,9 @@ namespace WeddingRsvp.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("NotBeforeUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("OpenedAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProviderMessageId")

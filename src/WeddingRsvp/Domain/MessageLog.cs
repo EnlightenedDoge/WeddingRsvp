@@ -20,7 +20,10 @@ public class MessageLog : ITenantOwned
     /// <summary>Earliest time the dispatcher may send it (used for retry backoff).</summary>
     public DateTime NotBeforeUtc { get; set; }
     public DateTime? SentAtUtc { get; set; }
+    /// <summary>When the provider reported delivery, or the first link open if that came first (an open implies delivery).</summary>
     public DateTime? DeliveredAtUtc { get; set; }
+    /// <summary>First time the guest opened the personal link after this message was sent.</summary>
+    public DateTime? OpenedAtUtc { get; set; }
 
     public int Attempts { get; set; }
     public string? ProviderMessageId { get; set; }

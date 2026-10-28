@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -40,6 +41,11 @@ Directory.CreateDirectory(Path.Combine(dataDir, "media"));
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseSqlite($"Data Source={Path.Combine(dataDir, "rsvp.db")}"));
 
+// Keep the data-protection keys on the data volume: sessions, antiforgery and set-password links survive a container recreate.
+builder.Services.AddDataProtection()
+    .SetApplicationName("WeddingRsvp")
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataDir, "keys")));
+
 // --- App services
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IsraelClock>();
@@ -66,6 +72,7 @@ else if (smsProvider.Equals("Log", StringComparison.OrdinalIgnoreCase))
 else
     throw new InvalidOperationException($"Unknown Sms:Provider '{smsProvider}' (expected Log or Sms4Free).");
 builder.Services.AddScoped<ProviderCircuitBreaker>();
+builder.Services.AddScoped<DeliveryReports>();
 builder.Services.AddScoped<AllocationService>();
 
 // --- Identity: the data here is very sensitive, so accounts are locked down.
@@ -295,33 +302,20 @@ app.MapGet("/lang/{code}", (string code, string? returnUrl, HttpContext ctx) =>
 
 app.MapGet("/healthz", () => Results.Text("ok"));
 
-// --- SMS delivery reports
-// TODO: adapt the payload parsing to the chosen provider. Configure the provider's callback URL as
-// https://rsvp.example.com/webhooks/sms-delivery/{App:DeliveryWebhookSecret}
+// --- SMS delivery reports (SMS4FREE: POST application/x-www-form-urlencoded with to, status, msgId)
+// Configure by setting App__DeliveryWebhookSecret; the provider then gets https://<public host>/webhooks/sms-delivery/<secret>
+// as returnUrl on every send. The form is read by hand (no [FromForm]) so the provider's POST isn't subject to antiforgery.
 app.MapPost("/webhooks/sms-delivery/{secret}", async (
-    string secret, DeliveryReport report, IOptions<AppOptions> o, AppDbContext db, IsraelClock clock) =>
+    string secret, HttpContext ctx, IOptions<AppOptions> o, DeliveryReports reports) =>
 {
     var expected = o.Value.DeliveryWebhookSecret;
     if (string.IsNullOrEmpty(expected) ||
         !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(expected)))
         return Results.NotFound();
 
-    // Provider callbacks carry no couple; the provider's message id decides which row this is.
-    var m = await db.Messages.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.ProviderMessageId == report.MessageId);
-    if (m is null) return Results.Ok();
-
-    if (report.Delivered)
-    {
-        m.Status = MessageStatus.Delivered;
-        m.DeliveredAtUtc = clock.UtcNow;
-    }
-    else
-    {
-        m.Status = MessageStatus.Failed;
-        m.Error = report.Error ?? "Not delivered";
-    }
-    await db.SaveChangesAsync();
-    return Results.Ok();
+    var form = await ctx.Request.ReadFormAsync(ctx.RequestAborted);
+    await reports.ApplyAsync(form["msgId"], form["to"], form["status"], ctx.RequestAborted);
+    return Results.Ok(); // always 200 so the provider doesn't retry or learn which ids exist
 });
 
 // --- Admin endpoints (port-guarded by the /admin prefix)
@@ -367,5 +361,3 @@ internal static class MediaPaths
         Path.Combine(dataDir, "media", coupleId.ToString(), Path.GetFileName(file));
 }
 
-/// <summary>Placeholder delivery-report shape; replace with the provider's real payload.</summary>
-internal sealed record DeliveryReport(string MessageId, bool Delivered, string? Error);

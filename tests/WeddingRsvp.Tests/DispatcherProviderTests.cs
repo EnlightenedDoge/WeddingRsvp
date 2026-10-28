@@ -25,6 +25,8 @@ public sealed class DispatcherProviderTests : IDisposable
         public Queue<SmsSendResult> Results { get; } = new();
         public int Calls { get; private set; }
         public string Name => "Fake";
+        public SmsCostRule Rule { get; set; } = new(134, 67);
+        public SmsCostRule CostRule(bool unicode) => Rule;
         public Task<SmsSendResult> SendAsync(SmsMessage message, CancellationToken ct)
         {
             Calls++;
@@ -154,6 +156,22 @@ public sealed class DispatcherProviderTests : IDisposable
         using (var db = As(_a, out var tenant))
             await Build(db, tenant, _provider).breaker.ResumeAsync();
         Assert.Equal(2, await RunAsync(_b));
+    }
+
+    [Fact]
+    public async Task Credits_debited_follow_the_active_providers_rule()
+    {
+        // A provider that bills 1 credit up to 5 characters, then 1 more per 4: "hi" is 1, a 20-char body is 1 + ceil(15/4) = 5.
+        _provider.Rule = new SmsCostRule(5, 4);
+        using (var db = As(_a))
+        {
+            db.Messages.RemoveRange(db.Messages);
+            db.Messages.Add(new MessageLog { Kind = MessageKind.Test, ToE164 = "+972501234567", Body = new string('x', 20) });
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(1, await RunAsync(_a));
+        using var check = As(_a);
+        Assert.Equal(10 - 5, await check.SmsAllocations.SumAsync(e => e.Delta));
     }
 
     [Fact]

@@ -41,14 +41,14 @@ public sealed class MessageDispatcher(
                 continue;
             }
 
-            var credits = SmsSegments.Credits(m.Body);
+            var credits = sender.Credits(m.Body); // each provider bills by its own rule
             if (credits > remaining) continue; // not enough allocation for this one; stays Queued
 
             m.Attempts++;
             SmsSendResult result;
             try
             {
-                result = await sender.SendAsync(new SmsMessage(m.ToE164, m.Body, NullIfEmpty(s.SmsSenderName)), ct);
+                result = await sender.SendAsync(new SmsMessage(m.ToE164, m.Body, NullIfEmpty(s.SmsSenderName), m.Id.ToString()), ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

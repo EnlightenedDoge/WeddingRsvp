@@ -23,11 +23,11 @@ link (`/{token}`) to a phone-first RSVP page. Hebrew RTL / English LTR throughou
    balance diff confirmed 62 chars = 1 credit, 138 = 2, 163 = 2; sender name `Invitation` accepted. One early 138-char message was accepted by
    the API but never received; later ones arrived (cause unknown: first send from a new sender name, a carrier filter or a delay).
    Recipients are now sent country code first (`+9725…`), not yet live-verified. Still open: English-only (GSM-7) credit count,
-   delivery reports (DLR) not built. Couples start with 0 allocation.
+   delivery reports (DLR) work live (verified 2026-10-28: callback `msgId` = our `usermsgid`; Delivered arrived ~2 min after sending). Turn on with `App__DeliveryWebhookSecret` + a public `App__PublicBaseUrl`. Opened links mark messages Opened. Couples start with 0 allocation.
 2. ~~First EF migration~~ done: `InitialCreate` (run `dotnet ef migrations add <Name> -p src/WeddingRsvp` for later schema changes).
 3. ~~TOTP banner, audit-log viewer~~ done (`/admin/site/audit`).
 4. Guest page visual QA done in headless Chromium (320/360/390, landscape); still unchecked: error/saved/closed states, background-photo variant, real iOS Safari.
-5. Jewish holidays in `SendingWindow`; optional WhatsApp share link; live SMS segment counter.
+5. Done: Jewish yom tov days in `SendingWindow`, live credit counter (per-provider cost rule). WhatsApp share link is out of scope.
 
 ## Decisions already made (don't re-ask)
 Identity cookie auth (data is very sensitive); no email provider (admin copies a set-password link); couples change

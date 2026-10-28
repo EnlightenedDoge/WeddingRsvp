@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using WeddingRsvp.Data;
 using WeddingRsvp.Domain;
 using WeddingRsvp.Options;
+using WeddingRsvp.Services.Sms;
 
 namespace WeddingRsvp.Services;
 
@@ -13,7 +14,7 @@ namespace WeddingRsvp.Services;
 /// </summary>
 public sealed class CampaignService(
     AppDbContext db, SettingsService settings, IsraelClock clock, IOptions<AppOptions> app,
-    ILogger<CampaignService> log)
+    ISmsProvider sms, ILogger<CampaignService> log)
 {
     /// <summary>
     /// Event details the given message template uses but the couple hasn't filled in yet, e.g. "{couple}".
@@ -55,7 +56,7 @@ public sealed class CampaignService(
             .Where(g => g.PhoneE164 != null && g.InviteSentAtUtc == null).ToListAsync(ct);
         var link = MessageTemplates.GuestLink(app.Value.PublicBaseUrl, "TESTTESTAB");
         var pending = guests.Where(g => !queued.Contains(g.Id)).ToList();
-        return (pending.Count, pending.Sum(g => SmsSegments.Credits(MessageTemplates.Body(s, MessageKind.Invite, g.Name, link))));
+        return (pending.Count, pending.Sum(g => sms.Credits(MessageTemplates.Body(s, MessageKind.Invite, g.Name, link))));
     }
 
     /// <summary>Queues (or re-queues) one guest's invitation, e.g. after fixing their number.</summary>

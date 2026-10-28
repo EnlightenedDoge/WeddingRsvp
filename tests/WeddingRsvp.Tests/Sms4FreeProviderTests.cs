@@ -24,11 +24,11 @@ public sealed class Sms4FreeProviderTests
     private static HttpResponseMessage Json(string body, HttpStatusCode code = HttpStatusCode.OK) =>
         new(code) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 
-    private static (Sms4FreeProvider p, Handler h) Make(Func<HttpRequestMessage, Task<HttpResponseMessage>> f)
+    private static (Sms4FreeProvider p, Handler h) Make(Func<HttpRequestMessage, Task<HttpResponseMessage>> f, AppOptions? app = null)
     {
         var h = new Handler(f);
         var opts = Microsoft.Extensions.Options.Options.Create(new SmsOptions { ApiUser = "0501111111", ApiPassword = "pw", ApiKey = "k" });
-        return (new Sms4FreeProvider(new HttpClient(h), opts), h);
+        return (new Sms4FreeProvider(new HttpClient(h), opts, Microsoft.Extensions.Options.Options.Create(app ?? new AppOptions())), h);
     }
 
     private static readonly SmsMessage Msg = new("+972501234567", "שלום", "DanaYossi");
@@ -46,6 +46,31 @@ public sealed class Sms4FreeProviderTests
         Assert.Equal("k", doc.GetProperty("key").GetString());
         Assert.Equal("0501111111", doc.GetProperty("user").GetString());
         Assert.Equal("pw", doc.GetProperty("pass").GetString());
+    }
+
+    [Fact]
+    public async Task Asks_for_delivery_reports_when_a_webhook_secret_and_public_url_are_set()
+    {
+        var app = new AppOptions { PublicBaseUrl = "https://example.com/", DeliveryWebhookSecret = "s3cret" };
+        var (p, h) = Make(_ => Task.FromResult(Json("""{"status":1,"message":""}""")), app);
+        await p.SendAsync(Msg with { ClientMessageId = "42" }, default);
+        var doc = JsonDocument.Parse(h.LastBody!).RootElement;
+        Assert.Equal("42", doc.GetProperty("usermsgid").GetString());
+        Assert.Equal("https://example.com/webhooks/sms-delivery/s3cret", doc.GetProperty("returnUrl").GetString());
+    }
+
+    [Theory]
+    [InlineData("https://example.com", "")]            // no secret
+    [InlineData("http://localhost:8080", "s3cret")]    // provider can't reach localhost
+    [InlineData("not a url", "s3cret")]
+    public async Task Does_not_ask_for_delivery_reports_without_a_reachable_callback(string baseUrl, string secret)
+    {
+        var (p, h) = Make(_ => Task.FromResult(Json("""{"status":1,"message":""}""")),
+            new AppOptions { PublicBaseUrl = baseUrl, DeliveryWebhookSecret = secret });
+        await p.SendAsync(Msg with { ClientMessageId = "42" }, default);
+        var doc = JsonDocument.Parse(h.LastBody!).RootElement;
+        Assert.False(doc.TryGetProperty("usermsgid", out _));
+        Assert.False(doc.TryGetProperty("returnUrl", out _));
     }
 
     [Theory]
@@ -106,6 +131,11 @@ public sealed class Sms4FreeProviderTests
 
     [Theory]
     [InlineData(1, 1)] [InlineData(134, 1)] [InlineData(135, 2)] [InlineData(201, 2)] [InlineData(202, 3)]
-    public void Credits_follow_the_134_plus_67_rule(int length, int credits) =>
-        Assert.Equal(credits, SmsSegments.Credits(new string('א', length)));
+    public void Credits_follow_the_134_plus_67_rule(int length, int credits)
+    {
+        var (p, _) = Make(_ => throw new InvalidOperationException());
+        Assert.Equal(credits, p.Credits(new string('א', length)));
+        Assert.False(p.CostRule(true).Estimated);  // confirmed live for Hebrew
+        Assert.True(p.CostRule(false).Estimated);  // GSM-7 not verified
+    }
 }

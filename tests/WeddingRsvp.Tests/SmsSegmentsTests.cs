@@ -1,3 +1,4 @@
+using WeddingRsvp.Services.Sms;
 using WeddingRsvp.Services;
 
 namespace WeddingRsvp.Tests;
@@ -19,5 +20,16 @@ public class SmsSegmentsTests
         Assert.Equal(1, r.Segments);
         Assert.Equal(2, SmsSegments.Count(new string('א', 71)).Segments);
         Assert.Equal(3, SmsSegments.Count(new string('א', 135)).Segments);
+    }
+
+    [Fact]
+    public void Each_provider_has_its_own_cost_rule()
+    {
+        var log = new WeddingRsvp.Services.Sms.LogSmsProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<WeddingRsvp.Services.Sms.LogSmsProvider>.Instance);
+        var hebrew139 = new string('א', 139);
+        Assert.Equal(3, log.Credits(hebrew139));      // network segments: 70, then 67 each
+        Assert.Equal(2, new WeddingRsvp.Services.Sms.SmsCostRule(134, 67).Credits(139)); // SMS4FREE-style rule on the same length
+        Assert.Equal(1, log.Credits(new string('a', 160)));
+        Assert.Equal(2, log.Credits(new string('a', 161)));
     }
 }

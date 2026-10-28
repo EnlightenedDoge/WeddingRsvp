@@ -22,13 +22,26 @@ public sealed class RsvpService(AppDbContext db, SettingsService settings, Israe
         return g;
     }
 
-    /// <summary>Loads the guest and records that the link was opened.</summary>
+    /// <summary>
+    /// Loads the guest and records that the link was opened. An open also proves the SMS arrived, so the guest's sent or
+    /// delivered messages become Opened (and Delivered if no provider report came first). Link-preview bots can trigger this too.
+    /// </summary>
     public async Task<Guest?> OpenAsync(string token, CancellationToken ct = default)
     {
         var g = await FindAsync(token, ct);
         if (g is null) return null;
         g.FirstOpenedAtUtc ??= clock.UtcNow;
         g.LastOpenedAtUtc = clock.UtcNow;
+        var arrived = await db.Messages
+            .Where(m => m.GuestId == g.Id && (m.Status == MessageStatus.Sent || m.Status == MessageStatus.Delivered)
+                        && m.Kind != MessageKind.Test)
+            .ToListAsync(ct);
+        foreach (var m in arrived)
+        {
+            m.Status = MessageStatus.Opened;
+            m.OpenedAtUtc ??= clock.UtcNow;
+            m.DeliveredAtUtc ??= clock.UtcNow;
+        }
         await db.SaveChangesAsync(ct);
         return g;
     }
