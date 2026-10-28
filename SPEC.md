@@ -346,6 +346,7 @@ validation error · RSVP closed · unknown link.
 - [x] Confirm `https://<public host>/admin/site/couples` → 404 and the site admin signs in only on the private port (checked through the domain)
 - [x] Register the DLR URL with SMS4FREE: automatic, sent as `returnUrl` on every send once `App__DeliveryWebhookSecret` is set
 - [ ] Back up `./data` (cron copy of `rsvp.db` + `media/`)
+- [ ] TrueNAS custom app: published image (GitHub Actions to ghcr.io), dataset owned by apps:apps, `deploy/truenas/wedding-rsvp.app.yaml`, nginx switched over (see `deploy/truenas/README.md`)
 
 ### Phase 4 — Go-live with the client
 - [ ] Client fills event details, uploads the invitation image, edits texts (check segment counts)

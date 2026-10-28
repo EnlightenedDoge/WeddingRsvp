@@ -1,0 +1,28 @@
+# TrueNAS Scale 24.10+ -> Apps -> Discover Apps -> Custom App -> "Install via YAML": paste this file and fill in the <placeholders>.
+# Steps and background: deploy/truenas/README.md. Never commit real values into this file in the repo.
+services:
+  wedding-rsvp:
+    # Published by .github/workflows/publish-image.yml. Pin a build with :sha-<short> instead of :latest if you want to roll back easily.
+    image: ghcr.io/<your-github-user-lowercase>/wedding-rsvp:latest
+    restart: unless-stopped
+    user: "568:568"            # the TrueNAS "apps" user; the dataset below must be owned by it
+    ports:
+      - "9080:8080"            # PUBLIC: guest pages and the couples' sign-in. Point the public nginx host here.
+      - "9081:8081"            # PRIVATE: site admin. LAN/VPN only, never expose it to the internet.
+    environment:
+      # --- required
+      App__PublicBaseUrl: https://<your-public-host>            # used in SMS links and set-password links
+      Sms__Provider: Sms4Free
+      Sms__ApiUser: <sms4free-registered-mobile>
+      Sms__ApiPassword: <sms4free-password>
+      Sms__ApiKey: <sms4free-api-key>
+      App__DeliveryWebhookSecret: <long-random-string>           # turns on delivery reports; empty = off
+      # --- first start only (empty database): creates the site admin, then REMOVE the password and redeploy
+      App__BootstrapAdminEmail: <your-email>
+      App__BootstrapAdminPassword: <at-least-10-characters>
+      # --- optional
+      App__AdminAllowPlainHttp: "true"                           # lets the private port serve sign-in over plain HTTP on your LAN
+      TZ: Asia/Jerusalem
+    volumes:
+      # A dataset on your pool, owned by apps:apps. Holds rsvp.db, media/ and keys/ (the session keys).
+      - /mnt/<pool>/<dataset>/wedding-rsvp:/data

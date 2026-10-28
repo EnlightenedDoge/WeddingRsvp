@@ -74,6 +74,9 @@ check only means that open is not counted. The widget's token must be for the ex
 
 Privacy: Cloudflare's script sees each visitor's IP address and browser details. The couple's account page says so.
 
+### TrueNAS Scale (24.10+) custom app
+A published image plus a ready YAML: see [`deploy/truenas/README.md`](deploy/truenas/README.md). GitHub Actions builds and publishes the image on every push to `main`.
+
 ## Using it (site admin) — planned
 
 1. Sign in at `/signin`, open **Couples**.
