@@ -27,6 +27,7 @@ See `HANDOFF.md` for session context, deferred work, run recipes and pitfalls.
   **before** any credential is looked at, refusals audited (`signin.failed` / `turnstile`) and never counted towards lockout; the guest page's invisible widget feeds the
   `/{token}/seen` report, which counts only when Cloudflare confirms (fails open for the guest). Strict on sign-in, lenient on "seen". On only when both keys are set.
   `scripts/check-turnstile.sh` validates the secret without printing it. `App__TurnstileVerifyUrl` is for tests only.
+- **Guest page preview (2026-10-29):** `/admin/preview` (couple session only) renders the real guest page (`Rsvp.cshtml` -> `Pages/Shared/_GuestPage.cshtml`) with a made-up guest; an answer is validated and shown back but never stored, no "seen" report, always open. Its media routes are `/admin/preview/{invitation,background,event.ics}`. Links on the Event and Messages pages.
 - **Docker:** `docker-compose.yml` publishes the ports (host ports, bind address and data path come from `.env`); `docker-compose.npm.yml` is an optional shared-network override. Data-protection keys persist in `{DataDir}/keys`. See README "Deploy".
 - **SMS provider layer built (2026-10-28):** `ISmsProvider` + `Log`/`Sms4Free` providers (`Sms:Provider`), failure kinds, persisted circuit
   breaker (`PlatformState`, `/admin/site/provider`, banner), per-couple allocation ledger (`SmsAllocationEntry`, card on the couple page,

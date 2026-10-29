@@ -136,6 +136,8 @@ builder.Services.AddRazorPages(o =>
     {
         o.Conventions.AuthorizeFolder("/Admin", "Couple");
         o.Conventions.AuthorizeFolder("/SiteAdmin", "SiteAdmin"); // routes are /admin/site/**
+        // The couple's preview of the guest page: the same page as /{token}, checked for a couple session inside the page.
+        o.Conventions.AddPageRoute("/Rsvp", "admin/preview");
     })
     // Empty form fields bind as null; don't treat every non-nullable string as [Required].
     .AddMvcOptions(o => o.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true);
@@ -293,6 +295,20 @@ app.MapGet("/{token:length(10)}/background", async (string token, RsvpService rs
     var s = await settings.GetAsync();
     return MediaFile(s.CoupleId, s.PageBackgroundImageFile);
 });
+
+// The couple's preview of the guest page (/admin/preview): the same files guests get, without a guest token.
+app.MapGet("/admin/preview/invitation", async (string? lang, SettingsService settings) =>
+    InvitationFile(await settings.GetAsync(), lang)).RequireAuthorization("Couple");
+app.MapGet("/admin/preview/background", async (SettingsService settings) =>
+{
+    var s = await settings.GetAsync();
+    return MediaFile(s.CoupleId, s.PageBackgroundImageFile);
+}).RequireAuthorization("Couple");
+app.MapGet("/admin/preview/event.ics", async (SettingsService settings, IsraelClock clock, IOptions<AppOptions> o) =>
+{
+    var ics = CalendarLinks.BuildIcs(await settings.GetAsync(), o.Value.PublicBaseUrl, clock.UtcNow);
+    return ics is null ? Results.NotFound() : Results.File(Encoding.UTF8.GetBytes(ics), "text/calendar; charset=utf-8", "wedding.ics");
+}).RequireAuthorization("Couple");
 
 // The couple's own preview of their uploaded image.
 app.MapGet("/admin/media/invitation", async (string? lang, SettingsService settings) =>

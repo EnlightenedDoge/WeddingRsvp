@@ -78,3 +78,6 @@ h1 { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.25; overflow-w
 .center { min-height: 100vh; min-height: 100svh; display: grid; place-items: center; padding: 24px 16px; }
 .center .card { width: min(420px, 100%); text-align: center; align-items: center; padding: 32px 24px; }
 .center .icon { width: 52px; height: 52px; border-radius: 50%; background: #ECEAE3; color: var(--muted); display: grid; place-items: center; }
+
+/* Couple's preview of the guest page */
+.preview-bar { background: #fff8d6; color: #4a3b00; border: 1px solid #e6d27a; border-radius: 10px; padding: 10px 14px; margin: 0 0 12px; font-size: 16px; text-align: center; }

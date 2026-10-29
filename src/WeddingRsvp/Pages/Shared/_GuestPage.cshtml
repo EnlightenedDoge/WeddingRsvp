@@ -1,0 +1,224 @@
+@model RsvpModel
+@{
+    var g = Model.Guest;
+    var e = Model.Event;
+    var answered = g.Status != RsvpStatus.Pending;
+    var showForm = !Model.IsClosed && !Model.JustSaved;
+    var saved = Model.JustSaved;
+    var chipMax = Math.Min(g.MaxHeadcount, 12);
+    string Answer() => g.Status == RsvpStatus.Attending
+        ? Model.T($"התשובה שלכם: מגיעים · {Model.People(g.AttendingAdults, g.AttendingChildren)}", $"Your answer: attending · {Model.People(g.AttendingAdults, g.AttendingChildren)}")
+        : Model.T("התשובה שלכם: לא מגיעים", "Your answer: not attending");
+    string Link(string lang) => $"{Model.BasePath}?lang={lang}";
+}
+<div class="wrap">
+    @if (Model.IsPreview)
+    {
+        <div class="preview-bar" role="note">@Model.T("תצוגה מקדימה: שום דבר לא נשמר, והאורחים לא רואים את הסרגל הזה.", "Preview: nothing is saved, and guests don't see this bar.")</div>
+    }
+    <div class="top">
+        <div class="hello">@Model.T("שלום", "Hello") <b>@g.Name</b></div>
+        @if (Model.ShowToggle)
+        {
+            <div class="toggle">
+                <a href="@Link("he")" class="@(Model.IsHe ? "on" : "")" hreflang="he">עברית</a>
+                <a href="@Link("en")" class="@(Model.IsHe ? "" : "on")" hreflang="en">EN</a>
+            </div>
+        }
+    </div>
+
+    <div class="cols">
+        <section class="hero">
+            @if (Model.ImageUrl is not null)
+            {
+                <figure class="invitation"><img src="@Model.ImageUrl" alt="@Model.T("ההזמנה", "The invitation")@(string.IsNullOrEmpty(Model.CoupleDisplay) ? "" : " · " + Model.CoupleDisplay)" /></figure>
+                @if (showForm)
+                {
+                    <div class="jump"><a href="#ask">@Model.T("ענו כאן", "RSVP")
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M6 13l6 6 6-6"/></svg></a></div>
+                }
+            }
+            else
+            {
+                <div class="noimage">
+                    <hr />
+                    <div class="t">@Model.Title</div>
+                    @if (e.StartsAtLocal is { } s0) { <div>@s0.ToString(Model.T("dddd, d בMMMM yyyy · HH:mm", "dddd, d MMMM yyyy · HH:mm"), Model.Culture)</div> }
+                    <hr />
+                </div>
+            }
+        </section>
+
+        <section class="answer">
+            @if (Model.ImageUrl is not null)
+            {
+                <div>
+                    @if (!string.IsNullOrEmpty(Model.Title)) { <h1>@Model.Title</h1> }
+                    @if (e.StartsAtLocal is { } start) { <div class="when">@start.ToString(Model.T("dddd, d בMMMM yyyy · HH:mm", "dddd, d MMMM yyyy · HH:mm"), Model.Culture)</div> }
+                    <div class="where">@Model.VenueDisplay</div>
+                </div>
+            }
+            else
+            {
+                <div class="where">@Model.VenueDisplay</div>
+            }
+
+            @if (Model.IsClosed)
+            {
+                <div class="card notice">
+                    <b style="font-size: 18px">@Model.T("האישור נסגר", "RSVP is closed")</b>
+                    <div>@Model.T("האירוע כבר התחיל, ולכן אי אפשר לשנות את התשובה.", "The event has started, so the answer can no longer be changed.")</div>
+                    @if (answered) { <div style="margin-block-start: 8px; font-weight: 500">@Answer()</div> }
+                </div>
+            }
+
+            @if (saved)
+            {
+                <div class="card saved" role="status">
+                    <div class="tick @(g.Status == RsvpStatus.Attending ? "" : "no")"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+                    @if (g.Status == RsvpStatus.Attending)
+                    {
+                        <b>@Model.T($"תודה! רשמנו {Model.People(g.AttendingAdults, g.AttendingChildren)}.", $"Thank you! We have you down for {Model.People(g.AttendingAdults, g.AttendingChildren)}.")</b>
+                        <div>@Model.T("נתראה בשמחה!", "See you there!")</div>
+                    }
+                    else
+                    {
+                        <b>@Model.T("תודה שעדכנתם.", "Thank you for letting us know.")</b>
+                        <div>@Model.T("נשמח לחגוג איתכם בהזדמנות אחרת.", "We hope to celebrate with you another time.")</div>
+                    }
+                    <a class="linkbtn" href="@Link(Model.IsHe ? "he" : "en")">@Model.T("שינוי תשובה", "Change my answer")</a>
+                </div>
+            }
+
+            @if (showForm)
+            {
+                <form method="post" action="@Link(Model.IsHe ? "he" : "en")" asp-antiforgery="true" class="card" role="group" aria-labelledby="ask">
+                    @if (answered && Model.Error is null) { <div class="summary">@Answer()</div> }
+                    <div>
+                        <h2 id="ask">@Model.T("מגיעים לחתונה?", "Will you be joining us?")</h2>
+                        <div class="hint">@Model.T("אפשר לשנות את התשובה עד תחילת האירוע.", "You can change your answer until the event starts.")</div>
+                    </div>
+                    @if (Model.Error is not null) { <div class="alert" role="alert">@Model.Error</div> }
+                    <div class="choices">
+                        <label class="choice"><input type="radio" name="Attending" value="true" checked="@(Model.Attending == true)" /><span>@Model.T("מגיעים", "Attending")</span></label>
+                        <label class="choice"><input type="radio" name="Attending" value="false" checked="@(Model.Attending == false)" /><span>@Model.T("לא מגיעים", "Not attending")</span></label>
+                    </div>
+                    @{
+                        var max = g.MaxHeadcount;
+                        var chips = !g.NoGuestLimit && g.InvitedCount <= 12;
+                        var adultsNow = Model.Adults ?? 1;
+                    }
+                    <div class="count-block" data-max="@max">
+                        <div class="count-group">
+                            <div style="font-weight: 500">@Model.T("כמה מבוגרים?", "How many adults?")</div>
+                            @if (chips)
+                            {
+                                <div class="chips">
+                                    @for (var n = 1; n <= chipMax; n++)
+                                    {
+                                        <label class="chip"><input type="radio" name="Adults" value="@n" checked="@(adultsNow == n)" />@n</label>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <input type="number" name="Adults" min="1" max="@max" value="@adultsNow" inputmode="numeric" aria-label="@Model.T("מבוגרים", "Adults")" class="count-number" />
+                            }
+                        </div>
+                        @if (max > 1)
+                        {
+                            <div class="count-group">
+                                <div style="font-weight: 500">@Model.T("כמה ילדים?", "How many children?") <span class="hint">· @Model.T("אפשר להשאיר 0", "0 if none")</span></div>
+                                @if (chips)
+                                {
+                                    <div class="chips">
+                                        @for (var n = 0; n <= Math.Min(max - 1, 12); n++)
+                                        {
+                                            <label class="chip"><input type="radio" name="Children" value="@n" checked="@(Model.Children == n)" />@n</label>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <input type="number" name="Children" min="0" max="@(max - 1)" value="@Model.Children" inputmode="numeric" aria-label="@Model.T("ילדים", "Children")" class="count-number" />
+                                }
+                            </div>
+                        }
+                        <div class="hint">@(g.NoGuestLimit ? Model.T("ללא הגבלת מספר אורחים", "No limit on the number of guests")
+            : g.InvitedCount == 1 ? Model.T("ההזמנה היא לאורח אחד", "Your invitation is for 1 guest")
+            : Model.T($"הוזמנתם עד {g.InvitedCount} אורחים בסך הכול (מבוגרים וילדים)", $"You are invited with up to {g.InvitedCount} guests in total (adults and children)"))</div>
+                    </div>
+                    <div class="submit"><button type="submit">@(answered ? Model.T("עדכון תשובה", "Update answer") : Model.T("שליחת תשובה", "Send answer"))</button></div>
+                </form>
+            }
+
+            <div class="links">
+                @if (e.HasStartDate && !Model.IsClosed && g.Status != RsvpStatus.Declined)
+                {
+                    <a href="@Model.BasePath/event.ics"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17"/><path d="M8 3v4"/><path d="M16 3v4"/></svg>@Model.T("הוספה ליומן", "Add to calendar")</a>
+                    <a href="@Model.GoogleCalendarUrl" target="_blank" rel="noopener"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M12 13.5v4"/><path d="M10 15.5h4"/></svg>@Model.T("הוספה ל-Google Calendar", "Add to Google Calendar")</a>
+                }
+                @if (Model.WazeUrl is not null)
+                {
+                    <a href="@Model.WazeUrl" target="_blank" rel="noopener"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>@Model.T("ניווט ב-Waze", "Navigate with Waze")</a>
+                }
+            </div>
+        </section>
+    </div>
+</div>
+
+@inject TurnstileGate Turnstile
+@if (!Model.IsPreview)
+{
+@* Reports that a person is looking at the page: the browser ran it, it is visible, and it stayed for a moment.
+   Scanners, link previews and checkers only fetch the HTML, so they never trigger this. With Turnstile on, an invisible widget
+   (it only shows if Cloudflare needs an interaction) produces a token and the report carries it; the server counts the open only if
+   Cloudflare confirms it. Nothing here blocks or changes the guest's page. *@
+@if (Turnstile.Active)
+{
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <div class="cf-turnstile" data-sitekey="@Turnstile.SiteKey" data-action="seen" data-appearance="interaction-only"
+         data-language="@(Model.IsHe ? "he" : "en")" data-callback="wrTurnstileDone" data-expired-callback="wrTurnstileExpired"></div>
+}
+<script>
+    (function () {
+        var sent = false, token = null, tries = 0, needToken = @(Turnstile.Active ? "true" : "false");
+        window.wrTurnstileDone = function (t) { token = t; };
+        window.wrTurnstileExpired = function () { token = null; };
+        function seen() {
+            if (sent || document.visibilityState !== 'visible') return;
+            if (needToken && !token) { if (++tries < 20) setTimeout(seen, 1000); return; } // wait for the invisible check, up to ~20 s
+            sent = true;
+            var data = new FormData();
+            if (token) data.append('cf-turnstile-response', token);
+            try { navigator.sendBeacon(location.pathname.replace(/\/$/, '') + '/seen', data); } catch (e) { }
+        }
+        function arm() { setTimeout(seen, 2000); }
+        if (document.readyState === 'complete') arm(); else window.addEventListener('load', arm);
+        document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') arm(); });
+    })();
+</script>
+}
+
+<script>
+    // Adults and children together can't exceed the invitation: grey out choices that would, and cap the number boxes.
+    (function () {
+        var blk = document.querySelector('.count-block');
+        if (!blk) return;
+        var max = parseInt(blk.dataset.max, 10);
+        function val(name) {
+            var picked = blk.querySelector('input[type=radio][name=' + name + ']:checked');
+            if (picked) return parseInt(picked.value, 10);
+            var box = blk.querySelector('input[type=number][name=' + name + ']');
+            return box ? (parseInt(box.value, 10) || 0) : 0;
+        }
+        function sync() {
+            var adults = val('Adults'), children = val('Children');
+            blk.querySelectorAll('input[type=radio][name=Adults]').forEach(function (i) { i.disabled = parseInt(i.value, 10) + children > max; });
+            blk.querySelectorAll('input[type=radio][name=Children]').forEach(function (i) { i.disabled = parseInt(i.value, 10) + adults > max; });
+            var a = blk.querySelector('input[type=number][name=Adults]'); if (a) a.max = Math.max(1, max - children);
+            var c = blk.querySelector('input[type=number][name=Children]'); if (c) c.max = Math.max(0, max - adults);
+        }
+        blk.addEventListener('change', sync); blk.addEventListener('input', sync); sync();
+    })();
+</script>

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using WeddingRsvp.Domain;
@@ -6,13 +7,18 @@ using WeddingRsvp.Services;
 
 namespace WeddingRsvp.Pages;
 
-public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpModel> log) : PageModel
+public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpModel> log, IAuthorizationService authz) : PageModel
 {
-    public Guest Guest { get; private set; } = null!;
-    public EventSettings Event { get; private set; } = null!;
-    public bool IsClosed { get; private set; }
-    public bool JustSaved { get; private set; }
-    public string? Error { get; private set; }
+    /// <summary>The couple's own preview (/admin/preview): same page, nothing stored, no open report.</summary>
+    public bool IsPreview => Request.Path.StartsWithSegments("/admin/preview");
+    /// <summary>URL prefix of this page's own sub-routes (invitation image, background, calendar file, language links).</summary>
+    public string BasePath => IsPreview ? "/admin/preview" : "/" + Guest.Token;
+
+    public Guest Guest { get; protected set; } = null!;
+    public EventSettings Event { get; protected set; } = null!;
+    public bool IsClosed { get; protected set; }
+    public bool JustSaved { get; protected set; }
+    public string? Error { get; protected set; }
 
     public string? ImageUrl { get; private set; }
     public string GoogleCalendarUrl { get; private set; } = "";
@@ -50,8 +56,15 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
         return text + (IsHe ? $", {children} {(children == 1 ? "ילד" : "ילדים")}" : $", {children} child{(children == 1 ? "" : "ren")}");
     }
 
-    public async Task<IActionResult> OnGetAsync(string token)
+    public async Task<IActionResult> OnGetAsync(string? token)
     {
+        if (IsPreview)
+        {
+            if (!(await authz.AuthorizeAsync(User, "Couple")).Succeeded) return Challenge();
+            await LoadAsync(SampleGuest());
+            Guest.Name = IsHe ? "משפחת ישראלי" : "Cohen family";
+            return Page();
+        }
         var g = await rsvp.FindAsync(token);
         if (g is null) return NotFound();
         // Loading the page is not an "open" (scanners and previews do it); the page reports back once a person sees it.
@@ -71,8 +84,9 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync(string token)
+    public async Task<IActionResult> OnPostAsync(string? token)
     {
+        if (IsPreview) return await PreviewPostAsync();
         Adults ??= Count > 0 ? Count : 1;
         var result = await rsvp.SubmitAsync(token, Attending, Adults.Value, Children);
         if (result == RsvpResult.NotFound) return NotFound();
@@ -98,11 +112,35 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
         return Page();
     }
 
-    private async Task LoadAsync(Guest g)
+    // The couple's preview: a made-up guest that is never saved. An answer is checked like a real one and shown back, then forgotten.
+    private static Guest SampleGuest() => new() { Name = "", Token = "PREVIEW000", InvitedCount = 4, Status = RsvpStatus.Pending };
+
+    private async Task<IActionResult> PreviewPostAsync()
+    {
+        if (!(await authz.AuthorizeAsync(User, "Couple")).Succeeded) return Challenge();
+        var g = SampleGuest();
+        await LoadAsync(g);
+        g.Name = IsHe ? "משפחת ישראלי" : "Cohen family";
+        Adults ??= Count > 0 ? Count : 1;
+        if (Attending is null)
+            Error = T("נא לבחור אם מגיעים כדי להמשיך.", "Please choose whether you are attending to continue.");
+        else if (Attending == true && (Adults < 1 || Children < 0 || (long)Adults.Value + Children > g.MaxHeadcount))
+            Error = T($"יש לבחור לפחות מבוגר אחד, ובסך הכול עד {g.MaxHeadcount} אורחים (מבוגרים וילדים).", $"Choose at least 1 adult, and no more than {g.MaxHeadcount} guests in total (adults and children).");
+        else
+        {
+            g.Status = Attending.Value ? RsvpStatus.Attending : RsvpStatus.Declined;
+            g.AttendingCount = Attending.Value ? Adults.Value + Children : 0;
+            g.AttendingChildren = Attending.Value ? Children : 0;
+            JustSaved = true;
+        }
+        return Page();
+    }
+
+    protected async Task LoadAsync(Guest g)
     {
         Guest = g;
         Event = await settings.GetAsync();
-        IsClosed = await rsvp.IsClosedAsync();
+        IsClosed = !IsPreview && await rsvp.IsClosedAsync();
 
         ShowToggle = Event.LanguageMode == LanguageMode.Both;
         IsHe = Event.LanguageMode switch
@@ -116,14 +154,14 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
         var hasHe = Event.InvitationImageFile is not null;
         var hasEn = Event.InvitationImageFileEn is not null;
         var ticks = (en && hasEn ? Event.InvitationImageEnUpdatedAtUtc : hasHe ? Event.InvitationImageUpdatedAtUtc : Event.InvitationImageEnUpdatedAtUtc)?.Ticks;
-        ImageUrl = hasHe || hasEn ? $"/{g.Token}/invitation?lang={(en ? "en" : "he")}&v={ticks}" : null;
+        ImageUrl = hasHe || hasEn ? $"{BasePath}/invitation?lang={(en ? "en" : "he")}&v={ticks}" : null;
 
         GoogleCalendarUrl = CalendarLinks.GoogleCalendarUrl(Event) ?? "";
         WazeUrl = CalendarLinks.WazeUrl(Event);
 
         Bg = HexColor.OrNull(Event.PageBackgroundColor) ?? Bg;
         Accent = HexColor.OrNull(Event.PageAccentColor) ?? Accent;
-        BackgroundUrl = Event.PageBackgroundImageFile is null ? null : $"/{g.Token}/background?v={Event.PageBackgroundImageUpdatedAtUtc?.Ticks}";
+        BackgroundUrl = Event.PageBackgroundImageFile is null ? null : $"{BasePath}/background?v={Event.PageBackgroundImageUpdatedAtUtc?.Ticks}";
         Dark = BackgroundUrl is not null || HexColor.IsDark(Bg);
 
         CoupleDisplay = en && !string.IsNullOrWhiteSpace(Event.CoupleNamesEn) ? Event.CoupleNamesEn : Event.CoupleNames;
