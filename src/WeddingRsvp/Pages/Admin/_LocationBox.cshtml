@@ -13,8 +13,6 @@
     <h2>@Ui.T("מיקום לניווט", "Location for navigation")</h2>
     <p class="faint">@Ui.T("הכפתורים של Waze ושל Google Maps בהזמנה נבנים מהמיקום שבוחרים כאן.", "The Waze and Google Maps buttons on the invitation are built from the location you choose here.")</p>
 
-    <input type="hidden" asp-for="Settings.Latitude" id="locLat" value="@lat" />
-    <input type="hidden" asp-for="Settings.Longitude" id="locLon" value="@lon" />
     <input type="hidden" asp-for="Settings.WazeLink" />
     <input type="hidden" asp-for="Settings.GoogleMapsLink" />
 
@@ -33,6 +31,7 @@
     <div class="tabs" role="tablist" style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0">
         <button type="button" class="btn small" data-tab="link" role="tab" aria-selected="true">@Ui.T("הדבקת קישור", "Paste a link")</button>
         <button type="button" class="btn small" data-tab="map" role="tab" aria-selected="false">@Ui.T("חיפוש על מפה", "Search on a map")</button>
+        <button type="button" class="btn small" data-tab="coords" role="tab" aria-selected="false">@Ui.T("הזנת קואורדינטות", "Enter coordinates")</button>
         <button type="button" class="btn small" data-tab="addr" role="tab" aria-selected="false">@Ui.T("לפי הכתובת בלבד", "Address only")</button>
     </div>
 
@@ -63,6 +62,14 @@
         <div id="locMap" style="height:320px;border-radius:12px;margin-top:8px" dir="ltr"></div>
         <p class="faint">@Ui.T("לחצו על המפה או גררו את הסמן למיקום המדויק. המפה: © OpenStreetMap.", "Click the map or drag the pin to the exact spot. Map © OpenStreetMap contributors.")</p>
         <p class="faint">@Ui.T("אל תשכחו לשמור בסוף.", "Remember to save at the bottom.")</p>
+    </div>
+
+    <div data-panel="coords" hidden>
+        <div class="fields">
+            <label class="field"><span>@Ui.T("קו רוחב", "Latitude")</span><input asp-for="Settings.Latitude" id="locLat" class="ltr" inputmode="decimal" placeholder="31.7683" value="@lat" /></label>
+            <label class="field"><span>@Ui.T("קו אורך", "Longitude")</span><input asp-for="Settings.Longitude" id="locLon" class="ltr" inputmode="decimal" placeholder="35.2137" value="@lon" /></label>
+        </div>
+        <p class="faint">@Ui.T("אפשר להעתיק קואורדינטות מ-Google Maps (לחיצה ימנית על המקום) או להקליד אותן. שני השדות נדרשים.", "You can copy coordinates from Google Maps (right-click the place) or type them. Both fields are needed.")</p>
     </div>
 
     <div data-panel="addr" hidden>
@@ -108,7 +115,7 @@
         if (map || typeof L === 'undefined') { if (map) map.invalidateSize(); return; }
         var has = latIn.value !== '' && lonIn.value !== '';
         map = L.map('locMap').setView(has ? [parseFloat(latIn.value), parseFloat(lonIn.value)] : [31.5, 34.9], has ? 16 : 7);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(map);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, referrerPolicy: 'strict-origin-when-cross-origin', attribution: '© OpenStreetMap contributors' }).addTo(map);
         if (has) setPointQuiet(parseFloat(latIn.value), parseFloat(lonIn.value));
         map.on('click', function (e) { setPoint(e.latlng.lat, e.latlng.lng, false); });
         setTimeout(function () { map.invalidateSize(); }, 50);
@@ -117,6 +124,12 @@
         marker = L.marker([lat, lon], { draggable: true }).addTo(map);
         marker.on('dragend', function () { var p = marker.getLatLng(); setPoint(p.lat, p.lng, false); });
     }
+
+    function fromInputs() {
+        var a = parseFloat(latIn.value.replace(',', '.')), b = parseFloat(lonIn.value.replace(',', '.'));
+        if (isFinite(a) && isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180) setPoint(a, b, true);
+    }
+    latIn.addEventListener('change', fromInputs); lonIn.addEventListener('change', fromInputs);
 
     var results = document.getElementById('locResults');
     function search() {
