@@ -78,7 +78,16 @@ public sealed class CampaignService(
         var p = PhoneNormalizer.Normalize(phone);
         if (!p.IsValid) return false;
         var s = await settings.GetAsync(ct);
-        var link = MessageTemplates.GuestLink(app.Value.PublicBaseUrl, "TESTTESTAB");
+        // The link opens the couple's demo page (a made-up guest, answers are not stored), so it works for any phone number.
+        if (s.PreviewToken == "")
+        {
+            string t;
+            do t = TokenGenerator.New();
+            while (await db.Guests.IgnoreQueryFilters().AnyAsync(g => g.Token == t, ct)
+                   || await db.EventSettings.IgnoreQueryFilters().AnyAsync(x => x.PreviewToken == t, ct));
+            s.PreviewToken = t;
+        }
+        var link = MessageTemplates.GuestLink(app.Value.PublicBaseUrl, s.PreviewToken);
         db.Messages.Add(new MessageLog
         {
             Kind = MessageKind.Test,

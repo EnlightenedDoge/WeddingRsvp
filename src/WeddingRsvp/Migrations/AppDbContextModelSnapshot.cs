@@ -288,6 +288,10 @@ namespace WeddingRsvp.Migrations
                     b.Property<DateTime?>("PageBackgroundImageUpdatedAtUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PreviewToken")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("ReminderIntervalDays")
                         .HasColumnType("INTEGER");
 
@@ -357,6 +361,10 @@ namespace WeddingRsvp.Migrations
 
                     b.HasIndex("CoupleId")
                         .IsUnique();
+
+                    b.HasIndex("PreviewToken")
+                        .IsUnique()
+                        .HasFilter("\"PreviewToken\" <> ''");
 
                     b.ToTable("EventSettings");
                 });

@@ -10,7 +10,8 @@ namespace WeddingRsvp.Pages;
 public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpModel> log, IAuthorizationService authz) : PageModel
 {
     /// <summary>The couple's own preview (/admin/preview): same page, nothing stored, no open report.</summary>
-    public bool IsPreview => Request.Path.StartsWithSegments("/admin/preview");
+    private bool _demoLink;
+    public bool IsPreview => _demoLink || Request.Path.StartsWithSegments("/admin/preview");
     /// <summary>URL prefix of this page's own sub-routes (invitation image, background, calendar file, language links).</summary>
     public string BasePath => IsPreview ? "/admin/preview" : "/" + Guest.Token;
 
@@ -68,6 +69,13 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
         }
         var g = await rsvp.FindAsync(token);
         if (g is null) return NotFound();
+        if (g.IsDemo) // the demo link from a test message: same as the couple's preview, but no sign-in
+        {
+            _demoLink = true;
+            await LoadAsync(g);
+            g.Name = IsHe ? "משפחת ישראלי" : "Cohen family";
+            return Page();
+        }
         // Loading the page is not an "open" (scanners and previews do it); the page reports back once a person sees it.
         log.LogInformation("Guest page {Method} for guest {GuestId} from {Ip}, user agent '{UserAgent}'",
             Request.Method, g.Id, HttpContext.Connection.RemoteIpAddress, Request.Headers.UserAgent.ToString());
@@ -89,6 +97,7 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
     {
         if (IsPreview) return await PreviewPostAsync();
         Adults ??= Count > 0 ? Count : 1;
+        if (!IsPreview && await rsvp.FindAsync(token) is { IsDemo: true } demo) { _demoLink = true; return await PreviewPostAsync(demo); }
         var result = await rsvp.SubmitAsync(token, Attending, Adults.Value, Children);
         if (result == RsvpResult.NotFound) return NotFound();
 
@@ -116,10 +125,11 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
     // The couple's preview: a made-up guest that is never saved. An answer is checked like a real one and shown back, then forgotten.
     private static Guest SampleGuest() => new() { Name = "", Token = "PREVIEW000", InvitedCount = 4, Status = RsvpStatus.Pending };
 
-    private async Task<IActionResult> PreviewPostAsync()
+    private async Task<IActionResult> PreviewPostAsync(Guest? demo = null)
     {
-        if (!(await authz.AuthorizeAsync(User, "Couple")).Succeeded) return Challenge();
-        var g = SampleGuest();
+        // The couple's own /admin/preview needs their session; the demo link from a test message is open like any guest link.
+        if (Request.Path.StartsWithSegments("/admin/preview") && !(await authz.AuthorizeAsync(User, "Couple")).Succeeded) return Challenge();
+        var g = demo ?? SampleGuest();
         await LoadAsync(g);
         g.Name = IsHe ? "משפחת ישראלי" : "Cohen family";
         Adults ??= Count > 0 ? Count : 1;

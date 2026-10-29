@@ -51,6 +51,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
         {
             e.HasIndex(s => s.CoupleId).IsUnique();
             e.Ignore(s => s.VenueDisplay);
+            e.HasIndex(s => s.PreviewToken).IsUnique().HasFilter("\"PreviewToken\" <> ''");
         });
 
         // Tenant isolation: every query on a couple-owned table is scoped to the current tenant.

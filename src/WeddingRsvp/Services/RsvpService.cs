@@ -18,8 +18,13 @@ public sealed class RsvpService(AppDbContext db, SettingsService settings, Israe
     {
         if (!TokenGenerator.LooksValid(token)) return null;
         var g = await db.Guests.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Token == token, ct);
-        if (g is not null) tenant.Use(g.CoupleId);
-        return g;
+        if (g is not null) { tenant.Use(g.CoupleId); return g; }
+
+        // A couple's demo link (the one in test messages): a made-up guest that is never stored.
+        var demo = await db.EventSettings.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(x => x.PreviewToken == token, ct);
+        if (demo is null) return null;
+        tenant.Use(demo.CoupleId);
+        return new Guest { CoupleId = demo.CoupleId, Token = token, Name = "", InvitedCount = 4, Status = RsvpStatus.Pending, IsDemo = true };
     }
 
     /// <summary>
@@ -32,6 +37,7 @@ public sealed class RsvpService(AppDbContext db, SettingsService settings, Israe
     {
         var g = await FindAsync(token, ct);
         if (g is null) return false;
+        if (g.IsDemo) return true; // a test message's demo page is not a guest opening anything
         g.FirstOpenedAtUtc ??= clock.UtcNow;
         g.LastOpenedAtUtc = clock.UtcNow;
         var arrived = await db.Messages
@@ -59,6 +65,7 @@ public sealed class RsvpService(AppDbContext db, SettingsService settings, Israe
     {
         var g = await FindAsync(token, ct);
         if (g is null) return RsvpResult.NotFound;
+        if (g.IsDemo) return RsvpResult.Saved; // nothing is stored for the demo guest (the page shows the answer back)
         if (await IsClosedAsync(ct)) return RsvpResult.Closed;
         if (attending is null) return RsvpResult.MissingAnswer;
         if (attending == true && (adults < 1 || children < 0 || (long)adults + children > g.MaxHeadcount)) return RsvpResult.InvalidCount;

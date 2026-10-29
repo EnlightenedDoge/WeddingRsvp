@@ -27,6 +27,8 @@ public class EventSettings : ITenantOwned
     public double? Longitude { get; set; }
     /// <summary>Optional share links pasted by the couple, used when there are no coordinates (a link that carries coordinates fills them in on save).</summary>
     public string WazeLink { get; set; } = "";
+    /// <summary>Unguessable token of the couple's demo guest page (test messages link to it). Created on first use; never edited by the couple.</summary>
+    public string PreviewToken { get; set; } = "";
     public string GoogleMapsLink { get; set; } = "";
 
     public LanguageMode LanguageMode { get; set; } = LanguageMode.HebrewOnly;

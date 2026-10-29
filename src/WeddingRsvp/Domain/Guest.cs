@@ -12,6 +12,9 @@ public class Guest : ITenantOwned
     public int CoupleId { get; set; }
     public string Name { get; set; } = "";
 
+    /// <summary>True only for the made-up guest behind a couple's demo link; never stored.</summary>
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped] public bool IsDemo { get; init; }
+
     /// <summary>Phone as it appeared in the client's list.</summary>
     public string PhoneRaw { get; set; } = "";
 
