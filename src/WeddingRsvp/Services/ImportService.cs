@@ -93,7 +93,8 @@ public sealed class ImportService(AppDbContext db, IsraelClock clock)
     public static int ParseInvitedCount(string? cell)
     {
         var t = (cell ?? "").Trim();
-        if (int.TryParse(t, out var n)) return n >= 0 ? n : 1;
+        // 0 = no limit; 1..50 is the invitation size (same ceiling the edit page enforces); clamp out-of-range and junk.
+        if (int.TryParse(t, out var n)) return n <= 0 ? (n == 0 ? 0 : 1) : Math.Min(n, 50);
         return UnlimitedWords.Contains(t.ToLowerInvariant()) ? 0 : 1;
     }
 

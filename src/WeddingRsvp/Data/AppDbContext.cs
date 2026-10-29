@@ -112,7 +112,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
                 else if (CurrentCoupleId is { } cur && e.Entity.CoupleId != cur)
                     throw new InvalidOperationException("Cross-tenant write blocked.");
             }
-            else if (e.State == EntityState.Modified && CurrentCoupleId is { } cur && e.Entity.CoupleId != cur)
+            else if ((e.State == EntityState.Modified || e.State == EntityState.Deleted)
+                     && CurrentCoupleId is { } cur && e.Entity.CoupleId != cur)
             {
                 throw new InvalidOperationException("Cross-tenant write blocked.");
             }

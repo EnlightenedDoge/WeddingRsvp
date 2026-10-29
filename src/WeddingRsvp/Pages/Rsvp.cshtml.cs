@@ -77,8 +77,11 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
             return Page();
         }
         // Loading the page is not an "open" (scanners and previews do it); the page reports back once a person sees it.
+        // The user agent is attacker-supplied: strip control characters (log-injection) and cap its length.
+        var ua = Request.Headers.UserAgent.ToString();
+        ua = new string(ua.Where(c => !char.IsControl(c)).Take(200).ToArray());
         log.LogInformation("Guest page {Method} for guest {GuestId} from {Ip}, user agent '{UserAgent}'",
-            Request.Method, g.Id, HttpContext.Connection.RemoteIpAddress, Request.Headers.UserAgent.ToString());
+            Request.Method, g.Id, HttpContext.Connection.RemoteIpAddress, ua);
         await LoadAsync(g);
 
         Attending = g.Status switch

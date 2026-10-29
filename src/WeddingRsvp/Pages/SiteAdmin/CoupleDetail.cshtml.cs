@@ -87,7 +87,7 @@ public class CoupleDetailModel(AppDbContext db, CoupleAdminService couples, User
         HasPassword = owner?.PasswordHash != null;
         Remaining = await allocation.BalanceForAsync(id);
         Ledger = await allocation.LedgerForAsync(id);
-        TotalAllocated = await db.SmsAllocations.IgnoreQueryFilters().SumAsync(e => e.Delta);
+        TotalAllocated = await db.SmsAllocations.IgnoreQueryFilters().Where(e => e.CoupleId == id).SumAsync(e => e.Delta);
         ProviderBalance = await sms.GetBalanceAsync(HttpContext.RequestAborted);
         return true;
     }

@@ -18,6 +18,10 @@ public class SignInModel(
     public string Email { get; private set; } = "";
     public string? ReturnUrl { get; private set; }
 
+    // A valid hash to verify against on the unknown-user path, so that branch costs the same as a real password check.
+    private static readonly string DummyPasswordHash = new PasswordHasher<AppUser>()
+        .HashPassword(new AppUser(), "not-a-real-password-timing-equalizer");
+
     public IActionResult OnGet(string? returnUrl)
     {
         if (User.Identity?.IsAuthenticated == true) return Redirect(Home(User.IsInRole("SiteAdmin")));
@@ -48,6 +52,9 @@ public class SignInModel(
 
         if (user is null || string.IsNullOrEmpty(password) || siteAdminOnPublicPort || !await CoupleIsActiveAsync(user))
         {
+            // Do the same password-hash work a real sign-in would, so an unknown email can't be told apart from a wrong
+            // password by response time (no account-enumeration oracle). The result is discarded.
+            users.PasswordHasher.VerifyHashedPassword(user ?? new AppUser(), DummyPasswordHash, password ?? "");
             await audit.WriteAsync("signin.failed", null,
                 detail: user is null ? "unknown-user" : siteAdminOnPublicPort ? "site-admin-on-public-port" : "blocked");
             Error = generic;

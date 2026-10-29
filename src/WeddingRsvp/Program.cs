@@ -147,12 +147,17 @@ builder.Services.AddRazorPages(o =>
 
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
-    // NPM sits on the Docker network in front of us; the container ports are not published,
-    // so trusting the single forwarding hop is safe.
+    // Honor X-Forwarded-For/Proto only when the request actually comes from the configured proxy network (NPM on the
+    // Docker network by default). A client that reaches a published port directly cannot forge its IP or scheme: the
+    // middleware leaves RemoteIpAddress/IsHttps as the real socket values, so the rate limiter, audit log and HTTPS
+    // guard all key off something the attacker can't set. ForwardLimit=null walks every trusted hop; an untrusted peer
+    // stops the chain. See AppOptions.TrustedProxyNetworks.
     o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
     o.KnownIPNetworks.Clear();
     o.KnownProxies.Clear();
-    o.ForwardLimit = 1;
+    o.ForwardLimit = null;
+    foreach (var net in ParseProxyNetworks(appOptions.TrustedProxyNetworks))
+        o.KnownIPNetworks.Add(net);
 });
 
 builder.Services.AddRateLimiter(o =>
@@ -231,6 +236,23 @@ app.Use(async (ctx, next) =>
     h["X-Content-Type-Options"] = "nosniff";
     h["X-Frame-Options"] = "DENY";
     h["Referrer-Policy"] = "same-origin";
+    // Defence-in-depth against content injection. Output is already correctly encoded; this restricts where scripts,
+    // styles, frames and connections may come from, forbids plugins/object embedding, and blocks this site being framed.
+    // Scripts/styles still allow 'unsafe-inline' because several pages use inline <script>/style= blocks; tightening those
+    // to per-response nonces is the follow-up hardening step. The allowed origins match the only third parties in use:
+    // Cloudflare Turnstile, cdnjs (Leaflet), Google Fonts, OpenStreetMap tiles and the Photon geocoder.
+    h["Content-Security-Policy"] =
+        "default-src 'self'; " +
+        "base-uri 'self'; " +
+        "form-action 'self'; " +
+        "frame-ancestors 'none'; " +
+        "object-src 'none'; " +
+        "img-src 'self' data: https://tile.openstreetmap.org https://cdnjs.cloudflare.com; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; " +
+        "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://cdnjs.cloudflare.com; " +
+        "connect-src 'self' https://photon.komoot.io; " +
+        "frame-src https://challenges.cloudflare.com";
     await next();
 });
 
@@ -405,6 +427,17 @@ app.MapGet("/admin/export.csv", async (AppDbContext db) =>
 }).RequireAuthorization("Couple");
 
 app.Run();
+
+partial class Program
+{
+    /// <summary>Parse a comma-separated list of CIDR networks into <see cref="System.Net.IPNetwork"/>, skipping anything unparseable.</summary>
+    internal static IEnumerable<System.Net.IPNetwork> ParseProxyNetworks(string? csv)
+    {
+        foreach (var part in (csv ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            if (System.Net.IPNetwork.TryParse(part, out var net))
+                yield return net;
+    }
+}
 
 /// <summary>Which paths are served on which port.</summary>
 public static class PortGuard

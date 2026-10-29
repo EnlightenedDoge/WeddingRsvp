@@ -22,6 +22,16 @@ public sealed class AppOptions
     public string? DeliveryWebhookSecret { get; set; }
 
     /// <summary>
+    /// CIDR networks (comma-separated) whose <c>X-Forwarded-For</c>/<c>X-Forwarded-Proto</c> headers are trusted — the reverse proxy's
+    /// network. The default covers loopback, the RFC1918 private ranges where Nginx Proxy Manager sits on the Docker network, IPv6 ULA,
+    /// and the Tailscale CGNAT range (<c>100.64.0.0/10</c>; the tailnet is an authenticated overlay, and its IPv6 range is within
+    /// <c>fc00::/7</c>), so the forwarded client IP and scheme keep working behind the proxy or over Tailscale. A client that reaches a
+    /// published port directly from outside these ranges cannot spoof its IP (rate-limit bucket, audit log) or its scheme (the HTTPS
+    /// guard): its real socket address is used instead. Invalid entries are ignored; empty disables forwarded-header processing entirely.
+    /// </summary>
+    public string TrustedProxyNetworks { get; set; } = "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fc00::/7";
+
+    /// <summary>
     /// Cloudflare Turnstile (SPEC.md section 13). The site key is public; the secret key lives in .env only. Turnstile is ON only when
     /// both are set. It guards the couples' sign-in pages and the invitation's "seen" report on the public port, never the private admin port.
     /// </summary>

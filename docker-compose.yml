@@ -10,8 +10,9 @@ services:
     container_name: wedding-rsvp
     restart: unless-stopped
     env_file: .env
-    # Run as this user so the data folder is owned by it (TrueNAS apps usually use a non-root user, e.g. 568). Default: root.
-    user: "${APP_UID:-0}:${APP_GID:-0}"
+    # Run as this user so the data folder is owned by it. Default: the image's built-in non-root user (1654); the data
+    # folder must be writable by it (chown 1654:1654 ./data once). On TrueNAS set APP_UID to the app's uid, e.g. 568.
+    user: "${APP_UID:-1654}:${APP_GID:-1654}"
     ports:
       - "${BIND_ADDRESS:-0.0.0.0}:${PUBLIC_HOST_PORT:-8080}:8080"
       - "${ADMIN_BIND_ADDRESS:-127.0.0.1}:${ADMIN_HOST_PORT:-8081}:8081"

@@ -77,7 +77,7 @@ public static class CalendarLinks
     }
 
     private static string Escape(string v) =>
-        v.Replace("\\", "\\\\").Replace(";", "\\;").Replace(",", "\\,").Replace("\r\n", "\\n").Replace("\n", "\\n");
+        v.Replace("\\", "\\\\").Replace(";", "\\;").Replace(",", "\\,").Replace("\r\n", "\\n").Replace("\r", "\\n").Replace("\n", "\\n");
 
     /// <summary>RFC 5545 folding: lines max 75 octets (Hebrew is 2 bytes/char in UTF-8).</summary>
     private static string Fold(string line)
