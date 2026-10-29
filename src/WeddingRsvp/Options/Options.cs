@@ -32,7 +32,7 @@ public sealed class AppOptions
     public string TrustedProxyNetworks { get; set; } = "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fc00::/7";
 
     /// <summary>
-    /// Cloudflare Turnstile (SPEC.md section 13). The site key is public; the secret key lives in .env only. Turnstile is ON only when
+    /// Cloudflare Turnstile. The site key is public; the secret key lives in .env only. Turnstile is ON only when
     /// both are set. It guards the couples' sign-in pages and the invitation's "seen" report on the public port, never the private admin port.
     /// </summary>
     public string? TurnstileSiteKey { get; set; }
@@ -50,7 +50,7 @@ public sealed class SmsOptions
 {
     /// <summary>"Log" (dev: writes messages to the log) or "Sms4Free" (see Sms4FreeProvider).</summary>
     public string Provider { get; set; } = "Log";
-    /// <summary>SMS4FREE send endpoint (see SPEC.md §6).</summary>
+    /// <summary>SMS4FREE send endpoint.</summary>
     public string ApiUrl { get; set; } = "https://api.sms4free.co.il/ApiSMS/v2/SendSMS";
     public string BalanceUrl { get; set; } = "https://api.sms4free.co.il/ApiSMS/AvailableSMS";
     /// <summary>SMS4FREE "user": the mobile number the account was registered with.</summary>

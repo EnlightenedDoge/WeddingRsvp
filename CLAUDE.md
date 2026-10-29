@@ -5,13 +5,12 @@ SMS-based wedding invitation & RSVP platform. Guests get an SMS with a personal 
 account and manages their own guests and messages; a **site admin** creates and manages the couples'
 accounts. ASP.NET Core 8 Razor Pages + EF Core SQLite, one container behind Nginx Proxy Manager.
 
-Read `SPEC.md` too: where the two disagree, SPEC.md is newer and wins.
+Read `README.md` too (deployment, SMS provider, delivery reports, roadmap).
 
 ## Status (2026-10-28)
 
-See `HANDOFF.md` for session context, deferred work, run recipes and pitfalls.
+See `README.md` ("Status and roadmap", "Run locally", "Notes for contributors") for deferred work, run recipes and pitfalls.
 
-- The solution **builds with 0 errors** and **160 tests pass**.
 - **Phase M is built (core):** `Couple`/`AppUser`, `CoupleId` on Guest/MessageLog/EventSettings, global query filter via
   `ITenantContext`, ASP.NET Core Identity (cookie auth, lockout 5/15 min, 10-char passwords), audit log, site-admin
   pages (`/admin/site/couples`, `/new`, `/{id}`, `/security` with TOTP and change-password for the site admin), `/signin`, `/signin/2fa`, `/set-password`,
@@ -33,7 +32,7 @@ See `HANDOFF.md` for session context, deferred work, run recipes and pitfalls.
   breaker (`PlatformState`, `/admin/site/provider`, banner), per-couple allocation ledger (`SmsAllocationEntry`, card on the couple page,
   couples start at 0). Needs a fresh DB. Live-tested 2026-10-28: billing matches 1 credit up to 134 chars, +1 per 67 (138 chars = 2, 62 = 1, 163 = 2); sender name `Invitation` accepted.
 - **Still open before go-live:** a full run with a real couple on the public host (reminders and thank-you have never run live), backups of
-  the data folder, TrueNAS deployment (untested; may need a pre-built image), real-phone QA (iOS Safari, Android Chrome), the live Turnstile check on the real domain, privacy note and data-retention agreement. See SPEC.md §8.
+  the data folder, TrueNAS deployment (untested; may need a pre-built image), real-phone QA (iOS Safari, Android Chrome), the live Turnstile check on the real domain, privacy note and data-retention agreement. See README "Status and roadmap".
 - Git repo exists. Couples sign in on the public host; the site admin signs in only on the private admin port (8081). Identity is the real protection.
 - The projects target net10.0 (.NET 10 SDK/runtime). Run tests with `dotnet test`.
 
@@ -82,9 +81,9 @@ non-responders, dashboard "X of Y", thank-you the day after.
   Sign-in and the portal require HTTPS (as forwarded by the proxy) outside Development, enforced per port in `PortGuard.RequiresHttps`;
   the only exception is the private admin port with opt-in `App__AdminAllowPlainHttp=true` (cookies are `SameAsRequest`).
 
-## Multi-tenancy and auth (built — see SPEC.md §10)
+## Multi-tenancy and auth (built)
 
-Proposed design, confirm open decisions in SPEC.md §12 before building:
+Design:
 
 - New `Couple` (the tenant) and `User` (email, password hash, role `SiteAdmin` | `Couple`, `CoupleId`).
   `Guest`, `MessageLog`, `EventSettings` get a `CoupleId`; `EventSettings` becomes one row per couple.
@@ -206,20 +205,20 @@ Don't move logic into views; if a design needs data the model doesn't expose, ad
 
 ## Open TODOs
 
-- [x] Multi-tenant foundation + auth + site-admin pages (SPEC.md §10, Phase M) — core done (TOTP banner and `/admin/site/audit` viewer added 2026-10-28).
-- [x] Bilingual UI plumbing (SPEC.md §11, Phase L): `Ui.T`, `/lang/{code}`, `Labels`.
+- [x] Multi-tenant foundation + auth + site-admin pages — core done (TOTP banner and `/admin/site/audit` viewer added 2026-10-28).
+- [x] Bilingual UI plumbing: `Ui.T`, `/lang/{code}`, `Labels`.
 - [x] Canvas designs ported to Razor (needs visual QA in a browser). Site-couple page lacks the SMS-allocation card (provider phase).
 - [x] Added `PageBackgroundColor` / `PageBackgroundImageFile` / `PageAccentColor` to `EventSettings` + the "Guest page look" section on the Event page.
 - [x] Sign-out / account entry in the couple sidebars (not in the canvas yet).
 - [x] First EF migration (`InitialCreate`, 2026-10-28); Program.cs applies it on startup.
 - [x] SMS provider layer, `Sms4FreeProvider` and per-couple allocations (live-tested 2026-10-28).
-- [x] Couple language mode + per-language images/templates + guest-page toggle (SPEC.md §11).
+- [x] Couple language mode + per-language images/templates + guest-page toggle.
 - [x] "Delete all information" + audit log + site-admin TOTP are built.
 - [x] Jewish yom tov days are in `SendingWindow` (computed from the Hebrew calendar). Other special days: the pause switch.
-- [x] **Turnstile** (Cloudflare) on the public login pages and on the invitation's "seen" report (SPEC.md §13, Phase T). Keys `App__TurnstileSiteKey` / `App__TurnstileSecretKey`, both empty = off. Live check on the real domain still to do.
+- [x] **Turnstile** (Cloudflare) on the public login pages and on the invitation's "seen" report. Keys `App__TurnstileSiteKey` / `App__TurnstileSecretKey`, both empty = off. Live check on the real domain still to do.
 - [ ] (future, planned only, NOT built) **Hidden invitation content**: a plain fetch of `/{token}`, `/{token}/invitation` and `/{token}/event.ics` currently returns personal content to
-  scanners and previews. Plan: SPEC.md section 14 and Phase H (neutral shell, content only after a Turnstile-verified reveal, path-scoped signed cookie, feature flag, real client IP
-  first). Do not start without confirming the open decisions in 14.13.
+  scanners and previews. Plan: README "Status and roadmap", Phase H (neutral shell, content only after a Turnstile-verified reveal, path-scoped signed cookie, feature flag, real client IP
+  first). Do not start without confirming the open decision there (where "Opened" is counted).
 - [x] Live SMS length/credit counter in the event-settings template boxes, driven by the active provider's cost rule. (WhatsApp share link is out of scope.)
 
 ## Commands
