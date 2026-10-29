@@ -66,6 +66,7 @@ builder.Services.AddScoped<MessageDispatcher>();
 builder.Services.AddScoped<ImportService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddHostedService<MessagingWorker>();
+builder.Services.AddHostedService<BackupCleanupService>();
 
 var smsProvider = builder.Configuration["Sms:Provider"] ?? "Log";
 if (smsProvider.Equals("Sms4Free", StringComparison.OrdinalIgnoreCase))
@@ -201,7 +202,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     if (db.Database.GetMigrations().Any())
     {
-        db.Database.Migrate();
+        DbUpgrade.Run(db, dataDir, app.Logger);
     }
     else
     {
