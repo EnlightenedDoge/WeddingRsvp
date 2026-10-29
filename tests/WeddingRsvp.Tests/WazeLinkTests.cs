@@ -38,3 +38,18 @@ public class WazeLinkTests
         Assert.StartsWith("https://www.google.com/maps/search/?api=1&query=Hall", CalendarLinks.GoogleMapsUrl(s));
     }
 }
+
+public class EventEndOptionalTests
+{
+    [Fact]
+    public void An_event_without_an_end_still_makes_a_calendar_entry_lasting_four_hours()
+    {
+        var s = new EventSettings { StartsAtLocal = new DateTime(2027, 6, 1, 19, 0, 0), VenueName = "Hall" };
+        Assert.Null(s.EndsAtLocal);
+        var ics = CalendarLinks.BuildIcs(s, "https://x.example", DateTime.UtcNow);
+        Assert.NotNull(ics);
+        Assert.Contains("DTSTART:20270601T160000Z", ics);
+        Assert.Contains("DTEND:20270601T200000Z", ics);
+        Assert.Contains("dates=20270601T160000Z/20270601T200000Z", CalendarLinks.GoogleCalendarUrl(s));
+    }
+}

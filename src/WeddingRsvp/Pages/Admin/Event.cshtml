@@ -34,7 +34,8 @@
             <small>@Ui.T("אופציונלי. אחרת ייעשה שימוש בשמות הרגילים.", "Optional. Otherwise the main names are used.")</small></label>
         <label class="field"><span>@Ui.T("כותרת הדף", "Page title")</span><input asp-for="Settings.Title" /></label>
         <label class="field"><span>@Ui.T("התחלה", "Starts")</span><input asp-for="Settings.StartsAtLocal" /></label>
-        <label class="field"><span>@Ui.T("סיום", "Ends")</span><input asp-for="Settings.EndsAtLocal" /></label>
+        <label class="field"><span>@Ui.T("סיום (לא חובה)", "Ends (optional)")</span><input asp-for="Settings.EndsAtLocal" />
+            <small>@Ui.T("אפשר להשאיר ריק, למשל באירוע של יום אחד. ביומן ההזמנה האירוע יוצג כארבע שעות מההתחלה.", "Leave it empty if you like, e.g. for a one-day event. In guests' calendars the event then lasts four hours from the start.")</small></label>
         <label class="field"><span>@Ui.T("אולם", "Venue")</span><input asp-for="Settings.VenueName" /></label>
         <label class="field"><span>@Ui.T("אולם (באנגלית)", "Venue (English)")</span><input asp-for="Settings.VenueNameEn" class="ltr" /></label>
         <label class="field"><span>@Ui.T("כתובת", "Address")</span><input asp-for="Settings.VenueAddress" /></label>
