@@ -35,6 +35,7 @@ public sealed class CoupleAdminService(
         db.EventSettings.Add(new EventSettings
         {
             CoupleId = couple.Id,
+            PreviewToken = await PreviewTokens.NewAsync(db, ct),
             CoupleNames = n.CoupleNames.Trim(),
             StartsAtLocal = n.StartsAtLocal,
             VenueName = n.VenueName.Trim(),

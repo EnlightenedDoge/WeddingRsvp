@@ -212,6 +212,13 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Couples that existed before the demo link get their token now (idempotent).
+using (var scope = app.Services.CreateScope())
+{
+    var n = await PreviewTokens.BackfillAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>());
+    if (n > 0) app.Logger.LogInformation("Gave {Count} existing couples a demo link", n);
+}
+
 using (var scope = app.Services.CreateScope())
     await BootstrapAdmin.EnsureAsync(scope.ServiceProvider, appOptions, app.Logger);
 

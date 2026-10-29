@@ -79,20 +79,13 @@ public sealed class CampaignService(
         if (!p.IsValid) return false;
         var s = await settings.GetAsync(ct);
         // The link opens the couple's demo page (a made-up guest, answers are not stored), so it works for any phone number.
-        if (s.PreviewToken == "")
-        {
-            string t;
-            do t = TokenGenerator.New();
-            while (await db.Guests.IgnoreQueryFilters().AnyAsync(g => g.Token == t, ct)
-                   || await db.EventSettings.IgnoreQueryFilters().AnyAsync(x => x.PreviewToken == t, ct));
-            s.PreviewToken = t;
-        }
+        if (s.PreviewToken == "") s.PreviewToken = await PreviewTokens.NewAsync(db, ct); // only if the backfill hasn't reached this row
         var link = MessageTemplates.GuestLink(app.Value.PublicBaseUrl, s.PreviewToken);
         db.Messages.Add(new MessageLog
         {
             Kind = MessageKind.Test,
             ToE164 = p.E164!,
-            Body = MessageTemplates.Body(s, template, s.LanguageMode == LanguageMode.EnglishOnly ? "Israel Israeli" : "ישראל ישראלי", link),
+            Body = MessageTemplates.Body(s, template, s.LanguageMode == LanguageMode.EnglishOnly ? "Israel Israeli" : "ישראל ישראלי", link, placeholders: true),
             CreatedAtUtc = clock.UtcNow,
             NotBeforeUtc = clock.UtcNow,
         });

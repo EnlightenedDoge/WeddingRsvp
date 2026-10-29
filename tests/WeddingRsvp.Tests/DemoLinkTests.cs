@@ -85,6 +85,52 @@ public sealed class DemoLinkTests : IDisposable
     }
 
     [Fact]
+    public async Task A_new_settings_row_gets_its_demo_token_at_once()
+    {
+        var (db, t) = Scope(_a);
+        using var _ = db;
+        var s = await new SettingsService(db, t).GetAsync();
+        Assert.True(TokenGenerator.LooksValid(s.PreviewToken));
+    }
+
+    [Fact]
+    public async Task Couples_that_predate_the_token_are_backfilled_with_unique_tokens_once()
+    {
+        // Settings rows as an older version left them: no token.
+        foreach (var id in new[] { _a, _b })
+        {
+            var (d, _t) = Scope(id);
+            using (d) { d.EventSettings.Add(new EventSettings { CoupleId = id }); await d.SaveChangesAsync(); }
+        }
+        var (db, t) = Scope(null);
+        using var _ = db;
+        Assert.Equal(2, await PreviewTokens.BackfillAsync(db));
+        var tokens = await db.EventSettings.IgnoreQueryFilters().Select(x => x.PreviewToken).ToListAsync();
+        Assert.All(tokens, x => Assert.True(TokenGenerator.LooksValid(x)));
+        Assert.Equal(2, tokens.Distinct().Count());
+        Assert.Equal(0, await PreviewTokens.BackfillAsync(db)); // nothing left to do on the next start
+    }
+
+    [Fact]
+    public async Task Test_messages_show_unfilled_values_as_placeholders()
+    {
+        var (db, t) = Scope(_a);
+        using var _ = db;
+        var settings = new SettingsService(db, t);
+        var s = await settings.GetAsync();
+        s.InviteTemplate = "{name}, {couple} on {date} at {venue}: {link}";
+        await db.SaveChangesAsync();
+        var campaign = new CampaignService(db, settings, new IsraelClock(TimeProvider.System),
+            Microsoft.Extensions.Options.Options.Create(new AppOptions { PublicBaseUrl = "https://x.example" }),
+            new LogSmsProvider(NullLogger<LogSmsProvider>.Instance), NullLogger<CampaignService>.Instance);
+        Assert.True(await campaign.QueueTestAsync("0501234567", MessageKind.Invite));
+        var body = (await db.Messages.SingleAsync()).Body;
+        Assert.Contains("{couple} on {date} at {venue}", body);
+        // Real messages are different: they are never built while a value is missing.
+        Assert.Equal(",  on  at : l", MessageTemplates.Render("{name}, {couple} on {date} at {venue}: {link}", "", s, "l"));
+    }
+
+    [Fact]
     public async Task Random_tokens_are_still_unknown()
     {
         var (db, t) = Scope(null);

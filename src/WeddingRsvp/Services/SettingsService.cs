@@ -14,7 +14,7 @@ public sealed class SettingsService(AppDbContext db, ITenantContext tenant)
         var s = await db.EventSettings.FirstOrDefaultAsync(ct);
         if (s is not null) return s;
 
-        s = new EventSettings { CoupleId = coupleId };
+        s = new EventSettings { CoupleId = coupleId, PreviewToken = await PreviewTokens.NewAsync(db, ct) };
         db.EventSettings.Add(s);
         await db.SaveChangesAsync(ct);
         return s;

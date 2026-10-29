@@ -102,6 +102,12 @@
     <h3>@Ui.T("תצוגה מקדימה של ההזמנה", "Invitation preview")</h3>
     <pre class="sms-preview">@Model.PreviewBody</pre>
     <p class="faint">@SegText(Model.PreviewSegments) · @Ui.T("מתעדכן אחרי שמירה", "updates after saving")</p>
+    <h3>@Ui.T("תצוגה מקדימה של התזכורת", "Reminder preview")</h3>
+    <pre class="sms-preview">@Model.PreviewReminder</pre>
+    <p class="faint">@SegText(Model.PreviewReminderSegments)</p>
+    <h3>@Ui.T("תצוגה מקדימה של הודעת התודה", "Thank-you preview")</h3>
+    <pre class="sms-preview">@Model.PreviewThankYou</pre>
+    <p class="faint">@SegText(Model.PreviewThankYouSegments) · @Ui.T("ערכים שעוד לא מולאו מוצגים כ-{couple}, {date}, {venue}", "Values not filled in yet show as {couple}, {date}, {venue}")</p>
 </section>
 
 <section class="card">

@@ -32,6 +32,10 @@ public class EventModel(AppDbContext db, SettingsService settings, IsraelClock c
     /// <summary>What the invitation SMS looks like right now (empty fields shown as blanks), for the preview.</summary>
     public string PreviewBody { get; private set; } = "";
     public SegmentInfo PreviewSegments { get; private set; }
+    public string PreviewReminder { get; private set; } = "";
+    public SegmentInfo PreviewReminderSegments { get; private set; }
+    public string PreviewThankYou { get; private set; } = "";
+    public SegmentInfo PreviewThankYouSegments { get; private set; }
     /// <summary>Sample values for each placeholder, per language, so the page can count a template's rendered length while typing.</summary>
     /// <summary>How the active SMS provider bills a message (differs per provider and per encoding).</summary>
     public SmsCostRule CostRule(bool unicode) => sms.CostRule(unicode);
@@ -147,7 +151,7 @@ public class EventModel(AppDbContext db, SettingsService settings, IsraelClock c
 
     private void Describe(EventSettings s)
     {
-        var sampleLink = MessageTemplates.GuestLink(app.Value.PublicBaseUrl, "AbCdEfGhJk");
+        var sampleLink = MessageTemplates.GuestLink(app.Value.PublicBaseUrl, s.PreviewToken == "" ? "AbCdEfGhJk" : s.PreviewToken);
         // {name} is counted with the longest real guest name (worst case); a sample name until guests exist.
         LongestGuestName = db.Guests.AsNoTracking().Select(g => g.Name).AsEnumerable()
             .OrderByDescending(n => n.Length).FirstOrDefault();
@@ -159,9 +163,13 @@ public class EventModel(AppDbContext db, SettingsService settings, IsraelClock c
         InviteSegmentsEn = SegEn(s.InviteTemplateEn);
         ReminderSegmentsEn = SegEn(s.ReminderTemplateEn);
         ThankYouSegmentsEn = SegEn(s.ThankYouTemplateEn);
-        PreviewBody = MessageTemplates.Body(s, MessageKind.Invite,
-            s.LanguageMode == LanguageMode.EnglishOnly ? "Cohen family" : "משפחת ישראלי", sampleLink);
+        var previewName = s.LanguageMode == LanguageMode.EnglishOnly ? "Cohen family" : "משפחת ישראלי";
+        PreviewBody = MessageTemplates.Body(s, MessageKind.Invite, previewName, sampleLink, placeholders: true);
         PreviewSegments = SmsSegments.Count(PreviewBody);
+        PreviewReminder = MessageTemplates.Body(s, MessageKind.Reminder, previewName, sampleLink, placeholders: true);
+        PreviewReminderSegments = SmsSegments.Count(PreviewReminder);
+        PreviewThankYou = MessageTemplates.Body(s, MessageKind.ThankYou, previewName, sampleLink, placeholders: true);
+        PreviewThankYouSegments = SmsSegments.Count(PreviewThankYou);
         object Sample(string name, bool en) => new
         {
             name,

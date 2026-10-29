@@ -36,22 +36,27 @@ public static class MessageTemplates
     /// The SMS text. In Both mode it carries the Hebrew and the English text one after the other, separated by an empty line
     /// (the single link opens a page with a language toggle).
     /// </summary>
-    public static string Body(EventSettings s, MessageKind kind, string guestName, string link) =>
-        string.Join("\n\n", ActiveTemplates(s, kind).Select(t => Render(t.Template, guestName, s, link, t.English)));
+    public static string Body(EventSettings s, MessageKind kind, string guestName, string link, bool placeholders = false) =>
+        string.Join("\n\n", ActiveTemplates(s, kind).Select(t => Render(t.Template, guestName, s, link, t.English, placeholders)));
 
     public static string CoupleFor(EventSettings s, bool en) =>
         en && !string.IsNullOrWhiteSpace(s.CoupleNamesEn) ? s.CoupleNamesEn : s.CoupleNames;
     public static string VenueFor(EventSettings s, bool en) =>
         en && !string.IsNullOrWhiteSpace(s.VenueNameEn) ? s.VenueNameEn : s.VenueName;
 
-    public static string Render(string template, string guestName, EventSettings s, string link, bool english = false) =>
-        template
+    /// <param name="placeholders">For test messages and previews: a value the couple hasn't filled in stays visible as its
+    /// placeholder ({couple}, {date}, {venue}) instead of leaving a gap. Real messages are never sent with a missing value (see MissingFields).</param>
+    public static string Render(string template, string guestName, EventSettings s, string link, bool english = false, bool placeholders = false)
+    {
+        string Or(string value, string token) => placeholders && string.IsNullOrWhiteSpace(value) ? token : value;
+        return template
             .Replace("{name}", guestName)
-            .Replace("{couple}", CoupleFor(s, english))
+            .Replace("{couple}", Or(CoupleFor(s, english), "{couple}"))
             .Replace("{link}", link)
-            .Replace("{date}", s.StartsAtLocal?.ToString("dd/MM", CultureInfo.InvariantCulture) ?? "")
-            .Replace("{venue}", VenueFor(s, english))
+            .Replace("{date}", Or(s.StartsAtLocal?.ToString("dd/MM", CultureInfo.InvariantCulture) ?? "", "{date}"))
+            .Replace("{venue}", Or(VenueFor(s, english), "{venue}"))
             .Trim();
+    }
 
     /// <summary>
     /// Event-level placeholders (the couple fills these in) that a template uses but that have no value yet.
