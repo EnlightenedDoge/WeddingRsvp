@@ -30,6 +30,8 @@ h3 { margin: 16px 0 8px; font-size: 15px; }
 .nav a:hover { background: rgba(255,255,255,.07); }
 .nav svg, .brand svg { flex: none; }
 .side-foot { margin-block-start: auto; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.side-foot .navlink { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px; border-radius: 10px; align-self: stretch; }
+.side-foot .navlink:hover { background: rgba(255,255,255,.07); }
 .langsw { display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: rgba(255,255,255,.08); }
 .langsw a { min-width: 44px; min-height: 36px; padding: 0 10px; display: grid; place-items: center; border-radius: 7px; font-size: 14px; font-weight: 500; }
 .langsw a.on { background: #fff; color: var(--ink); }
