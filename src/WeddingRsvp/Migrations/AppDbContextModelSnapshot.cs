@@ -240,6 +240,10 @@ namespace WeddingRsvp.Migrations
                     b.Property<DateTime?>("EndsAtLocal")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("GoogleMapsLink")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("InvitationImageEnUpdatedAtUtc")
                         .HasColumnType("TEXT");
 
@@ -342,6 +346,10 @@ namespace WeddingRsvp.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("VenueNameEn")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WazeLink")
                         .IsRequired()
                         .HasColumnType("TEXT");
 

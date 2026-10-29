@@ -76,6 +76,8 @@ else
     throw new InvalidOperationException($"Unknown Sms:Provider '{smsProvider}' (expected Log or Sms4Free).");
 builder.Services.AddScoped<ProviderCircuitBreaker>();
 builder.Services.AddScoped<DeliveryReports>();
+builder.Services.AddHttpClient<MapLinkResolver>(c => c.Timeout = TimeSpan.FromSeconds(5))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false }); // hops are followed by hand, allow-listed
 builder.Services.AddHttpClient<ITurnstileVerifier, TurnstileVerifier>(c => c.Timeout = TimeSpan.FromSeconds(5));
 builder.Services.AddScoped<TurnstileGate>();
 builder.Services.AddScoped<AllocationService>();

@@ -25,6 +25,9 @@ public class EventSettings : ITenantOwned
     public string VenueAddress { get; set; } = "";
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
+    /// <summary>Optional share links pasted by the couple, used when there are no coordinates (a link that carries coordinates fills them in on save).</summary>
+    public string WazeLink { get; set; } = "";
+    public string GoogleMapsLink { get; set; } = "";
 
     public LanguageMode LanguageMode { get; set; } = LanguageMode.HebrewOnly;
     /// <summary>"he" or "en": the language the guest page opens in when LanguageMode is Both.</summary>
@@ -100,6 +103,8 @@ public class EventSettings : ITenantOwned
         VenueAddress = s.VenueAddress?.Trim() ?? "";
         Latitude = s.Latitude;
         Longitude = s.Longitude;
+        WazeLink = s.WazeLink?.Trim() ?? "";
+        GoogleMapsLink = s.GoogleMapsLink?.Trim() ?? "";
         SmsSenderName = s.SmsSenderName?.Trim() ?? "";
         InviteTemplate = s.InviteTemplate?.Trim() ?? "";
         ReminderTemplate = s.ReminderTemplate?.Trim() ?? "";

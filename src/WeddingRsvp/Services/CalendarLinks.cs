@@ -8,14 +8,28 @@ public static class CalendarLinks
 {
     private const string UtcStamp = "yyyyMMdd'T'HHmmss'Z'";
 
-    /// <summary>Waze deep link. Coordinates beat addresses: venue names often resolve to the wrong place.</summary>
+    /// <summary>Coordinates the couple entered (or that were read from a pasted link); both or none.</summary>
+    private static (double Lat, double Lon)? Coords(EventSettings s) => s.Latitude is { } lat && s.Longitude is { } lon ? (lat, lon) : null;
+
+    /// <summary>Waze deep link. Coordinates beat a pasted link, which beats the address: venue names often resolve to the wrong place.</summary>
     public static string? WazeUrl(EventSettings s)
     {
-        if (s.Latitude is { } lat && s.Longitude is { } lon)
-            return string.Create(CultureInfo.InvariantCulture,
-                $"https://waze.com/ul?ll={lat:0.######},{lon:0.######}&navigate=yes");
+        if (Coords(s) is { } c)
+            return string.Create(CultureInfo.InvariantCulture, $"https://waze.com/ul?ll={c.Lat:0.######},{c.Lon:0.######}&navigate=yes");
+        if (MapLinks.IsWazeLink(s.WazeLink)) return s.WazeLink.Trim();
         if (!string.IsNullOrWhiteSpace(s.VenueDisplay))
             return $"https://waze.com/ul?q={Uri.EscapeDataString(s.VenueDisplay)}&navigate=yes";
+        return null;
+    }
+
+    /// <summary>Google Maps link, same order as <see cref="WazeUrl"/>.</summary>
+    public static string? GoogleMapsUrl(EventSettings s)
+    {
+        if (Coords(s) is { } c)
+            return string.Create(CultureInfo.InvariantCulture, $"https://www.google.com/maps/search/?api=1&query={c.Lat:0.######},{c.Lon:0.######}");
+        if (MapLinks.IsGoogleMapsLink(s.GoogleMapsLink)) return s.GoogleMapsLink.Trim();
+        if (!string.IsNullOrWhiteSpace(s.VenueDisplay))
+            return $"https://www.google.com/maps/search/?api=1&query={Uri.EscapeDataString(s.VenueDisplay)}";
         return null;
     }
 
@@ -55,7 +69,8 @@ public static class CalendarLinks
         Line($"DTEND:{IsraelClock.ToUtc(EndOf(s, startLocal)).ToString(UtcStamp, CultureInfo.InvariantCulture)}");
         Line($"SUMMARY:{Escape(s.Title)}");
         if (!string.IsNullOrWhiteSpace(s.VenueDisplay)) Line($"LOCATION:{Escape(s.VenueDisplay)}");
-        if (WazeUrl(s) is { } waze) Line($"DESCRIPTION:{Escape("ניווט: " + waze)}");
+        var nav = string.Join("\n", new[] { WazeUrl(s) is { } w ? "Waze: " + w : null, GoogleMapsUrl(s) is { } g ? "Google Maps: " + g : null }.Where(x => x is not null));
+        if (nav.Length > 0) Line($"DESCRIPTION:{Escape("ניווט:\n" + nav)}");
         Line("END:VEVENT");
         Line("END:VCALENDAR");
         return sb.ToString();

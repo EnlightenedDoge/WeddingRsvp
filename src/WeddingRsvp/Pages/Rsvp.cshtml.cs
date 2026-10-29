@@ -23,6 +23,7 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
     public string? ImageUrl { get; private set; }
     public string GoogleCalendarUrl { get; private set; } = "";
     public string? WazeUrl { get; private set; }
+    public string? GoogleMapsUrl { get; private set; }
 
     /// <summary>Language of this page view: fixed by the couple's mode, or chosen with ?lang= when both are offered.</summary>
     [BindProperty(SupportsGet = true)] public string? Lang { get; set; }
@@ -158,6 +159,7 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
 
         GoogleCalendarUrl = CalendarLinks.GoogleCalendarUrl(Event) ?? "";
         WazeUrl = CalendarLinks.WazeUrl(Event);
+        GoogleMapsUrl = CalendarLinks.GoogleMapsUrl(Event);
 
         Bg = HexColor.OrNull(Event.PageBackgroundColor) ?? Bg;
         Accent = HexColor.OrNull(Event.PageAccentColor) ?? Accent;
