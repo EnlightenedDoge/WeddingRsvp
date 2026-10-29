@@ -1,0 +1,144 @@
+@model WeddingRsvp.Pages.Admin.EventModel
+@using WeddingRsvp.Services
+@{
+    var s = Model.Settings;
+    var hasCoords = s.Latitude is not null && s.Longitude is not null;
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    var lat = s.Latitude?.ToString("0.######", inv) ?? "";
+    var lon = s.Longitude?.ToString("0.######", inv) ?? "";
+    var wazeOnlyNoGoogle = !hasCoords && !string.IsNullOrWhiteSpace(s.WazeLink) && string.IsNullOrWhiteSpace(s.GoogleMapsLink);
+    var googleOnlyNoWaze = !hasCoords && !string.IsNullOrWhiteSpace(s.GoogleMapsLink) && string.IsNullOrWhiteSpace(s.WazeLink);
+}
+<section class="card" id="loc">
+    <h2>@Ui.T("מיקום לניווט", "Location for navigation")</h2>
+    <p class="faint">@Ui.T("הכפתורים של Waze ושל Google Maps בהזמנה נבנים מהמיקום שבוחרים כאן.", "The Waze and Google Maps buttons on the invitation are built from the location you choose here.")</p>
+
+    <input type="hidden" asp-for="Settings.Latitude" id="locLat" value="@lat" />
+    <input type="hidden" asp-for="Settings.Longitude" id="locLon" value="@lon" />
+    <input type="hidden" asp-for="Settings.WazeLink" />
+    <input type="hidden" asp-for="Settings.GoogleMapsLink" />
+
+    <div class="banner @(hasCoords ? "ok" : "")" id="locStatus" role="status">
+        @if (hasCoords)
+        {
+            <span>@Ui.T("מיקום נקבע:", "Location set:") <span class="ltr" id="locCoords">@lat, @lon</span></span>
+            <span> · <a href="@CalendarLinks.WazeUrl(s)" target="_blank" rel="noopener">Waze</a> · <a href="@CalendarLinks.GoogleMapsUrl(s)" target="_blank" rel="noopener">Google Maps</a></span>
+        }
+        else
+        {
+            <span>@Ui.T("אין עדיין מיקום מדויק. האורחים יקבלו חיפוש לפי שם האולם והכתובת, שעלול לפספס.", "No exact location yet. Guests get a search by venue name and address, which can miss.")</span>
+        }
+    </div>
+
+    <div class="tabs" role="tablist" style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0">
+        <button type="button" class="btn small" data-tab="link" role="tab" aria-selected="true">@Ui.T("הדבקת קישור", "Paste a link")</button>
+        <button type="button" class="btn small" data-tab="map" role="tab" aria-selected="false">@Ui.T("חיפוש על מפה", "Search on a map")</button>
+        <button type="button" class="btn small" data-tab="addr" role="tab" aria-selected="false">@Ui.T("לפי הכתובת בלבד", "Address only")</button>
+    </div>
+
+    <div data-panel="link">
+        <label class="field"><span>@Ui.T("קישור Waze או Google Maps, או קואורדינטות", "A Waze or Google Maps link, or coordinates")</span>
+            <input name="LocationLink" class="ltr" inputmode="url" autocomplete="off" placeholder="https://waze.com/ul/…  ·  https://maps.app.goo.gl/…  ·  31.7683, 35.2137" value="@Model.LocationLink" />
+            <span class="hint">@Ui.T("פתחו את המקום באפליקציה, לחצו שיתוף והעתיקו את הקישור. אם יש בו מיקום, נשתמש בו גם ל-Waze וגם ל-Google Maps.", "Open the place in your app, tap Share and copy the link. If it contains a location we use it for both Waze and Google Maps.")</span></label>
+        @if (wazeOnlyNoGoogle)
+        {
+            <div class="banner err">@Ui.T("בקישור ה-Waze אין מיקום שאפשר לקרוא, ולכן כפתור Google Maps הוא רק חיפוש כתובת. הדביקו כאן גם קישור Google Maps.", "The Waze link has no location we can read, so the Google Maps button is only an address search. Paste a Google Maps link here as well.")</div>
+        }
+        @if (googleOnlyNoWaze)
+        {
+            <div class="banner err">@Ui.T("בקישור Google Maps אין מיקום שאפשר לקרוא, ולכן כפתור Waze הוא רק חיפוש כתובת. הדביקו כאן גם קישור Waze.", "The Google Maps link has no location we can read, so the Waze button is only an address search. Paste a Waze link here as well.")</div>
+        }
+        @if (!hasCoords && (!string.IsNullOrWhiteSpace(s.WazeLink) || !string.IsNullOrWhiteSpace(s.GoogleMapsLink)))
+        {
+            <p class="faint ltr">@if (!string.IsNullOrWhiteSpace(s.WazeLink)) { <span>Waze: @s.WazeLink</span><br /> }@if (!string.IsNullOrWhiteSpace(s.GoogleMapsLink)) { <span>Google Maps: @s.GoogleMapsLink</span> }</p>
+        }
+    </div>
+
+    <div data-panel="map" hidden>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input id="locQuery" class="ltr" style="flex:1;min-width:200px" placeholder="@Ui.T("שם מקום או כתובת", "Place name or address")" autocomplete="off" />
+            <button type="button" class="btn" id="locSearch">@Ui.T("חיפוש", "Search")</button>
+        </div>
+        <ul id="locResults" class="faint" style="list-style:none;padding:0;margin:8px 0"></ul>
+        <div id="locMap" style="height:320px;border-radius:12px;margin-top:8px" dir="ltr"></div>
+        <p class="faint">@Ui.T("לחצו על המפה או גררו את הסמן למיקום המדויק. המפה: © OpenStreetMap.", "Click the map or drag the pin to the exact spot. Map © OpenStreetMap contributors.")</p>
+        <p class="faint">@Ui.T("אל תשכחו לשמור בסוף.", "Remember to save at the bottom.")</p>
+    </div>
+
+    <div data-panel="addr" hidden>
+        <p>@Ui.T("בלי מיקום מדויק, הכפתורים יחפשו לפי שם האולם והכתובת שלמעלה. זה עובד, אבל עלול להפנות למקום שגוי.", "Without an exact location the buttons search by the venue name and address above. That works, but can point to the wrong place.")</p>
+        <button type="submit" class="btn" formaction="?handler=ClearLocation" formnovalidate>@Ui.T("נקו את המיקום המדויק", "Clear the exact location")</button>
+    </div>
+</section>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous"></script>
+<script>
+(function () {
+    var box = document.getElementById('loc');
+    var latIn = document.getElementById('locLat'), lonIn = document.getElementById('locLon');
+    var status = document.getElementById('locStatus');
+    var map = null, marker = null;
+    var t = { set: @Json.Serialize(Ui.T("מיקום נקבע:", "Location set:")), none: @Json.Serialize(Ui.T("לא נמצאו תוצאות", "No results")), fail: @Json.Serialize(Ui.T("החיפוש נכשל, נסו שוב", "Search failed, try again")), save: @Json.Serialize(Ui.T("(לא נשמר עדיין)", "(not saved yet)")) };
+
+    box.querySelectorAll('[data-tab]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            box.querySelectorAll('[data-tab]').forEach(function (x) { x.setAttribute('aria-selected', x === b ? 'true' : 'false'); x.classList.toggle('primary', x === b); });
+            box.querySelectorAll('[data-panel]').forEach(function (p) { p.hidden = p.dataset.panel !== b.dataset.tab; });
+            if (b.dataset.tab === 'map') initMap();
+        });
+    });
+    box.querySelector('[data-tab=link]').classList.add('primary');
+
+    function setPoint(lat, lon, pan) {
+        lat = Math.round(lat * 1e6) / 1e6; lon = Math.round(lon * 1e6) / 1e6;
+        latIn.value = lat; lonIn.value = lon;
+        status.className = 'banner ok';
+        status.textContent = t.set + ' ' + lat + ', ' + lon + ' ' + t.save;
+        if (map) {
+            if (!marker) {
+                marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+                marker.on('dragend', function () { var p = marker.getLatLng(); setPoint(p.lat, p.lng, false); });
+            } else marker.setLatLng([lat, lon]);
+            if (pan) map.setView([lat, lon], 16);
+        }
+    }
+
+    function initMap() {
+        if (map || typeof L === 'undefined') { if (map) map.invalidateSize(); return; }
+        var has = latIn.value !== '' && lonIn.value !== '';
+        map = L.map('locMap').setView(has ? [parseFloat(latIn.value), parseFloat(lonIn.value)] : [31.5, 34.9], has ? 16 : 7);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(map);
+        if (has) setPointQuiet(parseFloat(latIn.value), parseFloat(lonIn.value));
+        map.on('click', function (e) { setPoint(e.latlng.lat, e.latlng.lng, false); });
+        setTimeout(function () { map.invalidateSize(); }, 50);
+    }
+    function setPointQuiet(lat, lon) {
+        marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+        marker.on('dragend', function () { var p = marker.getLatLng(); setPoint(p.lat, p.lng, false); });
+    }
+
+    var results = document.getElementById('locResults');
+    function search() {
+        var q = document.getElementById('locQuery').value.trim();
+        if (!q) return;
+        results.textContent = '';
+        fetch('https://photon.komoot.io/api/?limit=6&lat=31.5&lon=34.9&q=' + encodeURIComponent(q))
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (!j.features || !j.features.length) { results.textContent = t.none; return; }
+                j.features.forEach(function (f) {
+                    var p = f.properties || {};
+                    var label = [p.name, p.street && (p.street + (p.housenumber ? ' ' + p.housenumber : '')), p.city].filter(Boolean).join(', ');
+                    var li = document.createElement('li'), a = document.createElement('a');
+                    a.href = '#'; a.textContent = label || q;
+                    a.addEventListener('click', function (ev) { ev.preventDefault(); setPoint(f.geometry.coordinates[1], f.geometry.coordinates[0], true); });
+                    li.appendChild(a); results.appendChild(li);
+                });
+            })
+            .catch(function () { results.textContent = t.fail; });
+    }
+    document.getElementById('locSearch').addEventListener('click', search);
+    document.getElementById('locQuery').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); search(); } });
+})();
+</script>

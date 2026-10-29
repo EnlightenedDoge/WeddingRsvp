@@ -40,6 +40,15 @@ public static partial class MapLinks
         return null;
     }
 
+    /// <summary>"31.7683, 35.2137" typed by hand (comma or space separated).</summary>
+    public static (double Lat, double Lon)? TryPlainCoordinates(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || text.Length > 60) return null;
+        var m = Pair().Match(text.Trim().Replace(' ', ','));
+        if (!m.Success) m = Pair().Match(text.Trim());
+        return m.Success ? Make(m.Groups[1].Value, m.Groups[2].Value) : null;
+    }
+
     private static (double, double)? Make(string lat, string lon) =>
         double.TryParse(lat, NumberStyles.Float, CultureInfo.InvariantCulture, out var a)
         && double.TryParse(lon, NumberStyles.Float, CultureInfo.InvariantCulture, out var b)

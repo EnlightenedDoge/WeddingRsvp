@@ -22,6 +22,8 @@ public class EventModel(AppDbContext db, SettingsService settings, IsraelClock c
 
     [BindProperty] public EventSettings Settings { get; set; } = new();
     [BindProperty] public IFormFile? Image { get; set; }
+    /// <summary>The single location box: a Waze or Google Maps link, or "lat, lon". Not stored as is; it fills the settings on save.</summary>
+    [BindProperty] public string? LocationLink { get; set; }
 
     public bool HasImage => Settings.InvitationImageFile is not null;
     public bool HasImageEn => Settings.InvitationImageFileEn is not null;
@@ -61,35 +63,55 @@ public class EventModel(AppDbContext db, SettingsService settings, IsraelClock c
         foreach (var (field, value) in new[] { ("PageBackgroundColor", Settings.PageBackgroundColor), ("PageAccentColor", Settings.PageAccentColor) })
             if (!string.IsNullOrWhiteSpace(value) && !HexColor.IsValid(value))
                 ModelState.AddModelError("Settings." + field, ui.T("צבע חייב להיות בפורמט #RRGGBB", "A colour must look like #RRGGBB"));
-        if (!string.IsNullOrWhiteSpace(Settings.WazeLink) && !MapLinks.IsWazeLink(Settings.WazeLink))
-            ModelState.AddModelError("Settings.WazeLink", ui.T("הדביקו קישור Waze שמתחיל ב-https://waze.com", "Paste a Waze link that starts with https://waze.com"));
-        if (!string.IsNullOrWhiteSpace(Settings.GoogleMapsLink) && !MapLinks.IsGoogleMapsLink(Settings.GoogleMapsLink))
-            ModelState.AddModelError("Settings.GoogleMapsLink", ui.T("הדביקו קישור Google Maps (https://maps.app.goo.gl/… או https://www.google.com/maps/…)", "Paste a Google Maps link (https://maps.app.goo.gl/… or https://www.google.com/maps/…)"));
+        var typed = LocationLink?.Trim();
+        if (!string.IsNullOrWhiteSpace(typed))
+        {
+            if (MapLinks.IsWazeLink(typed)) Settings.WazeLink = typed;
+            else if (MapLinks.IsGoogleMapsLink(typed)) Settings.GoogleMapsLink = typed;
+            else if (MapLinks.TryPlainCoordinates(typed) is { } plain) { Settings.Latitude = plain.Lat; Settings.Longitude = plain.Lon; typed = null; }
+            else ModelState.AddModelError("LocationLink", ui.T("הדביקו קישור Waze או Google Maps (https://…), או קואורדינטות כמו 31.7683, 35.2137", "Paste a Waze or Google Maps link (https://…), or coordinates like 31.7683, 35.2137"));
+        }
+        else typed = null;
+        // Keep the stored links valid (they are rendered on the guest page).
+        if (!string.IsNullOrWhiteSpace(Settings.WazeLink) && !MapLinks.IsWazeLink(Settings.WazeLink)) Settings.WazeLink = "";
+        if (!string.IsNullOrWhiteSpace(Settings.GoogleMapsLink) && !MapLinks.IsGoogleMapsLink(Settings.GoogleMapsLink)) Settings.GoogleMapsLink = "";
         if ((Settings.Latitude is null) != (Settings.Longitude is null))
-            ModelState.AddModelError("Settings.Latitude", ui.T("יש למלא גם קו רוחב וגם קו אורך", "Fill in both latitude and longitude, or neither"));
+            ModelState.AddModelError("LocationLink", ui.T("המיקום חסר, נסו שוב", "The location is incomplete, try again"));
         if (!ModelState.IsValid)
         {
             Describe(current);
             return Page();
         }
 
-        // No coordinates typed in: read them from a pasted link, so one link drives both the Waze and the Google Maps button.
+        // A newly pasted link wins; otherwise, with no coordinates yet, read them from a stored link. One link then drives both buttons.
         var inferred = false;
-        if (Settings.Latitude is null)
-            foreach (var link in new[] { Settings.WazeLink, Settings.GoogleMapsLink })
-                if (!string.IsNullOrWhiteSpace(link) && await mapLinks.ResolveAsync(link, HttpContext.RequestAborted) is { } c)
-                {
-                    Settings.Latitude = c.Lat;
-                    Settings.Longitude = c.Lon;
-                    inferred = true;
-                    break;
-                }
+        foreach (var link in typed is not null ? [typed] : Settings.Latitude is null ? new[] { Settings.WazeLink, Settings.GoogleMapsLink } : [])
+            if (!string.IsNullOrWhiteSpace(link) && await mapLinks.ResolveAsync(link, HttpContext.RequestAborted) is { } c)
+            {
+                Settings.Latitude = c.Lat;
+                Settings.Longitude = c.Lon;
+                inferred = true;
+                break;
+            }
 
         current.CopyEditableFrom(Settings);
         await db.SaveChangesAsync();
         TempData["Flash"] = inferred
             ? ui.T("נשמר. מצאנו את המיקום בקישור, והוא ישמש גם ל-Waze וגם ל-Google Maps", "Saved. We found the location in the link and will use it for both Waze and Google Maps")
             : ui.T("נשמר", "Saved");
+        return RedirectToPage();
+    }
+
+    /// <summary>"Address only": forget the exact location and any pasted map links.</summary>
+    public async Task<IActionResult> OnPostClearLocationAsync()
+    {
+        var current = await settings.GetAsync();
+        current.Latitude = null;
+        current.Longitude = null;
+        current.WazeLink = "";
+        current.GoogleMapsLink = "";
+        await db.SaveChangesAsync();
+        TempData["Flash"] = ui.T("המיקום המדויק נמחק. הכפתורים יחפשו לפי הכתובת", "The exact location was cleared. The buttons will search by address");
         return RedirectToPage();
     }
 

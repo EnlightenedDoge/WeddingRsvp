@@ -39,17 +39,10 @@
         <label class="field"><span>@Ui.T("אולם (באנגלית)", "Venue (English)")</span><input asp-for="Settings.VenueNameEn" class="ltr" /></label>
         <label class="field"><span>@Ui.T("כתובת", "Address")</span><input asp-for="Settings.VenueAddress" /></label>
         <label class="field"><span>@Ui.T("כתובת (באנגלית)", "Address (English)")</span><input asp-for="Settings.VenueAddressEn" class="ltr" /></label>
-        <label class="field"><span>@Ui.T("קו רוחב (לניווט)", "Latitude (for navigation)")</span><input asp-for="Settings.Latitude" class="ltr" placeholder="31.7683" /></label>
-        <label class="field"><span>@Ui.T("קו אורך (לניווט)", "Longitude (for navigation)")</span><input asp-for="Settings.Longitude" class="ltr" placeholder="35.2137" /></label>
-        <label class="field"><span>@Ui.T("קישור Waze (אם אין קואורדינטות)", "Waze link (used if there are no coordinates)")</span><input asp-for="Settings.WazeLink" class="ltr" inputmode="url" placeholder="https://waze.com/ul/..." />
-            <span class="hint">@Ui.T("ב-Waze: חפשו את המקום, שתפו ובחרו העתקת קישור. אם הקישור כולל מיקום, נמלא את הקואורדינטות לבד והן ישמשו גם ל-Waze וגם ל-Google Maps.", "In Waze: find the place, tap Share and copy the link. If the link contains a location we fill in the coordinates for you and use them for both Waze and Google Maps.")</span></label>
-        <label class="field"><span>@Ui.T("קישור Google Maps (אם אי אפשר לזהות מיקום מקישור Waze)", "Google Maps link (if the Waze link doesn't give a location)")</span><input asp-for="Settings.GoogleMapsLink" class="ltr" inputmode="url" placeholder="https://maps.app.goo.gl/..." /></label>
-        @if (!string.IsNullOrWhiteSpace(s.WazeLink) && (s.Latitude is null || s.Longitude is null) && string.IsNullOrWhiteSpace(s.GoogleMapsLink))
-        {
-            <div class="banner warn">@Ui.T("לא הצלחנו לקרוא מיקום מקישור ה-Waze, אז אין עדיין כפתור Google Maps מדויק. הוסיפו קישור Google Maps, או קואורדינטות.", "We couldn't read a location from the Waze link, so the Google Maps button is only a search for the address. Add a Google Maps link, or coordinates.")</div>
-        }
     </div>
 </section>
+
+<partial name="_LocationBox" model="Model" />
 
 <section class="card">
     <h2>@Ui.T("שפה", "Language")</h2>
