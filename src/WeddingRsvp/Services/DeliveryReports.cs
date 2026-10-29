@@ -17,14 +17,15 @@ public sealed class DeliveryReports(AppDbContext db, IsraelClock clock, ILogger<
     {
         if (!int.TryParse(msgId, out var id))
         {
-            log.LogWarning("Delivery report with unusable msgId '{MsgId}' (status {Status}, to {To})", msgId, status, to);
+            log.LogWarning("Delivery report with unusable msgId '{MsgId}' (status {Status})", msgId, status);
             return DeliveryReportResult.UnknownMessage;
         }
         // Provider callbacks carry no couple: the message id decides which row this is.
         var m = await db.Messages.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (m is null || (to is not null && !SamePhone(to, m.ToE164)))
+        // The recipient must be present and match: the path secret alone is not enough to move a message.
+        if (m is null || string.IsNullOrWhiteSpace(to) || !SamePhone(to, m.ToE164))
         {
-            log.LogWarning("Delivery report for message {MsgId} matches nothing (status {Status}, to {To})", msgId, status, to);
+            log.LogWarning("Delivery report for message {MsgId} matches nothing (status {Status})", msgId, status);
             return DeliveryReportResult.UnknownMessage;
         }
 

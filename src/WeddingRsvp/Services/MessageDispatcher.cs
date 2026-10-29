@@ -59,7 +59,7 @@ public sealed class MessageDispatcher(
             {
                 // Affects every message: leave this one Queued with its attempt count untouched and stop sending.
                 m.Attempts--;
-                m.Error = result.Error;
+                m.Error = null; // the provider's wording goes to the site admin (breaker, log), not to the couple
                 await db.SaveChangesAsync(ct);
                 await breaker.TripAsync(result.Error ?? "Provider refused the account", ct);
                 log.LogError("Provider account-level failure, sending stopped: {Error}", result.Error);
@@ -79,18 +79,18 @@ public sealed class MessageDispatcher(
                     sent++;
                     break;
                 case SmsFailureKind.Transient when m.Attempts < options.Value.MaxAttempts:
-                    m.Error = result.Error;
+                    m.Error = Neutral;
                     m.NotBeforeUtc = clock.UtcNow.AddMinutes(5 * m.Attempts);
                     log.LogWarning("Send failed (attempt {Attempt}) for message {Id}: {Error}", m.Attempts, m.Id, result.Error);
                     break;
                 case SmsFailureKind.Unknown:
                     m.Status = MessageStatus.Failed;
-                    m.Error = "תוצאה לא ידועה — בדקו ביומן הספק / Unknown result, check the provider log: " + result.Error;
+                    m.Error = "תוצאה לא ידועה, ייתכן שההודעה נשלחה / Result unknown, the message may have been sent";
                     log.LogError("Unknown outcome for message {Id}, not retrying: {Error}", m.Id, result.Error);
                     break;
                 default: // Rejected, or Transient out of attempts
                     m.Status = MessageStatus.Failed;
-                    m.Error = result.Error;
+                    m.Error = Neutral;
                     log.LogError("Giving up on message {Id}: {Error}", m.Id, result.Error);
                     break;
             }
@@ -100,6 +100,9 @@ public sealed class MessageDispatcher(
         }
         return sent;
     }
+
+    // Couples see this, never the provider's own wording (it goes to the log).
+    private const string Neutral = "השליחה נכשלה / Sending failed";
 
     private static string? ShouldCancel(MessageLog m) => (m.Kind, m.Guest) switch
     {

@@ -100,6 +100,14 @@ public sealed class DeliveryReportTests : IDisposable
         Assert.Equal(MessageStatus.Sent, (await MessageAsync()).Status);
     }
 
+    [Fact]
+    public async Task A_report_without_a_recipient_changes_nothing()
+    {
+        var id = (await MessageAsync()).Id;
+        Assert.Equal(DeliveryReportResult.UnknownMessage, await ReportAsync(id.ToString(), null, "5"));
+        Assert.Equal(MessageStatus.Sent, (await MessageAsync()).Status);
+    }
+
     [Theory]
     [InlineData("nope", "0501234567")]
     [InlineData("9999", "0501234567")]

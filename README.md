@@ -29,7 +29,7 @@ dotnet run --project src/WeddingRsvp
    - `App__PublicBaseUrl`: your real public host. It is not in `docker-compose.yml`, and the app logs a warning at startup if it is
      missing. Couples' set-password links use it too. The SMS link is `App__PublicBaseUrl` + `/` + a 10-character token, so a short host saves SMS characters.
    - `PUBLIC_HOST_PORT` / `ADMIN_HOST_PORT`: host ports the container publishes (default 8080 / 8081). `BIND_ADDRESS` is the address
-     they bind to (`127.0.0.1` if the proxy runs on the same machine); `ADMIN_BIND_ADDRESS` overrides it for the private admin port only.
+     they bind to (`127.0.0.1` if the proxy runs on the same machine); `ADMIN_BIND_ADDRESS` sets the bind address of the private admin port only (default `127.0.0.1`, set a LAN IP to reach it from another machine).
    - `DATA_DIR`: where the SQLite DB, uploaded images and the data-protection keys live. On TrueNAS use an absolute dataset path
      (e.g. `/mnt/tank/apps/wedding-rsvp`). Keep the folder private: the keys are stored unencrypted. Back it up.
    - `App__BootstrapAdminEmail` / `App__BootstrapAdminPassword` for the first site admin (remove them afterwards), and the `Sms__*` settings.

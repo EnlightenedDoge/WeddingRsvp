@@ -61,7 +61,7 @@ public sealed class RsvpService(AppDbContext db, SettingsService settings, Israe
         if (g is null) return RsvpResult.NotFound;
         if (await IsClosedAsync(ct)) return RsvpResult.Closed;
         if (attending is null) return RsvpResult.MissingAnswer;
-        if (attending == true && (adults < 1 || children < 0 || adults + children > g.MaxHeadcount)) return RsvpResult.InvalidCount;
+        if (attending == true && (adults < 1 || children < 0 || (long)adults + children > g.MaxHeadcount)) return RsvpResult.InvalidCount;
 
         g.Status = attending.Value ? RsvpStatus.Attending : RsvpStatus.Declined;
         g.AttendingCount = attending.Value ? adults + children : 0;

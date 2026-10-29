@@ -56,6 +56,13 @@ public sealed class AdultsChildrenTests : IDisposable
     }
 
     [Fact]
+    public async Task Huge_counts_cannot_overflow_past_the_limit()
+    {
+        Assert.Equal(RsvpResult.InvalidCount, await SubmitAsync("Fam4Guests", true, 2_000_000_000, 2_000_000_000));
+        Assert.Equal(RsvpStatus.Pending, (await GuestAsync("Fam4Guests")).Status);
+    }
+
+    [Fact]
     public async Task Adults_and_children_are_stored_separately_and_the_total_includes_both()
     {
         Assert.Equal(RsvpResult.Saved, await SubmitAsync("Fam4Guests", true, 2, 2));

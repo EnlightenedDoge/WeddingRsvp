@@ -93,15 +93,22 @@ public sealed class CampaignService(
 
     public async Task<int> RequeueFailedAsync(CancellationToken ct = default)
     {
-        var failed = await db.Messages.Where(m => m.Status == MessageStatus.Failed).ToListAsync(ct);
+        // Old test sends stay failed; a guest who already has a queued message of the same kind is not queued twice.
+        var failed = await db.Messages.Where(m => m.Status == MessageStatus.Failed && m.Kind != MessageKind.Test).OrderBy(m => m.Id).ToListAsync(ct);
+        var queued = await db.Messages.Where(m => m.Status == MessageStatus.Queued && m.GuestId != null)
+            .Select(m => new { m.Kind, GuestId = m.GuestId!.Value }).ToListAsync(ct);
+        var taken = queued.Select(q => (q.Kind, q.GuestId)).ToHashSet();
+        var n = 0;
         foreach (var m in failed)
         {
+            if (m.GuestId is { } gid && !taken.Add((m.Kind, gid))) continue;
             m.Status = MessageStatus.Queued;
             m.Attempts = 0;
             m.NotBeforeUtc = clock.UtcNow;
+            n++;
         }
         await db.SaveChangesAsync(ct);
-        return failed.Count;
+        return n;
     }
 
     /// <summary>Called by the background worker every tick: automatic invites, reminders, thank-yous.</summary>

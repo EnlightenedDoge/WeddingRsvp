@@ -63,4 +63,12 @@ public static class CsvReader
         v ??= "";
         return v.IndexOfAny(['"', ',', '\n', '\r']) >= 0 ? "\"" + v.Replace("\"", "\"\"") + "\"" : v;
     }
+
+    /// <summary>Escape for free text (names, notes) in an export: a cell that starts like a formula gets a leading apostrophe so Excel won't run it.</summary>
+    public static string EscapeText(string? v)
+    {
+        v ??= "";
+        if (v.Length > 0 && v[0] is '=' or '+' or '-' or '@' or '\t' or '\r') v = "'" + v;
+        return Escape(v);
+    }
 }

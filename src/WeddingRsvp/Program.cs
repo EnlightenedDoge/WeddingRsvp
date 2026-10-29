@@ -24,9 +24,12 @@ Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); // Windows-1255 C
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<AppOptions>(builder.Configuration.GetSection("App"));
+// A custom Turnstile verify URL is a test hook: outside Development it is ignored, so a stray value can never receive the secret key.
+builder.Services.PostConfigure<AppOptions>(o => { if (!builder.Environment.IsDevelopment()) o.TurnstileVerifyUrl = null; });
 builder.Services.Configure<SmsOptions>(builder.Configuration.GetSection("Sms"));
 builder.Services.Configure<SendingOptions>(builder.Configuration.GetSection("Sending"));
 var appOptions = builder.Configuration.GetSection("App").Get<AppOptions>() ?? new AppOptions();
+if (!builder.Environment.IsDevelopment()) appOptions.TurnstileVerifyUrl = null;
 
 // --- Two ports: public (guest pages) and admin. NPM maps rsvp.* -> PublicPort, admin.* -> AdminPort.
 builder.WebHost.ConfigureKestrel(k =>
@@ -367,8 +370,8 @@ app.MapGet("/admin/export.csv", async (AppDbContext db) =>
             _ => "טרם ענו",
         };
         sb.AppendLine(string.Join(",",
-            CsvReader.Escape(g.Name), CsvReader.Escape(g.PhoneRaw), g.NoGuestLimit ? CsvReader.Escape("ללא הגבלה") : g.InvitedCount.ToString(),
-            status, g.AttendingCount, g.AttendingAdults, g.AttendingChildren, CsvReader.Escape(g.Notes)));
+            CsvReader.EscapeText(g.Name), CsvReader.Escape(g.PhoneRaw), g.NoGuestLimit ? CsvReader.Escape("ללא הגבלה") : g.InvitedCount.ToString(),
+            status, g.AttendingCount, g.AttendingAdults, g.AttendingChildren, CsvReader.EscapeText(g.Notes)));
     }
     // UTF-8 BOM so Excel opens Hebrew correctly.
     var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();

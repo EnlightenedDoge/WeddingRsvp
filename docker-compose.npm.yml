@@ -1,6 +1,7 @@
 # Optional override: join the proxy's Docker network so it can reach http://wedding-rsvp:8080 and :8081 by name.
 services:
   wedding-rsvp:
+    ports: !reset []   # the proxy reaches the app by name on the shared network; publish nothing on the host
     networks:
       - npm
 

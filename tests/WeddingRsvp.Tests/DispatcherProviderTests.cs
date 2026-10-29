@@ -107,6 +107,7 @@ public sealed class DispatcherProviderTests : IDisposable
         using var db = As(_a);
         var first = await db.Messages.OrderBy(m => m.Id).FirstAsync();
         Assert.Equal(MessageStatus.Failed, first.Status);
+        Assert.DoesNotContain("bad number", first.Error); // the provider's wording is not shown to the couple
         Assert.Equal(9, await db.SmsAllocations.SumAsync(e => e.Delta)); // only the second message was debited
     }
 
@@ -121,7 +122,8 @@ public sealed class DispatcherProviderTests : IDisposable
         using var db = As(_a);
         var first = await db.Messages.OrderBy(m => m.Id).FirstAsync();
         Assert.Equal(MessageStatus.Failed, first.Status);
-        Assert.Contains("timeout", first.Error);
+        Assert.Contains("Result unknown", first.Error);
+        Assert.DoesNotContain("timeout", first.Error);
     }
 
     [Fact]
