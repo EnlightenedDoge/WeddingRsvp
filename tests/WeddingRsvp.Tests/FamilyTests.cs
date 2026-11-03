@@ -179,9 +179,107 @@ public sealed class FamilyTabTests
             new WeddingRsvp.Domain.Guest { Name = "Solo", Token = "TokenCCCC2" });
         db.SaveChanges();
 
-        var page = new WeddingRsvp.Pages.Admin.Guests.IndexModel(db, new WeddingRsvp.Services.Ui(), new FamilyService(db), new IsraelClock(TimeProvider.System)) { View = "families" };
+        var page = new WeddingRsvp.Pages.Admin.Guests.IndexModel(db, new WeddingRsvp.Services.Ui(), new FamilyService(db), new IsraelClock(TimeProvider.System), null!) { View = "families" };
         await page.OnGetAsync();
         var row = Assert.Single(page.Families);
         Assert.Equal(new[] { "Dan", "Dina" }, row.Members.Select(m => m.Name).ToArray());
     }
+}
+
+public sealed class BulkGuestTests : IDisposable
+{
+    private readonly Microsoft.Data.Sqlite.SqliteConnection _conn = new("Data Source=:memory:");
+    private readonly Microsoft.EntityFrameworkCore.DbContextOptions<WeddingRsvp.Data.AppDbContext> _options;
+    private readonly int _couple;
+
+    public BulkGuestTests()
+    {
+        _conn.Open();
+        _options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<WeddingRsvp.Data.AppDbContext>().UseSqlite(_conn).Options;
+        using var db = new WeddingRsvp.Data.AppDbContext(_options, new WeddingRsvp.Tenancy.TenantContext());
+        db.Database.EnsureCreated();
+        var c = new WeddingRsvp.Domain.Couple { DisplayName = "A" };
+        db.Couples.Add(c);
+        db.SaveChanges();
+        _couple = c.Id;
+        using var t = Db();
+        t.EventSettings.Add(new EventSettings { CoupleNames = "D & Y", StartsAtLocal = DateTime.Today.AddMonths(2), VenueName = "Hall", Title = "T" });
+        t.Guests.AddRange(
+            new Guest { Name = "A", Token = "TokenAAAA2", PhoneRaw = "0501111111", PhoneE164 = "+972501111111" },
+            new Guest { Name = "B", Token = "TokenBBBB2", PhoneRaw = "0502222222", PhoneE164 = "+972502222222", InviteSentAtUtc = DateTime.UtcNow },
+            new Guest { Name = "C", Token = "TokenCCCC2", PhoneRaw = "bad", PhoneError = "invalid" },
+            new Guest { Name = "D", Token = "TokenDDDD2", PhoneRaw = "0504444444", PhoneE164 = "+972504444444", Status = RsvpStatus.Attending, AttendingCount = 1, RespondedAtUtc = DateTime.UtcNow.AddHours(-2) },
+            new Guest { Name = "E", Token = "TokenEEEE2", PhoneRaw = "0505555555", PhoneE164 = "+972505555555", Status = RsvpStatus.Declined, RespondedAtUtc = DateTime.UtcNow.AddHours(-1) });
+        t.SaveChanges();
+    }
+
+    private WeddingRsvp.Data.AppDbContext Db() { var t = new WeddingRsvp.Tenancy.TenantContext(); t.Use(_couple); return new WeddingRsvp.Data.AppDbContext(_options, t); }
+
+    private GuestBulkService Service(WeddingRsvp.Data.AppDbContext db)
+    {
+        var tenant = new WeddingRsvp.Tenancy.TenantContext(); tenant.Use(_couple);
+        var campaign = new CampaignService(db, new SettingsService(db, tenant), new IsraelClock(TimeProvider.System),
+            Microsoft.Extensions.Options.Options.Create(new WeddingRsvp.Options.AppOptions()),
+            new WeddingRsvp.Services.Sms.LogSmsProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<WeddingRsvp.Services.Sms.LogSmsProvider>.Instance),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CampaignService>.Instance);
+        return new GuestBulkService(db, campaign, new FamilyService(db), new IsraelClock(TimeProvider.System));
+    }
+
+    private int[] Ids(WeddingRsvp.Data.AppDbContext db, params string[] names) => db.Guests.Where(g => names.Contains(g.Name)).Select(g => g.Id).ToArray();
+
+    [Fact]
+    public async Task Invites_go_only_to_valid_uninvited_guests()
+    {
+        using var db = Db();
+        var r = await Service(db).SendInvitesAsync(Ids(db, "A", "B", "C"));
+        Assert.Equal((1, 1, 1), (r.Queued, r.AlreadyInvited, r.NoPhone));
+        Assert.Equal(1, await db.Messages.CountAsync(m => m.Kind == MessageKind.Invite && m.Status == MessageStatus.Queued));
+    }
+
+    [Fact]
+    public async Task Set_invited_changes_the_limit_and_refuses_out_of_range()
+    {
+        using var db = Db();
+        var svc = Service(db);
+        Assert.Equal(2, await svc.SetInvitedAsync(Ids(db, "A", "B"), 3));
+        Assert.Equal(-1, await svc.SetInvitedAsync(Ids(db, "A"), 51));
+        Assert.Equal(2, await svc.SetInvitedAsync(Ids(db, "A", "B"), 0));
+        Assert.All(db.Guests.Where(g => g.Name == "A" || g.Name == "B"), g => Assert.True(g.NoGuestLimit));
+    }
+
+    [Fact]
+    public async Task Grouping_into_a_new_family_keeps_the_most_recent_answer_and_ungrouping_removes_empty_families()
+    {
+        using (var db = Db())
+        {
+            Assert.Equal(-1, await Service(db).SetFamilyAsync(Ids(db, "D", "E"), FamilyService.NewFamily, " "));
+            Assert.Equal(3, await Service(db).SetFamilyAsync(Ids(db, "A", "D", "E"), FamilyService.NewFamily, "Levi"));
+        }
+        using (var db = Db())
+        {
+            var fam = await db.Families.SingleAsync();
+            Assert.Equal("Levi", fam.Name);
+            foreach (var g in db.Guests.Where(g => g.FamilyId == fam.Id)) Assert.Equal(RsvpStatus.Declined, g.Status); // E answered last
+            Assert.Equal(3, await Service(db).SetFamilyAsync(Ids(db, "A", "D", "E"), FamilyService.None, null));
+        }
+        using var check = Db();
+        Assert.Empty(check.Families);
+    }
+
+    [Fact]
+    public async Task Delete_removes_guests_cancels_their_queued_messages_and_empty_families()
+    {
+        using (var db = Db())
+        {
+            await Service(db).SendInvitesAsync(Ids(db, "A"));
+            await Service(db).SetFamilyAsync(Ids(db, "A", "B"), FamilyService.NewFamily, "X");
+            Assert.Equal(2, await Service(db).DeleteAsync(Ids(db, "A", "B")));
+        }
+        using var check = Db();
+        Assert.Equal(3, await check.Guests.CountAsync());
+        Assert.Empty(check.Families);
+        Assert.Equal(MessageStatus.Cancelled, (await check.Messages.SingleAsync()).Status);
+    }
+
+    public void Dispose() => _conn.Dispose();
 }

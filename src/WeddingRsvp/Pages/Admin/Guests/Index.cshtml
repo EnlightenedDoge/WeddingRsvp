@@ -54,9 +54,12 @@ else
         <input type="search" name="q" value="@Model.Q" placeholder="@Ui.T("חיפוש לפי שם או טלפון", "Search by name or phone")" />
         <button type="submit" class="btn">@Ui.T("סינון", "Filter")</button>
     </form>
+    <form method="post" asp-page-handler="Bulk" id="bulk">
+    <input type="hidden" name="returnUrl" value="@(Request.Path + Request.QueryString)" />
     <div class="tablewrap">
     <table>
         <thead><tr>
+            <th class="selcell"><input type="checkbox" id="selall" aria-label="@Ui.T("בחירת כל האורחים המוצגים", "Select all shown guests")" /></th>
             <th>@Ui.T("שם", "Name")</th><th>@Ui.T("טלפון", "Phone")</th><th>@Ui.T("מוזמנים", "Invited")</th>
             <th>@Ui.T("סטטוס", "Status")</th><th>@Ui.T("הזמנה נשלחה", "Invite sent")</th>
             <th>@Ui.T("תזכורות", "Reminders")</th><th>@Ui.T("פתחו קישור", "Opened link")</th><th aria-hidden="true"></th>
@@ -65,6 +68,7 @@ else
         @foreach (var g in Model.Guests)
         {
             <tr class="clickrow @(g.PhoneE164 is null ? "bad" : "")" data-href="/admin/guests/edit/@g.Id">
+                <td class="selcell"><input type="checkbox" name="ids" value="@g.Id" class="selrow" aria-label="@Ui.T("בחירה", "Select") @g.Name" /></td>
                 <td><a href="/admin/guests/edit/@g.Id"><b>@g.Name</b></a>@if (g.GroupLinkId is not null) { <div class="faint">@Ui.T("דרך קישור קבוצתי", "Via group link")@(g.IsChild ? " · " + Ui.T("ילד/ה", "child") : "")</div> }</td>
                 <td class="ltr">@g.PhoneRaw @if (g.PhoneError is not null) { <div class="faint">@Labels.Problem(g.PhoneError)</div> }</td>
                 <td>@(g.NoGuestLimit ? Ui.T("ללא הגבלה", "No limit") : g.InvitedCount.ToString())</td>
@@ -78,6 +82,33 @@ else
         </tbody>
     </table>
     </div>
+    <div class="bulkbar" id="bulkbar" hidden>
+        <b><span id="bulkcount">0</span> @Ui.T("נבחרו", "selected")</b>
+        <select name="action" id="bulkaction" aria-label="@Ui.T("פעולה", "Action")">
+            <option value="">@Ui.T("בחרו פעולה…", "Choose an action…")</option>
+            <option value="invite">@Ui.T("שליחת הזמנה", "Send invitation")</option>
+            <option value="family">@Ui.T("הוספה למשפחה", "Add to a family")</option>
+            <option value="unfamily">@Ui.T("הוצאה ממשפחה", "Remove from family")</option>
+            <option value="invited">@Ui.T("שינוי מספר מוזמנים", "Set people invited")</option>
+            <option value="export">@Ui.T("ייצוא CSV של הנבחרים", "Export selected (CSV)")</option>
+            <option value="delete">@Ui.T("מחיקה", "Delete")</option>
+        </select>
+        <span class="bulkopt" data-for="family">
+            <select name="familyId" id="bulkfamily" aria-label="@Ui.T("משפחה", "Family")">
+                @foreach (var f in Model.FamilyOptions) { <option value="@f.Id">@f.Name@(f.Members.Length > 0 ? " · " + f.Members : "")</option> }
+                <option value="-1">@Ui.T("משפחה חדשה…", "New family…")</option>
+            </select>
+            <input name="familyName" id="bulkfamname" maxlength="@Family.NameMax" placeholder="@Ui.T("שם המשפחה החדשה", "New family name")" />
+            <span class="hint">@Ui.T("אם כבר ענו כמה מהם, התשובה האחרונה תחול על כולם.", "If several have already answered, the most recent answer applies to everyone.")</span>
+        </span>
+        <span class="bulkopt" data-for="invited">
+            <input name="invited" type="number" min="1" max="50" value="1" style="width: 90px" aria-label="@Ui.T("מוזמנים", "Invited")" />
+            <label class="checks"><input type="checkbox" name="noLimit" value="true" /> @Ui.T("ללא הגבלה", "No limit")</label>
+        </span>
+        <button type="submit" class="btn primary" id="bulkgo">@Ui.T("ביצוע", "Apply")</button>
+        <button type="button" class="btn" id="bulkclear">@Ui.T("ניקוי בחירה", "Clear")</button>
+    </div>
+    </form>
     @if (Model.Guests.Count == 0)
     {
         <p class="muted">@Ui.T("אין אורחים להצגה.", "No guests to show.")</p>
@@ -85,10 +116,37 @@ else
 </section>
 
 <script>
+    // Bulk selection: the bar shows while something is ticked; the options that belong to the chosen action show with it.
+    (function () {
+        var form = document.getElementById('bulk');
+        if (!form) return;
+        var rows = Array.prototype.slice.call(form.querySelectorAll('.selrow')), all = document.getElementById('selall');
+        var bar = document.getElementById('bulkbar'), count = document.getElementById('bulkcount'), action = document.getElementById('bulkaction');
+        var fam = document.getElementById('bulkfamily'), famName = document.getElementById('bulkfamname');
+        function sync() {
+            var n = rows.filter(function (r) { return r.checked; }).length;
+            count.textContent = n; bar.hidden = n === 0;
+            all.checked = n > 0 && n === rows.length; all.indeterminate = n > 0 && n < rows.length;
+            form.querySelectorAll('.bulkopt').forEach(function (o) { o.hidden = o.dataset.for !== action.value; });
+            if (fam) famName.hidden = fam.value !== '-1';
+        }
+        rows.forEach(function (r) { r.addEventListener('change', sync); });
+        all.addEventListener('change', function () { rows.forEach(function (r) { r.checked = all.checked; }); sync(); });
+        action.addEventListener('change', sync);
+        if (fam) fam.addEventListener('change', sync);
+        document.getElementById('bulkclear').addEventListener('click', function () { rows.forEach(function (r) { r.checked = false; }); sync(); });
+        form.addEventListener('submit', function (e) {
+            if (!action.value) { e.preventDefault(); action.focus(); return; }
+            var n = rows.filter(function (r) { return r.checked; }).length;
+            var msgs = { delete: '@Ui.T("למחוק את האורחים שנבחרו?", "Delete the selected guests?")', invite: '@Ui.T("לשלוח הזמנה לאורחים שנבחרו שעוד לא הוזמנו?", "Send the invitation to the selected guests who are not invited yet?")' };
+            if (msgs[action.value] && !confirm(msgs[action.value] + ' (' + n + ')')) e.preventDefault();
+        });
+        sync();
+    })();
     // The whole row opens the guest (the name stays a real link for keyboard and middle-click). Selecting text doesn't navigate.
     document.querySelectorAll('tr.clickrow').forEach(function (row) {
         row.addEventListener('click', function (e) {
-            if (e.target.closest('a, button, input, select, label')) return;
+            if (e.target.closest('a, button, input, select, label, td.selcell')) return;
             if (window.getSelection && String(window.getSelection())) return;
             if (e.ctrlKey || e.metaKey) window.open(row.dataset.href, '_blank'); else window.location.href = row.dataset.href;
         });

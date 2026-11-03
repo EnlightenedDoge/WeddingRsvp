@@ -63,6 +63,7 @@ builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<RsvpService>();
 builder.Services.AddScoped<GroupLinkService>();
 builder.Services.AddScoped<FamilyService>();
+builder.Services.AddScoped<GuestBulkService>();
 builder.Services.AddScoped<PhoneVerificationService>();
 builder.Services.AddScoped<CampaignService>();
 builder.Services.AddScoped<MessageDispatcher>();
@@ -435,22 +436,7 @@ app.MapPost("/webhooks/sms-delivery/{secret}", async (
 app.MapGet("/admin/export.csv", async (AppDbContext db) =>
 {
     var guests = await db.Guests.AsNoTracking().Include(g => g.Family).OrderBy(g => g.Name).ToListAsync();
-    var sb = new StringBuilder();
-    sb.AppendLine("שם,משפחה,מזהה משפחה,טלפון,מוזמנים,סטטוס,מגיעים,מבוגרים,ילדים,צמחוניים,טבעוניים,ללא גלוטן,הערות תזונה,הערות");
-    foreach (var g in guests)
-    {
-        var status = g.Status switch
-        {
-            RsvpStatus.Attending => "מגיעים",
-            RsvpStatus.Declined => "לא מגיעים",
-            _ => "טרם ענו",
-        };
-        sb.AppendLine(string.Join(",",
-            CsvReader.EscapeText(g.Name), CsvReader.EscapeText(g.Family?.Name), CsvReader.EscapeText(g.Family is { } fm ? fm.ExternalId ?? "F" + fm.Id : null), CsvReader.Escape(g.PhoneRaw), g.NoGuestLimit ? CsvReader.Escape("ללא הגבלה") : g.InvitedCount.ToString(),
-            status, g.AttendingCount, g.AttendingAdults, g.AttendingChildren, g.DietVegetarian, g.DietVegan, g.DietGlutenFree, CsvReader.EscapeText(g.DietNote), CsvReader.EscapeText(g.Notes)));
-    }
-    // UTF-8 BOM so Excel opens Hebrew correctly.
-    var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
+    var bytes = GuestCsv.Build(guests);
     return Results.File(bytes, "text/csv; charset=utf-8", "guests.csv");
 }).RequireAuthorization("Couple");
 

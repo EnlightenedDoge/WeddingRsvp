@@ -171,3 +171,10 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible { outline: 2px sol
 dialog.qe { border: 1px solid var(--line, #D8DDDA); border-radius: 14px; padding: 20px; width: min(440px, calc(100vw - 32px)); }
 dialog.qe::backdrop { background: rgba(20, 30, 28, .45); }
 button.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }
+
+/* Bulk selection on the Guests list. */
+.selcell { width: 40px; text-align: center; }
+.selcell input { width: 20px; height: 20px; }
+.bulkbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; margin-block-start: 10px; border-radius: 12px; background: #E8F0EC; border: 1px solid #BFD3CA; position: sticky; bottom: 12px; z-index: 5; box-shadow: 0 4px 16px rgba(0,0,0,.12); }
+.bulkbar[hidden], .bulkbar [hidden] { display: none !important; }
+.bulkopt { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
