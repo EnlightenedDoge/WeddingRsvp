@@ -21,6 +21,8 @@ public class GroupLink : ITenantOwned
     /// <summary>Israel local time; null means open until the event starts.</summary>
     public DateTime? ExpiresAtLocal { get; set; }
     public bool IsOff { get; set; }
+    /// <summary>SMS phone verification for this link (a toggle per link): off, only when an existing answer is opened or taken over, or on every visit. Each code costs the couple 1 SMS credit.</summary>
+    public GroupVerifyMode VerifyMode { get; set; } = GroupVerifyMode.Off;
     public DateTime CreatedAtUtc { get; set; }
 
     public const int MaxGuestsLimit = 50;

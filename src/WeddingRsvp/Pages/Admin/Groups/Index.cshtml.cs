@@ -19,6 +19,7 @@ public class IndexModel(GroupLinkService groups, AuditLog audit, UserManager<App
     [BindProperty] public string? Name { get; set; }
     [BindProperty] public int MaxGuests { get; set; } = 4;
     [BindProperty] public bool NoLimit { get; set; }
+    [BindProperty] public GroupVerifyMode VerifyMode { get; set; } = GroupVerifyMode.Off;
     [BindProperty] public bool HasExpiry { get; set; }
     [BindProperty] public DateTime? ExpiresAt { get; set; }
 
@@ -30,7 +31,7 @@ public class IndexModel(GroupLinkService groups, AuditLog audit, UserManager<App
         {
             if (await groups.GetAsync(id) is not { } l) return NotFound();
             ShowForm = true; EditId = id;
-            Name = l.Name; MaxGuests = l.NoGuestLimit ? 4 : l.MaxGuests; NoLimit = l.NoGuestLimit; HasExpiry = l.ExpiresAtLocal is not null; ExpiresAt = l.ExpiresAtLocal;
+            Name = l.Name; MaxGuests = l.NoGuestLimit ? 4 : l.MaxGuests; NoLimit = l.NoGuestLimit; VerifyMode = l.VerifyMode; HasExpiry = l.ExpiresAtLocal is not null; ExpiresAt = l.ExpiresAtLocal;
         }
         else if (create) ShowForm = true;
         await LoadAsync();
@@ -59,12 +60,12 @@ public class IndexModel(GroupLinkService groups, AuditLog audit, UserManager<App
         var user = await users.GetUserAsync(User);
         if (id is { } existing)
         {
-            if (!await groups.UpdateAsync(existing, Name!, MaxGuests, expires)) return NotFound();
+            if (!await groups.UpdateAsync(existing, Name!, MaxGuests, expires, VerifyMode)) return NotFound();
             await audit.WriteAsync("grouplink.edited", user, tenant.CoupleId, Name!.Trim());
             TempData["Flash"] = ui.T("הקישור הקבוצתי עודכן", "Group link updated");
             return RedirectToPage();
         }
-        var l = await groups.CreateAsync(Name!, MaxGuests, expires);
+        var l = await groups.CreateAsync(Name!, MaxGuests, expires, VerifyMode);
         await audit.WriteAsync("grouplink.created", user, tenant.CoupleId, l.Name);
         TempData["Flash"] = ui.T("הקישור נוצר. אפשר להעתיק ולשלוח אותו.", "The link is created, ready to copy and send.");
         return RedirectToPage();

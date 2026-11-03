@@ -216,3 +216,7 @@ two-second report.
 - Tests that seed messages must use `Kind = Test`, or the planner (correctly) queues nothing for a guest that already has a queued invite.
 - Colours from the couple are validated server-side as `#RRGGBB` before they reach CSS; never accept free-form CSS.
 - Not in git: `.env`, `data/`, `.local-test/` (a throwaway test database), local tool config.
+
+## Group links
+
+One shared link per group (`/g/{code}`), managed under Messages or Group links. Everyone who opens it enters a phone number and name; whoever answers (and the people they add) becomes a guest, never sent invitations or reminders. Each link can require an **SMS code** (off by default; on edit/take-over, or every visit). Each code is one SMS from the couple's allocation, so a link with verification stops working when the allocation or the SMS provider runs out. The phone step and resend are protected by Turnstile when it is on.

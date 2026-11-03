@@ -16,4 +16,7 @@ public enum MessageStatus { Queued = 0, Sent = 1, Delivered = 2, Failed = 3, Can
 public enum ThankYouAudience { AttendingOnly = 0, EveryoneInvited = 1 }
 
 /// <summary>Which language(s) guests get: Hebrew only, English only, or both texts in one SMS and a toggle on the page.</summary>
+/// <summary>When a group link asks for an SMS code before it shows or changes an answer.</summary>
+public enum GroupVerifyMode { Off = 0, OnEdit = 1, Always = 2 }
+
 public enum LanguageMode { HebrewOnly = 0, EnglishOnly = 1, Both = 2 }

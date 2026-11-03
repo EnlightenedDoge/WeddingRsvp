@@ -400,6 +400,9 @@ namespace WeddingRsvp.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("VerifyMode")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
@@ -567,6 +570,47 @@ namespace WeddingRsvp.Migrations
                     b.ToTable("Messages");
                 });
 
+            modelBuilder.Entity("WeddingRsvp.Domain.PhoneVerification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ConsumedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CoupleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PhoneE164")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Salt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("SentAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CoupleId", "PhoneE164");
+
+                    b.ToTable("PhoneVerifications");
+                });
+
             modelBuilder.Entity("WeddingRsvp.Domain.PlatformState", b =>
                 {
                     b.Property<int>("Id")
@@ -698,6 +742,15 @@ namespace WeddingRsvp.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Guest");
+                });
+
+            modelBuilder.Entity("WeddingRsvp.Domain.PhoneVerification", b =>
+                {
+                    b.HasOne("WeddingRsvp.Domain.Couple", null)
+                        .WithMany()
+                        .HasForeignKey("CoupleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("WeddingRsvp.Domain.SmsAllocationEntry", b =>

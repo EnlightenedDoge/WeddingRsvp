@@ -92,7 +92,7 @@ public sealed class GroupLinkService(AppDbContext db, SettingsService settings, 
         : maxGuests is < 0 or > GroupLink.MaxGuestsLimit ? "max"
         : null;
 
-    public async Task<GroupLink> CreateAsync(string name, int maxGuests, DateTime? expiresLocal, CancellationToken ct = default)
+    public async Task<GroupLink> CreateAsync(string name, int maxGuests, DateTime? expiresLocal, GroupVerifyMode verify = GroupVerifyMode.Off, CancellationToken ct = default)
     {
         var coupleId = tenant.CoupleId ?? throw new InvalidOperationException("No tenant is set.");
         string code;
@@ -101,20 +101,21 @@ public sealed class GroupLinkService(AppDbContext db, SettingsService settings, 
         var l = new GroupLink
         {
             CoupleId = coupleId, Name = name.Trim(), Code = code, MaxGuests = maxGuests,
-            ExpiresAtLocal = expiresLocal, CreatedAtUtc = clock.UtcNow,
+            ExpiresAtLocal = expiresLocal, VerifyMode = Enum.IsDefined(verify) ? verify : GroupVerifyMode.Off, CreatedAtUtc = clock.UtcNow,
         };
         db.GroupLinks.Add(l);
         await db.SaveChangesAsync(ct);
         return l;
     }
 
-    public async Task<bool> UpdateAsync(int id, string name, int maxGuests, DateTime? expiresLocal, CancellationToken ct = default)
+    public async Task<bool> UpdateAsync(int id, string name, int maxGuests, DateTime? expiresLocal, GroupVerifyMode? verify = null, CancellationToken ct = default)
     {
         var l = await GetAsync(id, ct);
         if (l is null) return false;
         l.Name = name.Trim();
         l.MaxGuests = maxGuests;
         l.ExpiresAtLocal = expiresLocal;
+        if (verify is { } v && Enum.IsDefined(v)) l.VerifyMode = v;
         await db.SaveChangesAsync(ct);
         return true;
     }

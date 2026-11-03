@@ -10,8 +10,9 @@
     var e = Model.Event;
     var l = Model.Link;
     var langQ = Model.ShowToggle ? $"lang={(Model.IsHe ? "he" : "en")}" : "";
-    string Handler(string h) => $"{Model.BasePath}?handler={h}" + (langQ == "" ? "" : "&" + langQ);
-    string Toggle(string lang) => $"{Model.BasePath}?lang={lang}";
+    var verifyQ = Model.IsPreview && !string.IsNullOrEmpty(Model.Verify) ? "verify=" + Uri.EscapeDataString(Model.Verify) : "";
+    string Handler(string h) => $"{Model.BasePath}?handler={h}" + (langQ == "" ? "" : "&" + langQ) + (verifyQ == "" ? "" : "&" + verifyQ);
+    string Toggle(string lang) => $"{Model.BasePath}?lang={lang}" + (verifyQ == "" ? "" : "&" + verifyQ);
     var form = Model.Stage == GroupStage.Form;
     var max = l.EffectiveMax;
     var chips = max <= 12; // like the personal page: big chips for small groups, number boxes for large or unlimited ones
@@ -58,7 +59,11 @@
 <div class="wrap">
     @if (Model.IsPreview)
     {
-        <div class="preview-bar" role="note">@Model.T("תצוגה מקדימה: שום דבר לא נשמר, והאורחים לא רואים את הסרגל הזה.", "Preview: nothing is saved, and guests don't see this bar.")</div>
+        <div class="preview-bar" role="note">@Model.T("תצוגה מקדימה: שום דבר לא נשמר, והאורחים לא רואים את הסרגל הזה.", "Preview: nothing is saved, and guests don't see this bar.")
+            <div>@Model.T("אימות SMS:", "SMS verification:")
+                <a href="@(Model.BasePath)?lang=@(Model.IsHe ? "he" : "en")">@Model.T("כבוי", "Off")</a> ·
+                <a href="@(Model.BasePath)?lang=@(Model.IsHe ? "he" : "en")&verify=edit">@Model.T("בעריכה", "On edit")</a> ·
+                <a href="@(Model.BasePath)?lang=@(Model.IsHe ? "he" : "en")&verify=always">@Model.T("בכל כניסה", "Every visit")</a></div></div>
     }
     <div class="top">
         <div class="hello"><b>@Model.T("שלום,", "Hello,")</b></div>
@@ -147,7 +152,7 @@
                     {
                         <div class="warnbox" role="status">
                             <b>@Model.T("המספר הזה כבר רשום", "This number is already registered")</b>
-                            <span>@Model.T($"{Model.OwnerName} כבר הוסיפ/ה אותך לתשובה שלה, כך שכבר ספרנו אותך.", $"{Model.OwnerName} has already added you to their answer, so you are already counted.")</span>
+                            <span>@(Model.OwnerName is null ? Model.T("מישהו כבר הוסיף אותך לתשובה שלו, כך שכבר ספרנו אותך.", "Someone has already added you to their answer, so you are already counted.") : Model.T($"{Model.OwnerName} כבר הוסיפ/ה אותך לתשובה שלה, כך שכבר ספרנו אותך.", $"{Model.OwnerName} has already added you to their answer, so you are already counted."))</span>
                         </div>
                         <div class="submit inline"><button type="submit" formaction="@Handler("Takeover")">@Model.T("אני רוצה לענות בעצמי", "I want to answer for myself")</button></div>
                         <div class="hint" style="text-align: center">@Model.T("נעביר אותך לתשובה נפרדת משלך, ונוריד אותך מהרשימה.", "We will move you to your own answer and remove you from their list.")</div>
@@ -170,16 +175,42 @@
                 </form>
             }
 
+            @if (Model.Stage == GroupStage.Code)
+            {
+                <form method="post" action="@Handler("Code")" asp-antiforgery="true" class="card" aria-labelledby="codetitle">
+                    <input type="hidden" name="Phone" value="@Model.Phone" />
+                    <input type="hidden" name="Takeover" value="@(Model.Takeover ? "true" : "false")" />
+                    <div>
+                        <h2 id="codetitle">@Model.T("הזינו את הקוד ששלחנו", "Enter the code we sent")</h2>
+                        <div class="hint">@Model.T("שלחנו קוד בן 6 ספרות ב-SMS למספר", "We sent a 6-digit code by SMS to") <bdi dir="ltr"><b>@Model.Phone</b></bdi></div>
+                    </div>
+                    @if (Model.IsPreview) { <div class="summary">@Model.T("תצוגה מקדימה: לא נשלח SMS. כל קוד בן 6 ספרות מתקבל.", "Preview: no SMS is sent. Any 6 digits are accepted.")</div> }
+                    <label class="fld">@Model.T("קוד אימות", "Verification code")
+                        <input type="text" name="Otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;"
+                               class="@(Model.CodeError is not null ? "bad" : "") codebox" aria-invalid="@(Model.CodeError is not null ? "true" : "false")" autofocus />
+                        @if (Model.CodeError is not null) { <span class="err" role="alert">@Model.CodeError</span> }
+                    </label>
+                    <div class="submit inline"><button type="submit">@Model.T("אישור", "Confirm")</button></div>
+                    <div class="row2">
+                        <button type="submit" id="resend" class="linkbtn" formaction="@Handler("Resend")" data-wait="@Model.WaitSeconds" data-label="@Model.T("שליחה חוזרת", "Resend code")" data-wait-label="@Model.T("שליחה חוזרת בעוד", "Resend code in")" disabled>@Model.T("שליחה חוזרת", "Resend code")</button>
+                        <a class="linkbtn" href="@Toggle(Model.IsHe ? "he" : "en")">@Model.T("החלפת מספר", "Change number")</a>
+                    </div>
+                    @if (!Model.IsPreview) { <partial name="_Turnstile" model="@GroupRsvpModel.CodeAction" /> }
+                    <div class="hint">@Model.T("האימות מוודא שרק בעל המספר יכול לראות ולשנות את התשובה.", "Verifying makes sure only the owner of this number can see and change the answer.")</div>
+                </form>
+            }
+
             @if (form)
             {
                 var adultCards = Math.Max(0, Model.Adults - 1);
                 <form method="post" action="@Handler("Submit")" asp-antiforgery="true" class="card" aria-labelledby="ask" id="groupform" data-max="@max">
                     <input type="hidden" name="Phone" value="@Model.Phone" />
                     <input type="hidden" name="Takeover" value="@(Model.Takeover ? "true" : "false")" />
+                    <input type="hidden" name="Proof" value="@Model.Proof" />
                     @if (Model.Takeover)
                     {
                         <div class="warnbox" role="status">
-                            <b>@Model.T($"{Model.OwnerName} הוסיפ/ה אותך לתשובה שלה", $"{Model.OwnerName} added you to their answer")</b>
+                            <b>@(Model.OwnerName is null ? Model.T("מישהו הוסיף אותך לתשובה שלו", "Someone added you to their answer") : Model.T($"{Model.OwnerName} הוסיפ/ה אותך לתשובה שלה", $"{Model.OwnerName} added you to their answer"))</b>
                             <span>@Model.T("אחרי השליחה תהיה לך תשובה נפרדת, ונוריד אותך מהרשימה שלה. אפשר לבדוק את השם ולהוסיף אורחים משלך.", "Once you send this, you will have your own answer and we will remove you from theirs. Check your name and add your own guests if you like.")</span>
                         </div>
                     }
@@ -286,6 +317,22 @@
     </div>
 </div>
 
+@if (Model.Stage == GroupStage.Code)
+{
+<script>
+    // Resend is disabled for a minute after a code goes out; count it down.
+    (function () {
+        var b = document.getElementById('resend'); if (!b) return;
+        var left = parseInt(b.dataset.wait, 10) || 0;
+        function tick() {
+            if (left <= 0) { b.disabled = false; b.textContent = b.dataset.label; return; }
+            b.disabled = true; b.textContent = b.dataset.waitLabel + ' ' + Math.floor(left / 60) + ':' + ('0' + (left % 60)).slice(-2);
+            left--; setTimeout(tick, 1000);
+        }
+        tick();
+    })();
+</script>
+}
 @if (form)
 {
 <script>

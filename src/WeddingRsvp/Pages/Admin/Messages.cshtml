@@ -125,6 +125,10 @@
             <div class="field"><span>@Ui.T("מקסימום אורחים בתשובה", "Max guests per answer")</span><div class="row"><input name="GroupMax" id="gMax" type="number" min="1" max="50" value="4" style="max-width: 120px" /><label class="checks"><input type="checkbox" name="GroupNoLimit" value="true" id="gNoLimit" /> @Ui.T("ללא הגבלה", "No guest limit")</label></div></div>
         </div>
         <div class="field">
+            <label class="checks"><input type="checkbox" name="GroupVerify" value="@((int)GroupVerifyMode.OnEdit)" id="gVerify" /> @Ui.T("אימות SMS של מספר הטלפון (בעריכה או במעבר לתשובה עצמאית)", "SMS phone verification (when editing or taking over)")</label>
+            <small>@Ui.T("כל קוד הוא הודעת SMS אחת מההקצאה שלכם. אפשר לשנות לאימות בכל כניסה בעריכת הקישור.", "Each code is one SMS from your allocation. Edit the link to verify on every visit instead.")</small>
+        </div>
+        <div class="field">
             <label class="checks"><input type="checkbox" name="GroupHasExpiry" value="true" id="gHasExp" /> @Ui.T("תאריך תפוגה (לא חובה)", "Expiry date (optional)")</label>
             <input type="datetime-local" name="GroupExpiresAt" id="gExp" style="max-width: 280px" disabled />
         </div>
@@ -134,7 +138,7 @@
     {
         <div class="tablewrap" style="margin-block-start: 16px">
         <table>
-            <thead><tr><th>@Ui.T("קבוצה", "Group")</th><th>@Ui.T("קישור", "Link")</th><th>@Ui.T("תשובות", "Answers")</th><th>@Ui.T("סטטוס", "Status")</th><th></th></tr></thead>
+            <thead><tr><th>@Ui.T("קבוצה", "Group")</th><th>@Ui.T("קישור", "Link")</th><th>@Ui.T("תשובות", "Answers")</th><th>@Ui.T("סטטוס", "Status")</th><th>@Ui.T("אימות SMS", "SMS verification")</th><th></th></tr></thead>
             <tbody>
             @foreach (var r in Model.GroupRows)
             {
@@ -143,6 +147,7 @@
                     <td><span class="ltr">@Model.GroupUrl(r.Link)</span> <button type="button" class="btn copy" data-copy="@Model.GroupUrl(r.Link)">@Ui.T("העתקה", "Copy")</button></td>
                     <td>@r.Answers @Ui.T("תשובות", "answers") · @r.Guests @Ui.T("אורחים", "guests")</td>
                     <td><span class="pill @(r.Status == GroupLinkStatus.Active ? "ok" : r.Status == GroupLinkStatus.Expired ? "wait" : "")">@(r.Status switch { GroupLinkStatus.Active => Ui.T("פעיל", "Active"), GroupLinkStatus.Expired => Ui.T("פג תוקף", "Expired"), _ => Ui.T("מושבת", "Off") })</span></td>
+                    <td>@(r.Link.VerifyMode switch { GroupVerifyMode.OnEdit => Ui.T("בעריכה", "On edit"), GroupVerifyMode.Always => Ui.T("בכל כניסה", "Every visit"), _ => Ui.T("כבוי", "Off") })</td>
                     <td class="actions">
                         <a class="link" href="/admin/groups/@r.Link.Id">@Ui.T("תשובות", "Answers")</a>
                         <a class="link" href="/admin/groups?edit=@r.Link.Id">@Ui.T("עריכה", "Edit")</a>

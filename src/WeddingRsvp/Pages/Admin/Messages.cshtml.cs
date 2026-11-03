@@ -21,6 +21,7 @@ public class MessagesModel(
     [BindProperty] public string? GroupName { get; set; }
     [BindProperty] public int GroupMax { get; set; } = 4;
     [BindProperty] public bool GroupNoLimit { get; set; }
+    [BindProperty] public GroupVerifyMode GroupVerify { get; set; } = GroupVerifyMode.Off;
     [BindProperty] public bool GroupHasExpiry { get; set; }
     [BindProperty] public DateTime? GroupExpiresAt { get; set; }
 
@@ -99,7 +100,7 @@ public class MessagesModel(
             TempData["Flash"] = ui.T("לא נוצר קישור: נא למלא שם לקבוצה, מספר אורחים בין 1 ל-50 או ללא הגבלה, ותאריך אם סומן.", "Link not created: enter a group name, 1 to 50 guests or no limit, and a date if expiry is ticked.");
             return RedirectToPage();
         }
-        var l = await groups.CreateAsync(GroupName!, GroupMax, expires);
+        var l = await groups.CreateAsync(GroupName!, GroupMax, expires, GroupVerify);
         await audit.WriteAsync("grouplink.created", await users.GetUserAsync(User), tenant.CoupleId, l.Name);
         TempData["Flash"] = ui.T("הקישור הקבוצתי נוצר. אפשר להעתיק ולשלוח אותו.", "The group link is created, ready to copy and send.");
         return RedirectToPage();

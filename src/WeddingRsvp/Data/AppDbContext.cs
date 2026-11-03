@@ -17,6 +17,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
     public DbSet<PlatformState> PlatformStates => Set<PlatformState>();
     public DbSet<SmsAllocationEntry> SmsAllocations => Set<SmsAllocationEntry>();
     public DbSet<GroupLink> GroupLinks => Set<GroupLink>();
+    public DbSet<PhoneVerification> PhoneVerifications => Set<PhoneVerification>();
 
     // Read by the global query filters; EF re-evaluates it per context instance.
     private int? CurrentCoupleId => tenant.CoupleId;
@@ -71,6 +72,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
         b.Entity<Guest>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);
         b.Entity<MessageLog>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);
         b.Entity<EventSettings>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);
+        b.Entity<PhoneVerification>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);
+        b.Entity<PhoneVerification>().HasIndex(x => new { x.CoupleId, x.PhoneE164 });
+        b.Entity<PhoneVerification>().Property(x => x.PhoneE164).HasMaxLength(32);
+        b.Entity<PhoneVerification>().HasOne<Couple>().WithMany().HasForeignKey(x => x.CoupleId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<GroupLink>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);
         b.Entity<GroupLink>().HasOne<Couple>().WithMany().HasForeignKey(x => x.CoupleId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<SmsAllocationEntry>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);

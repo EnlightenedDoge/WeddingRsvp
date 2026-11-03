@@ -62,6 +62,7 @@ builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<RsvpService>();
 builder.Services.AddScoped<GroupLinkService>();
+builder.Services.AddScoped<PhoneVerificationService>();
 builder.Services.AddScoped<CampaignService>();
 builder.Services.AddScoped<MessageDispatcher>();
 builder.Services.AddScoped<ImportService>();

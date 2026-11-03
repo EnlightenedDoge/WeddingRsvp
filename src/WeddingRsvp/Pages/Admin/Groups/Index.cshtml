@@ -25,6 +25,13 @@
                     <label class="checks"><input type="checkbox" name="NoLimit" value="true" id="noLimit" checked="@Model.NoLimit" /> @Ui.T("ללא הגבלה", "No guest limit")</label></span>
                     <small>@Ui.T($"כולל את מי שעונה. ללא הגבלה מאפשר עד {Guest.UnlimitedCap} אורחים בתשובה.", $"Including the person answering. With no limit an answer may name up to {Guest.UnlimitedCap} guests.")</small></label>
             </div>
+            <fieldset class="field" style="border: 0; padding: 0">
+                <legend style="font-weight: 500; padding: 0">@Ui.T("אימות מספר טלפון ב-SMS", "SMS phone verification")</legend>
+                <label class="checks"><input type="radio" name="VerifyMode" value="@((int)GroupVerifyMode.Off)" checked="@(Model.VerifyMode == GroupVerifyMode.Off)" /> @Ui.T("ללא אימות. האורח מזין טלפון וממשיך. הכי פשוט, בלי עלות.", "No verification. Guests enter a phone number and continue. Simplest, no cost.")</label>
+                <label class="checks"><input type="radio" name="VerifyMode" value="@((int)GroupVerifyMode.OnEdit)" checked="@(Model.VerifyMode == GroupVerifyMode.OnEdit)" /> @Ui.T("רק בעריכה או במעבר לתשובה עצמאית. קוד נשלח רק כשמישהו פותח תשובה שכבר קיימת.", "Only when editing or taking over. A code is sent only when someone opens an answer that already exists.")</label>
+                <label class="checks"><input type="radio" name="VerifyMode" value="@((int)GroupVerifyMode.Always)" checked="@(Model.VerifyMode == GroupVerifyMode.Always)" /> @Ui.T("בכל כניסה. קוד בכל כניסה לקישור. הכי בטוח.", "Every visit. A code on every visit to the link. Most secure.")</label>
+                <small>@Ui.T("כל קוד הוא הודעת SMS אחת מתוך ההקצאה שלכם. כשההקצאה נגמרת או שהשירות מושבת, אי אפשר להיכנס לקישור עם אימות.", "Each code is one SMS from your allocation. If your allocation runs out or sending is down, a link with verification can't be used.")</small>
+            </fieldset>
             <div class="field">
                 <label class="checks"><input type="checkbox" name="HasExpiry" value="true" id="hasExpiry" checked="@Model.HasExpiry" /> @Ui.T("הגדרת תאריך תפוגה (לא חובה)", "Set an expiry date (optional)")</label>
                 <input type="datetime-local" name="ExpiresAt" id="expiresAt" value="@Model.ExpiresAt?.ToString("yyyy-MM-ddTHH:mm")" style="max-width: 280px" aria-label="@Ui.T("הקישור פעיל עד", "Link is valid until")" />
@@ -64,6 +71,7 @@
                     </td>
                     <td><b>@r.Answers @Ui.T("תשובות", "answers")</b><div class="faint">@r.Guests @Ui.T("אורחים", "guests")</div></td>
                     <td>@(r.Link.ExpiresAtLocal is { } exp ? exp.ToString("dd/MM/yyyy HH:mm") : Ui.T("ללא תפוגה", "No expiry"))
+                        <div class="faint">@(r.Link.VerifyMode == GroupVerifyMode.Off ? "" : Ui.T("אימות SMS: ", "SMS verification: ") + (r.Link.VerifyMode == GroupVerifyMode.OnEdit ? Ui.T("בעריכה", "on edit") : Ui.T("בכל כניסה", "every visit")))</div>
                         <div class="faint">@(r.Status == GroupLinkStatus.Off ? Ui.T("הושבת ידנית", "Turned off by you") : r.Status == GroupLinkStatus.Expired ? Ui.T("פג תוקף", "Expired") : r.Link.ExpiresAtLocal is null ? Ui.T("פעיל עד תחילת האירוע", "Open until the event starts") : "")</div></td>
                     <td><span class="pill @pill">@(r.Status switch { GroupLinkStatus.Active => Ui.T("פעיל", "Active"), GroupLinkStatus.Expired => Ui.T("פג תוקף", "Expired"), _ => Ui.T("מושבת", "Off") })</span></td>
                     <td class="actions">

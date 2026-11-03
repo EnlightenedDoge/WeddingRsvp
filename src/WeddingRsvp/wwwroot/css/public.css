@@ -99,3 +99,7 @@ h1 { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.25; overflow-w
 .warnbox b { font-weight: 700; }
 .submit.inline { position: static; margin: 0; padding: 0; border: 0; background: none; }
 .outline { display: flex; align-items: center; justify-content: center; min-height: 52px; border-radius: 14px; border: 1px solid #CBD3CF; color: #1E2321; font-weight: 500; }
+.codebox { min-height: 64px !important; font-size: 28px !important; font-weight: 700; letter-spacing: .5em; text-align: center !important; }
+.row2 { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.row2 .linkbtn { background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+.row2 .linkbtn:disabled { color: var(--muted); text-decoration: none; cursor: default; }
