@@ -80,6 +80,9 @@ public class EventSettings : ITenantOwned
     /// <summary>Kill switch: when true the dispatcher sends nothing (queue keeps growing).</summary>
     public bool SendingPaused { get; set; }
 
+    /// <summary>Ask attending guests about dietary needs (vegetarian / vegan / gluten-free counts and a note) on the guest page.</summary>
+    public bool AskDietary { get; set; }
+
     public bool HasStartDate => StartsAtLocal.HasValue;
 
     public string VenueDisplay =>
@@ -115,6 +118,7 @@ public class EventSettings : ITenantOwned
         RemindersEnabled = s.RemindersEnabled;
         ReminderIntervalDays = Math.Max(1, s.ReminderIntervalDays);
         MaxReminders = Math.Max(0, s.MaxReminders);
+        AskDietary = s.AskDietary;
         ThankYouEnabled = s.ThankYouEnabled;
         ThankYouAudience = s.ThankYouAudience;
         ThankYouHourLocal = Math.Clamp(s.ThankYouHourLocal, 0, 23);

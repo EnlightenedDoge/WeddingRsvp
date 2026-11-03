@@ -23,6 +23,7 @@ public sealed class AccountService(
 
         await db.Messages.ExecuteDeleteAsync(ct); // tenant filter applies: only this couple's rows
         await db.Guests.ExecuteDeleteAsync(ct);
+        await db.Families.ExecuteDeleteAsync(ct);
         await db.GroupLinks.ExecuteDeleteAsync(ct);
         await db.PhoneVerifications.ExecuteDeleteAsync(ct);
         await db.EventSettings.ExecuteDeleteAsync(ct);

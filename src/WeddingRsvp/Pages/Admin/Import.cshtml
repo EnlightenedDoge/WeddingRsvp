@@ -9,6 +9,9 @@
         @Ui.T("ואופציונלית", "and optionally") <b>@Ui.T("מוזמנים", "Invited")</b>
         (@Ui.T("כמה אנשים בהזמנה, ברירת מחדל 1. 0 או \"ללא הגבלה\" = בלי הגבלת מספר אורחים", "how many people the invitation covers, default 1. 0 or \"unlimited\" = no limit on guests")).
         @Ui.T("מספרים שכבר קיימים ברשימה יידלגו.", "Numbers already on the list are skipped.")</p>
+    <p>@Ui.T("לקיבוץ למשפחות (תשובה אחת לכל בני המשפחה):", "To group guests into families (one answer for the whole family):")
+        <b>@Ui.T("שם משפחה", "Family name")</b> @Ui.T("ו/או", "and/or") <b>@Ui.T("מזהה משפחה", "Family identifier")</b>.
+        @Ui.T("שורות עם אותו מזהה הן אותה משפחה, גם אם לשתי משפחות אותו שם. בלי מזהה, שורות עם אותו שם משפחה מקובצות יחד.", "Rows with the same identifier are one family, even when two families share a name. Without an identifier, rows with the same family name are grouped together.")</p>
     <form method="post" enctype="multipart/form-data" class="row">
         <input type="file" name="File" accept=".csv,text/csv" />
         <button type="submit" class="btn primary">@Ui.T("ייבוא", "Import")</button>

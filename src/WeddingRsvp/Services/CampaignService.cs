@@ -29,7 +29,7 @@ public sealed class CampaignService(
         var s = await settings.GetAsync(ct);
         if (MessageTemplates.MissingFields(s, MessageKind.Invite).Count > 0) return 0;
         var queued = await QueuedGuestIdsAsync(MessageKind.Invite, ct);
-        var guests = await db.Guests
+        var guests = await db.Guests.Include(g => g.Family)
             .Where(g => g.PhoneE164 != null && g.InviteSentAtUtc == null && g.GroupLinkId == null)
             .ToListAsync(ct);
 
@@ -52,17 +52,17 @@ public sealed class CampaignService(
         var s = await settings.GetAsync(ct);
         if (MessageTemplates.MissingFields(s, MessageKind.Invite).Count > 0) return (0, 0);
         var queued = await QueuedGuestIdsAsync(MessageKind.Invite, ct);
-        var guests = await db.Guests.AsNoTracking()
+        var guests = await db.Guests.AsNoTracking().Include(g => g.Family)
             .Where(g => g.PhoneE164 != null && g.InviteSentAtUtc == null && g.GroupLinkId == null).ToListAsync(ct);
         var link = MessageTemplates.GuestLink(app.Value.PublicBaseUrl, "TESTTESTAB");
         var pending = guests.Where(g => !queued.Contains(g.Id)).ToList();
-        return (pending.Count, pending.Sum(g => sms.Credits(MessageTemplates.Body(s, MessageKind.Invite, g.Name, link))));
+        return (pending.Count, pending.Sum(g => sms.Credits(MessageTemplates.Body(s, MessageKind.Invite, g.Name, link, familyName: g.Family?.Name))));
     }
 
     /// <summary>Queues (or re-queues) one guest's invitation, e.g. after fixing their number.</summary>
     public async Task<bool> QueueInviteAsync(int guestId, CancellationToken ct = default)
     {
-        var g = await db.Guests.FindAsync([guestId], ct);
+        var g = await db.Guests.Include(x => x.Family).FirstOrDefaultAsync(x => x.Id == guestId, ct);
         if (g is null || !g.HasValidPhone) return false;
         var s = await settings.GetAsync(ct);
         if (MessageTemplates.MissingFields(s, MessageKind.Invite).Count > 0) return false;
@@ -143,7 +143,7 @@ public sealed class CampaignService(
         var now = clock.UtcNow;
         var interval = TimeSpan.FromDays(s.ReminderIntervalDays);
         var queued = await QueuedGuestIdsAsync(MessageKind.Reminder, ct);
-        var candidates = await db.Guests
+        var candidates = await db.Guests.Include(g => g.Family)
             .Where(g => g.Status == RsvpStatus.Pending && g.PhoneE164 != null
                         && g.InviteSentAtUtc != null && g.RemindersSent < s.MaxReminders)
             .ToListAsync(ct);
@@ -164,7 +164,7 @@ public sealed class CampaignService(
     private async Task PlanThankYousAsync(EventSettings s, CancellationToken ct)
     {
         var queued = await QueuedGuestIdsAsync(MessageKind.ThankYou, ct);
-        var q = db.Guests.Where(g => g.PhoneE164 != null && g.ThankYouSentAtUtc == null);
+        var q = db.Guests.Include(g => g.Family).Where(g => g.PhoneE164 != null && g.ThankYouSentAtUtc == null);
         q = s.ThankYouAudience == ThankYouAudience.AttendingOnly
             ? q.Where(g => g.Status == RsvpStatus.Attending)
             : q.Where(g => g.InviteSentAtUtc != null);
@@ -188,7 +188,7 @@ public sealed class CampaignService(
             GuestId = g.Id,
             Kind = kind,
             ToE164 = g.PhoneE164!,
-            Body = MessageTemplates.Body(s, kind, g.Name, link),
+            Body = MessageTemplates.Body(s, kind, g.Name, link, familyName: g.Family?.Name),
             CreatedAtUtc = clock.UtcNow,
             NotBeforeUtc = clock.UtcNow,
         });

@@ -47,6 +47,14 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
     /// <summary>Adults and children attending. Default on a first visit: 1 adult, 0 children.</summary>
     [BindProperty] public int? Adults { get; set; }
     [BindProperty] public int Children { get; set; }
+    /// <summary>Dietary answer (only used while the couple has turned the question on).</summary>
+    [BindProperty] public int DietVegetarian { get; set; }
+    [BindProperty] public int DietVegan { get; set; }
+    [BindProperty] public int DietGlutenFree { get; set; }
+    [BindProperty] public string? DietNote { get; set; }
+    private DietaryAnswer DietAnswer() => new(DietVegetarian, DietVegan, DietGlutenFree, DietNote);
+    private string DietError => T($"בבקשה לבחור מספרים בין 0 למספר האורחים, והערה עד {Guest.DietNoteMax} תווים.", $"Please use numbers from 0 up to the number of guests, and a note of at most {Guest.DietNoteMax} characters.");
+
     /// <summary>Old single-number form field; only read when <see cref="Adults"/> is missing (a page opened before the update).</summary>
     [BindProperty] public int Count { get; set; }
 
@@ -93,6 +101,7 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
         var attendingNow = g.Status == RsvpStatus.Attending;
         Adults = attendingNow ? g.AttendingAdults : 1;
         Children = attendingNow ? g.AttendingChildren : 0;
+        DietVegetarian = g.DietVegetarian; DietVegan = g.DietVegan; DietGlutenFree = g.DietGlutenFree; DietNote = g.DietNote;
         return Page();
     }
 
@@ -101,7 +110,7 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
         if (IsPreview) return await PreviewPostAsync();
         Adults ??= Count > 0 ? Count : 1;
         if (!IsPreview && await rsvp.FindAsync(token) is { IsDemo: true } demo) { _demoLink = true; return await PreviewPostAsync(demo); }
-        var result = await rsvp.SubmitAsync(token, Attending, Adults.Value, Children);
+        var result = await rsvp.SubmitAsync(token, Attending, Adults.Value, Children, DietAnswer());
         if (result == RsvpResult.NotFound) return NotFound();
 
         var g = (await rsvp.FindAsync(token))!;
@@ -117,6 +126,9 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
                 break;
             case RsvpResult.InvalidCount:
                 Error = T($"יש לבחור לפחות מבוגר אחד, ובסך הכול עד {g.MaxHeadcount} אורחים (מבוגרים וילדים).", $"Choose at least 1 adult, and no more than {g.MaxHeadcount} guests in total (adults and children).");
+                break;
+            case RsvpResult.InvalidDiet:
+                Error = DietError;
                 break;
             case RsvpResult.Closed:
                 Error = T("האירוע כבר התחיל, אי אפשר לעדכן תשובה.", "The event has started, so the answer can no longer be changed.");
@@ -140,9 +152,16 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
             Error = T("נא לבחור אם מגיעים כדי להמשיך.", "Please choose whether you are attending to continue.");
         else if (Attending == true && (Adults < 1 || Children < 0 || (long)Adults.Value + Children > g.MaxHeadcount))
             Error = T($"יש לבחור לפחות מבוגר אחד, ובסך הכול עד {g.MaxHeadcount} אורחים (מבוגרים וילדים).", $"Choose at least 1 adult, and no more than {g.MaxHeadcount} guests in total (adults and children).");
+        else if (Event.AskDietary && Attending == true && !DietAnswer().IsValid(Adults.Value + Children))
+            Error = DietError;
         else
         {
             g.Status = Attending.Value ? RsvpStatus.Attending : RsvpStatus.Declined;
+            if (Event.AskDietary)
+            {
+                g.DietVegetarian = Attending == true ? DietVegetarian : 0; g.DietVegan = Attending == true ? DietVegan : 0;
+                g.DietGlutenFree = Attending == true ? DietGlutenFree : 0; g.DietNote = Attending == true ? DietNote?.Trim() : null;
+            }
             g.AttendingCount = Attending.Value ? Adults.Value + Children : 0;
             g.AttendingChildren = Attending.Value ? Children : 0;
             JustSaved = true;

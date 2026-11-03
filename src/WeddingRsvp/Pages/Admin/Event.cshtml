@@ -111,6 +111,7 @@
         <partial name="_ColorPicker" model='new ColorPicker(Ui.T("צבע רקע", "Background colour"), "Settings.PageBackgroundColor", s.PageBackgroundColor, HexColor.DefaultBackground, presets)' />
         <partial name="_ColorPicker" model='new ColorPicker(Ui.T("צבע כפתור", "Button colour"), "Settings.PageAccentColor", s.PageAccentColor, HexColor.DefaultAccent, new[] { "#1F6F5F", "#2F5D8A", "#7A4E8C", "#A8553A", "#1B2A2F" })' />
     </div>
+    <label class="checks"><input asp-for="Settings.AskDietary" /> @Ui.T("לשאול את האורחים על העדפות תזונה (צמחוני, טבעוני, ללא גלוטן והערה)", "Ask guests about dietary needs (vegetarian, vegan, gluten-free and a note)")</label>
 </section>
 
 <section class="card">

@@ -10,7 +10,7 @@ using WeddingRsvp.Services;
 
 namespace WeddingRsvp.Pages.Admin.Guests;
 
-public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock clock, IOptions<AppOptions> app, Ui ui) : PageModel
+public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock clock, IOptions<AppOptions> app, Ui ui, FamilyService families) : PageModel
 {
     public sealed class GuestInput
     {
@@ -24,11 +24,20 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         public int AttendingAdults { get; set; } = 1;
         public int AttendingChildren { get; set; }
         public string? Notes { get; set; }
+        /// <summary>0 = no family, -1 = a new family named <see cref="FamilyName"/>, otherwise an existing family's id.</summary>
+        public int FamilyId { get; set; }
+        /// <summary>The new family's name, or a new name for the selected family.</summary>
+        public string? FamilyName { get; set; }
+        public int DietVegetarian { get; set; }
+        public int DietVegan { get; set; }
+        public int DietGlutenFree { get; set; }
+        public string? DietNote { get; set; }
     }
 
     [BindProperty] public GuestInput Input { get; set; } = new();
     public Guest? Existing { get; private set; }
     public string? RsvpLink { get; private set; }
+    public List<FamilyService.FamilyOption> Families { get; private set; } = new();
     public List<MessageLog> Messages { get; private set; } = new();
 
     public async Task<IActionResult> OnGetAsync(int? id)
@@ -40,7 +49,8 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         Input = new GuestInput
         {
             Name = g.Name, Phone = g.PhoneRaw, InvitedCount = g.NoGuestLimit ? 1 : g.InvitedCount, NoLimit = g.NoGuestLimit,
-            Status = g.Status, Notes = g.Notes,
+            Status = g.Status, Notes = g.Notes, FamilyId = g.FamilyId ?? 0, FamilyName = g.Family?.Name,
+            DietVegetarian = g.DietVegetarian, DietVegan = g.DietVegan, DietGlutenFree = g.DietGlutenFree, DietNote = g.DietNote,
             AttendingAdults = g.Status == RsvpStatus.Attending ? g.AttendingAdults : 1,
             AttendingChildren = g.Status == RsvpStatus.Attending ? g.AttendingChildren : 0,
         };
@@ -84,7 +94,11 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         if (phone.IsValid && await db.Guests.AnyAsync(x => x.PhoneE164 == phone.E164 && x.Id != g.Id))
             ModelState.AddModelError("Input.Phone", ui.T("המספר כבר שייך לאורח אחר", "This number already belongs to another guest"));
 
-        if (!ModelState.IsValid) return Page();
+        var people = Input.Status == RsvpStatus.Attending ? Input.AttendingAdults + Input.AttendingChildren : 0;
+        if (!new DietaryAnswer(Input.DietVegetarian, Input.DietVegan, Input.DietGlutenFree, Input.DietNote).IsValid(people))
+            ModelState.AddModelError("Input.DietVegetarian", ui.T($"מספרים בין 0 למספר המגיעים, והערה עד {Guest.DietNoteMax} תווים", $"Numbers from 0 up to the people attending, and a note of at most {Guest.DietNoteMax} characters"));
+
+        if (!ModelState.IsValid) { await LoadFamiliesAsync(); return Page(); }
 
         g.Name = Input.Name.Trim();
         g.PhoneRaw = Input.Phone?.Trim() ?? "";
@@ -92,6 +106,8 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         g.PhoneError = phone.Error;
         g.InvitedCount = unlimited ? 0 : Input.InvitedCount;
         g.Notes = Input.Notes;
+        g.DietVegetarian = Input.DietVegetarian; g.DietVegan = Input.DietVegan; g.DietGlutenFree = Input.DietGlutenFree;
+        g.DietNote = string.IsNullOrWhiteSpace(Input.DietNote) ? null : Input.DietNote.Trim();
 
         // A manual status change is recorded as such, so the couple can tell phone-call
         // answers apart from guests who answered through the link.
@@ -107,6 +123,14 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
             g.RespondedAtUtc = Input.Status == RsvpStatus.Pending ? null : clock.UtcNow;
         }
 
+        if (!await families.SetFamilyAsync(g, Input.FamilyId, Input.FamilyName, clock.UtcNow))
+        {
+            ModelState.AddModelError("Input.FamilyName", ui.T("נא להזין שם למשפחה החדשה", "Enter a name for the new family"));
+            await LoadFamiliesAsync();
+            return Page();
+        }
+        await db.SaveChangesAsync(); // a new family gets its id before the answer is shared
+        await families.ShareAnswerAsync(g);
         await db.SaveChangesAsync();
         TempData["Flash"] = ui.T("נשמר", "Saved");
         return RedirectToPage(new { id = g.Id });
@@ -135,9 +159,12 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         return RedirectToPage("Index");
     }
 
+    private async Task LoadFamiliesAsync() => Families = await families.OptionsAsync();
+
     private async Task<bool> LoadAsync(int id)
     {
-        Existing = await db.Guests.FirstOrDefaultAsync(x => x.Id == id);
+        Families = await families.OptionsAsync();
+        Existing = await db.Guests.Include(x => x.Family).FirstOrDefaultAsync(x => x.Id == id);
         if (Existing is null) return false;
         RsvpLink = MessageTemplates.GuestLink(app.Value.PublicBaseUrl, Existing.Token);
         Messages = await db.Messages.AsNoTracking()

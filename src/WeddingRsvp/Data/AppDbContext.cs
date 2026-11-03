@@ -17,6 +17,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
     public DbSet<PlatformState> PlatformStates => Set<PlatformState>();
     public DbSet<SmsAllocationEntry> SmsAllocations => Set<SmsAllocationEntry>();
     public DbSet<GroupLink> GroupLinks => Set<GroupLink>();
+    public DbSet<Family> Families => Set<Family>();
     public DbSet<PhoneVerification> PhoneVerifications => Set<PhoneVerification>();
 
     // Read by the global query filters; EF re-evaluates it per context instance.
@@ -76,6 +77,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
         b.Entity<PhoneVerification>().HasIndex(x => new { x.CoupleId, x.PhoneE164 });
         b.Entity<PhoneVerification>().Property(x => x.PhoneE164).HasMaxLength(32);
         b.Entity<PhoneVerification>().HasOne<Couple>().WithMany().HasForeignKey(x => x.CoupleId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<Family>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);
+        b.Entity<Family>().HasIndex(x => new { x.CoupleId, x.ExternalId }).IsUnique();
+        b.Entity<Family>().Property(x => x.Name).HasMaxLength(Family.NameMax);
+        b.Entity<Family>().HasOne<Couple>().WithMany().HasForeignKey(x => x.CoupleId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<Guest>().HasOne(x => x.Family).WithMany().HasForeignKey(x => x.FamilyId).OnDelete(DeleteBehavior.SetNull);
         b.Entity<GroupLink>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);
         b.Entity<GroupLink>().HasOne<Couple>().WithMany().HasForeignKey(x => x.CoupleId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<SmsAllocationEntry>().HasQueryFilter(x => x.CoupleId == CurrentCoupleId);

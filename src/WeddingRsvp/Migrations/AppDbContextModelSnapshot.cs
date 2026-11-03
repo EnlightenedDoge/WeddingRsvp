@@ -219,6 +219,9 @@ namespace WeddingRsvp.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("AskDietary")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("AutoInviteAtLocal")
                         .HasColumnType("TEXT");
 
@@ -369,6 +372,34 @@ namespace WeddingRsvp.Migrations
                     b.ToTable("EventSettings");
                 });
 
+            modelBuilder.Entity("WeddingRsvp.Domain.Family", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CoupleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExternalId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CoupleId", "ExternalId")
+                        .IsUnique();
+
+                    b.ToTable("Families");
+                });
+
             modelBuilder.Entity("WeddingRsvp.Domain.GroupLink", b =>
                 {
                     b.Property<int>("Id")
@@ -434,6 +465,21 @@ namespace WeddingRsvp.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("DietGlutenFree")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DietNote")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DietVegan")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DietVegetarian")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("FamilyId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("FirstOpenedAtUtc")
                         .HasColumnType("TEXT");
 
@@ -496,6 +542,8 @@ namespace WeddingRsvp.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AddedByGuestId");
+
+                    b.HasIndex("FamilyId");
 
                     b.HasIndex("GroupLinkId");
 
@@ -710,6 +758,15 @@ namespace WeddingRsvp.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("WeddingRsvp.Domain.Family", b =>
+                {
+                    b.HasOne("WeddingRsvp.Domain.Couple", null)
+                        .WithMany()
+                        .HasForeignKey("CoupleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("WeddingRsvp.Domain.GroupLink", b =>
                 {
                     b.HasOne("WeddingRsvp.Domain.Couple", null)
@@ -726,6 +783,13 @@ namespace WeddingRsvp.Migrations
                         .HasForeignKey("CoupleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("WeddingRsvp.Domain.Family", "Family")
+                        .WithMany()
+                        .HasForeignKey("FamilyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Family");
                 });
 
             modelBuilder.Entity("WeddingRsvp.Domain.MessageLog", b =>

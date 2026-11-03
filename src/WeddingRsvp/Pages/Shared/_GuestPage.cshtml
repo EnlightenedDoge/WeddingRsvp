@@ -17,7 +17,7 @@
         <div class="preview-bar" role="note">@Model.T("תצוגה מקדימה: שום דבר לא נשמר, והאורחים לא רואים את הסרגל הזה.", "Preview: nothing is saved, and guests don't see this bar.")</div>
     }
     <div class="top">
-        <div class="hello">@Model.T("שלום", "Hello") <b>@g.Name</b></div>
+        <div class="hello">@Model.T("שלום", "Hello") <b>@g.GreetingName(Model.IsHe)</b></div>
         @if (Model.ShowToggle)
         {
             <div class="toggle">
@@ -105,7 +105,7 @@
                     </div>
                     @{
                         var max = g.MaxHeadcount;
-                        var chips = !g.NoGuestLimit && g.InvitedCount <= 12;
+                        var chips = !g.NoGuestLimit && g.EffectiveInvited <= 12;
                         var adultsNow = Model.Adults ?? 1;
                     }
                     <div class="count-block" data-max="@max">
@@ -145,8 +145,21 @@
                             </div>
                         }
                         <div class="hint">@(g.NoGuestLimit ? Model.T("ללא הגבלת מספר אורחים", "No limit on the number of guests")
-            : g.InvitedCount == 1 ? Model.T("ההזמנה היא לאורח אחד", "Your invitation is for 1 guest")
-            : Model.T($"הוזמנתם עד {g.InvitedCount} אורחים בסך הכול (מבוגרים וילדים)", $"You are invited with up to {g.InvitedCount} guests in total (adults and children)"))</div>
+            : g.EffectiveInvited == 1 ? Model.T("ההזמנה היא לאורח אחד", "Your invitation is for 1 guest")
+            : Model.T($"הוזמנתם עד {g.EffectiveInvited} אורחים בסך הכול (מבוגרים וילדים)", $"You are invited with up to {g.EffectiveInvited} guests in total (adults and children)"))</div>
+                        @if (e.AskDietary)
+                        {
+                            <div class="count-group diet">
+                                <div style="font-weight: 500">@Model.T("העדפות תזונה", "Dietary needs") <span class="hint">· @Model.T("כמה מהאורחים? אפשר להשאיר 0", "How many of your guests? 0 if none")</span></div>
+                                <div class="diet-row">
+                                    <label class="fld"><span>@Model.T("צמחוני", "Vegetarian")</span><input type="number" name="DietVegetarian" min="0" max="@max" value="@Model.DietVegetarian" inputmode="numeric" /></label>
+                                    <label class="fld"><span>@Model.T("טבעוני", "Vegan")</span><input type="number" name="DietVegan" min="0" max="@max" value="@Model.DietVegan" inputmode="numeric" /></label>
+                                    <label class="fld"><span>@Model.T("ללא גלוטן", "Gluten-free")</span><input type="number" name="DietGlutenFree" min="0" max="@max" value="@Model.DietGlutenFree" inputmode="numeric" /></label>
+                                </div>
+                                <label class="fld"><span>@Model.T("אלרגיות או הערות נוספות", "Allergies or anything else")</span>
+                                    <textarea name="DietNote" rows="2" maxlength="@Guest.DietNoteMax">@Model.DietNote</textarea></label>
+                            </div>
+                        }
                     </div>
                     <div class="submit"><button type="submit">@(answered ? Model.T("עדכון תשובה", "Update answer") : Model.T("שליחת תשובה", "Send answer"))</button></div>
                 </form>

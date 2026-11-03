@@ -25,7 +25,7 @@ public class IndexModel(AppDbContext db, Services.Ui ui) : PageModel
 
     public async Task OnGetAsync()
     {
-        IQueryable<Guest> q = db.Guests.AsNoTracking();
+        IQueryable<Guest> q = db.Guests.AsNoTracking().Include(g => g.Family);
         q = Filter switch
         {
             "pending" => q.Where(g => g.Status == RsvpStatus.Pending),

@@ -18,6 +18,15 @@
             <label class="field"><span>@Ui.T("טלפון", "Phone")</span><input asp-for="Input.Phone" class="ltr" inputmode="tel" />
                 <span asp-validation-for="Input.Phone" class="field-validation-error"></span>
                 @if (Model.Existing?.PhoneError is { } err) { <small class="error">@Labels.Problem(err)</small> }</label>
+            <div class="field"><span>@Ui.T("משפחה", "Family")</span>
+                <select asp-for="Input.FamilyId" id="familyPick" aria-label="@Ui.T("משפחה", "Family")">
+                    <option value="0">@Ui.T("ללא משפחה", "No family")</option>
+                    @foreach (var f in Model.Families) { <option value="@f.Id">@f.Name@(f.Members.Length > 0 ? " · " + f.Members : "")</option> }
+                    <option value="-1">@Ui.T("משפחה חדשה…", "New family…")</option>
+                </select>
+                <input asp-for="Input.FamilyName" id="familyName" maxlength="@Family.NameMax" placeholder="@Ui.T("שם המשפחה (למשל כהן)", "Family name (e.g. Cohen)")" />
+                <small>@Ui.T("אורחים באותה משפחה חולקים תשובה אחת: תשובה של אחד תקפה לכולם, והדף פונה אליהם \"משפחת …\". שם משפחה יכול להופיע יותר מפעם אחת; אפשר גם לשנות כאן את שם המשפחה שנבחרה.", "Guests in the same family share one answer: one member's reply counts for all, and the page greets them as \"… family\". A name can be used by more than one family; you can also rename the selected family here.")</small>
+                <span asp-validation-for="Input.FamilyName" class="field-validation-error"></span></div>
             <div class="field"><span>@Ui.T("מספר מוזמנים", "People invited")</span>
                 <div class="row">
                     <input asp-for="Input.InvitedCount" id="invitedNumber" type="number" min="0" max="50" style="flex: 0 1 120px" aria-label="@Ui.T("מספר מוזמנים", "People invited")" />
@@ -36,6 +45,13 @@
             <label class="field"><span>@Ui.T("ילדים שמגיעים", "Children attending")</span><input asp-for="Input.AttendingChildren" type="number" min="0" />
                 <span asp-validation-for="Input.AttendingChildren" class="field-validation-error"></span></label>
         </div>
+        <div class="fields">
+            <label class="field"><span>@Ui.T("צמחוניים", "Vegetarian")</span><input asp-for="Input.DietVegetarian" type="number" min="0" />
+                <span asp-validation-for="Input.DietVegetarian" class="field-validation-error"></span></label>
+            <label class="field"><span>@Ui.T("טבעוניים", "Vegan")</span><input asp-for="Input.DietVegan" type="number" min="0" /></label>
+            <label class="field"><span>@Ui.T("ללא גלוטן", "Gluten-free")</span><input asp-for="Input.DietGlutenFree" type="number" min="0" /></label>
+        </div>
+        <label class="field"><span>@Ui.T("אלרגיות והערות תזונה", "Allergies and dietary notes")</span><textarea asp-for="Input.DietNote" rows="2" maxlength="@Guest.DietNoteMax"></textarea></label>
         <label class="field"><span>@Ui.T("הערות", "Notes")</span><textarea asp-for="Input.Notes" rows="2"></textarea></label>
         <button type="submit" class="btn primary">@Ui.T("שמירה", "Save")</button>
     </form>
@@ -76,6 +92,14 @@
 </div>
 
 <script>
+    // The family name box is only needed for a new family (or to rename the selected one).
+    (function () {
+        var pick = document.getElementById('familyPick'), name = document.getElementById('familyName');
+        if (!pick || !name) return;
+        function sync() { name.style.display = pick.value === '0' ? 'none' : ''; }
+        pick.addEventListener('change', function () { if (pick.value === '-1') name.value = ''; sync(); });
+        sync();
+    })();
     // "No guest limit" greys out the number box; typing 0 ticks the box.
     (function () {
         var box = document.getElementById('noLimit'), num = document.getElementById('invitedNumber');

@@ -103,3 +103,9 @@ h1 { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.25; overflow-w
 .row2 { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
 .row2 .linkbtn { background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
 .row2 .linkbtn:disabled { color: var(--muted); text-decoration: none; cursor: default; }
+
+/* Dietary needs (optional question): three small counts side by side, then a note. */
+.diet { gap: 12px; }
+.diet-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.diet-row .fld { flex: 1 1 96px; }
+.fld textarea { box-sizing: border-box; width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid #CBD3CF; background: #fff; color: #1E2321; font: inherit; font-size: 16px; resize: vertical; }
