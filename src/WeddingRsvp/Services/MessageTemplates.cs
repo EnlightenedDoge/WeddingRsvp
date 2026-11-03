@@ -81,4 +81,21 @@ public static class MessageTemplates
 
     public static string GuestLink(string publicBaseUrl, string token) =>
         publicBaseUrl.TrimEnd('/') + "/" + token;
+
+    /// <summary>The shared link of a group: /g/{code}.</summary>
+    public static string GroupLink(string publicBaseUrl, string code) =>
+        publicBaseUrl.TrimEnd('/') + "/g/" + code;
+
+    /// <summary>The text a couple pastes into a group chat with the group link, in the couple's language mode.</summary>
+    public static string GroupMessage(EventSettings s, string link)
+    {
+        string He() => $"שלום! אנחנו שמחים להזמין אתכם לחתונה של {s.CoupleNames}. לאישור הגעה, הזינו טלפון ושם בקישור: {link}";
+        string En() => $"Hello! We are happy to invite you to the wedding of {(string.IsNullOrWhiteSpace(s.CoupleNamesEn) ? s.CoupleNames : s.CoupleNamesEn)}. To RSVP, enter your phone and name here: {link}";
+        return s.LanguageMode switch
+        {
+            LanguageMode.HebrewOnly => He(),
+            LanguageMode.EnglishOnly => En(),
+            _ => He() + "\n\n" + En(),
+        };
+    }
 }

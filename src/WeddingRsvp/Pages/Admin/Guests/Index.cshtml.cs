@@ -31,8 +31,8 @@ public class IndexModel(AppDbContext db, Services.Ui ui) : PageModel
             "pending" => q.Where(g => g.Status == RsvpStatus.Pending),
             "attending" => q.Where(g => g.Status == RsvpStatus.Attending),
             "declined" => q.Where(g => g.Status == RsvpStatus.Declined),
-            "invalid" => q.Where(g => g.PhoneE164 == null),
-            "uninvited" => q.Where(g => g.InviteSentAtUtc == null),
+            "invalid" => q.Where(g => g.PhoneE164 == null && g.PhoneError != null),
+            "uninvited" => q.Where(g => g.InviteSentAtUtc == null && g.GroupLinkId == null),
             "opened" => q.Where(g => g.Status == RsvpStatus.Pending && g.FirstOpenedAtUtc != null),
             _ => q,
         };

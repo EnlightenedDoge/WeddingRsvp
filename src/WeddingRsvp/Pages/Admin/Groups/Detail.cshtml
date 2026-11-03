@@ -1,0 +1,52 @@
+@page "/admin/groups/{id:int}"
+@model WeddingRsvp.Pages.Admin.Groups.DetailModel
+@{ ViewData["Title"] = Model.Link.Name; }
+<header class="page-head">
+    <div>
+        <h1>@Model.Link.Name · @Model.Answers @Ui.T("תשובות", "answers") · @Model.Guests @Ui.T("אורחים", "guests")</h1>
+        <div class="sub"><a class="link" href="/admin/groups">← @Ui.T("לקישורים הקבוצתיים", "Back to group links")</a></div>
+        <div class="sub ltr">@Model.Url@(Model.Link.ExpiresAtLocal is { } e ? " · " + e.ToString("dd/MM/yyyy HH:mm") : "")</div>
+    </div>
+    <div class="row">
+        <button type="button" class="btn" id="copyMsg" data-copy="@Model.MessageText">@Ui.T("העתקת נוסח הודעה", "Copy message text")</button>
+        <a class="btn" href="/admin/groups?edit=@Model.Link.Id">@Ui.T("הארכת תוקף", "Extend expiry")</a>
+    </div>
+</header>
+
+<section class="card">
+    @if (Model.Responses.Count == 0)
+    {
+        <p class="muted">@Ui.T("עדיין אף אחד לא ענה דרך הקישור הזה.", "Nobody has answered through this link yet.")</p>
+    }
+    else
+    {
+        <div class="tablewrap">
+        <table>
+            <thead><tr>
+                <th>@Ui.T("מי ענה", "Answered by")</th><th>@Ui.T("טלפון", "Phone")</th><th>@Ui.T("תשובה", "Answer")</th>
+                <th>@Ui.T("מי מגיע", "Who is coming")</th><th>@Ui.T("מתי", "When")</th>
+            </tr></thead>
+            <tbody>
+            @foreach (var r in Model.Responses)
+            {
+                var yes = r.Who.Status == RsvpStatus.Attending;
+                <tr>
+                    <td><b>@r.Who.Name</b></td>
+                    <td class="ltr">@r.Who.PhoneRaw</td>
+                    <td><span class="pill @(yes ? "ok" : "no")">@(yes ? Ui.T("מגיעים", "Attending") + " · " + r.People : Ui.T("לא מגיעים", "Declined"))</span></td>
+                    <td>@(yes ? string.Join(", ", new[] { r.Who.Name }.Concat(r.Added.Select(a => a.IsChild ? a.Name + " (" + Ui.T("ילד/ה", "child") + ")" : a.Name))) : "—")</td>
+                    <td>@Labels.Local(r.Who.RespondedAtUtc)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        </div>
+    }
+    <p class="faint">@Ui.T("כל מי שענה דרך הקישור, כולל האורחים שהוסיף, נוסף גם לרשימת האורחים.", "Everyone who answered through this link, and the guests they added, is also added to your guest list.")</p>
+</section>
+<script>
+    document.getElementById('copyMsg').addEventListener('click', function () {
+        var b = this, done = function () { var t = b.textContent; b.textContent = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Ui.T("הועתק", "Copied"))); setTimeout(function () { b.textContent = t; }, 1500); };
+        if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(done); else done();
+    });
+</script>

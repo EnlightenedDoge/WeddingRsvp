@@ -369,10 +369,54 @@ namespace WeddingRsvp.Migrations
                     b.ToTable("EventSettings");
                 });
 
+            modelBuilder.Entity("WeddingRsvp.Domain.GroupLink", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CoupleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ExpiresAtLocal")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsOff")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MaxGuests")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("CoupleId");
+
+                    b.ToTable("GroupLinks");
+                });
+
             modelBuilder.Entity("WeddingRsvp.Domain.Guest", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AddedByGuestId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("AttendingChildren")
@@ -390,10 +434,16 @@ namespace WeddingRsvp.Migrations
                     b.Property<DateTime?>("FirstOpenedAtUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("GroupLinkId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("InviteSentAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("InvitedCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsChild")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("LastOpenedAtUtc")
@@ -441,6 +491,10 @@ namespace WeddingRsvp.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AddedByGuestId");
+
+                    b.HasIndex("GroupLinkId");
 
                     b.HasIndex("Token")
                         .IsUnique();
@@ -604,6 +658,15 @@ namespace WeddingRsvp.Migrations
                 });
 
             modelBuilder.Entity("WeddingRsvp.Domain.EventSettings", b =>
+                {
+                    b.HasOne("WeddingRsvp.Domain.Couple", null)
+                        .WithMany()
+                        .HasForeignKey("CoupleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WeddingRsvp.Domain.GroupLink", b =>
                 {
                     b.HasOne("WeddingRsvp.Domain.Couple", null)
                         .WithMany()

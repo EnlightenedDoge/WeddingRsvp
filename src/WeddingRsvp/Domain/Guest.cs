@@ -52,6 +52,13 @@ public class Guest : ITenantOwned
     public DateTime? FirstOpenedAtUtc { get; set; }
     public DateTime? LastOpenedAtUtc { get; set; }
 
+    /// <summary>Set when this person answered through a group link (see <see cref="GroupLink"/>). Such guests are never invited or reminded by SMS.</summary>
+    public int? GroupLinkId { get; set; }
+    /// <summary>The group-link guest who added this person to their answer; null when the person answered for themselves.</summary>
+    public int? AddedByGuestId { get; set; }
+    /// <summary>A child added through a group link (their phone number is optional).</summary>
+    public bool IsChild { get; set; }
+
     public string? Notes { get; set; }
     public DateTime CreatedAtUtc { get; set; }
 

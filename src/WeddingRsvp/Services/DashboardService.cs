@@ -45,8 +45,8 @@ public sealed class DashboardService(AppDbContext db)
             Declined: guests.Count(g => g.Status == RsvpStatus.Declined),
             Pending: pending.Count,
             PendingButOpened: pending.Count(g => g.FirstOpenedAtUtc != null),
-            InvitesNotSent: guests.Count(g => g.InviteSentAtUtc == null),
-            InvalidPhones: guests.Count(g => g.PhoneE164 == null),
+            InvitesNotSent: guests.Count(g => g.InviteSentAtUtc == null && g.GroupLinkId == null),
+            InvalidPhones: guests.Count(g => g.PhoneE164 == null && g.PhoneError != null),
             QueuedMessages: queued,
             FailedMessages: failed,
             Attending: attending);

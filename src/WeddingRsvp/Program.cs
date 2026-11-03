@@ -61,6 +61,7 @@ builder.Services.AddScoped<CoupleAdminService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<RsvpService>();
+builder.Services.AddScoped<GroupLinkService>();
 builder.Services.AddScoped<CampaignService>();
 builder.Services.AddScoped<MessageDispatcher>();
 builder.Services.AddScoped<ImportService>();
@@ -141,6 +142,7 @@ builder.Services.AddRazorPages(o =>
         o.Conventions.AuthorizeFolder("/SiteAdmin", "SiteAdmin"); // routes are /admin/site/**
         // The couple's preview of the guest page: the same page as /{token}, checked for a couple session inside the page.
         o.Conventions.AddPageRoute("/Rsvp", "admin/preview");
+        o.Conventions.AddPageRoute("/GroupRsvp", "admin/preview/group");
     })
     // Empty form fields bind as null; don't treat every non-nullable string as [Required].
     .AddMvcOptions(o => o.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true);
@@ -170,6 +172,10 @@ builder.Services.AddRateLimiter(o =>
         if (HttpMethods.IsPost(ctx.Request.Method) && PortGuard.IsCredentialPath(ctx.Request.Path))
             return RateLimitPartition.GetFixedWindowLimiter("cred:" + ip,
                 _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
+        // Group-link pages create guests from anonymous visitors: a tighter limit on the posts (a shared venue network still fits).
+        if (HttpMethods.IsPost(ctx.Request.Method) && ctx.Request.Path.StartsWithSegments("/g"))
+            return RateLimitPartition.GetFixedWindowLimiter("group:" + ip,
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
         // The signed-in portal (and everything on the private admin port) is not throttled like public guest pages.
         if (ctx.Connection.LocalPort == appOptions.AdminPort || PortGuard.IsPortalPath(ctx.Request.Path))
             return RateLimitPartition.GetNoLimiter("portal");
@@ -324,6 +330,26 @@ app.MapGet("/{token:length(10)}/invitation", async (string token, string? lang, 
 app.MapGet("/{token:length(10)}/background", async (string token, RsvpService rsvp, SettingsService settings) =>
 {
     if (await rsvp.FindAsync(token) is null) return Results.NotFound();
+    var s = await settings.GetAsync();
+    return MediaFile(s.CoupleId, s.PageBackgroundImageFile);
+});
+
+// Group-link pages (/g/{code}): the same files, resolved from the group code.
+app.MapGet("/g/{code:length(6)}/event.ics", async (
+    string code, GroupLinkService groups, SettingsService settings, IsraelClock clock, IOptions<AppOptions> o) =>
+{
+    if (await groups.FindAsync(code) is null) return Results.NotFound();
+    var ics = CalendarLinks.BuildIcs(await settings.GetAsync(), o.Value.PublicBaseUrl, clock.UtcNow);
+    return ics is null ? Results.NotFound() : Results.File(Encoding.UTF8.GetBytes(ics), "text/calendar; charset=utf-8", "wedding.ics");
+});
+app.MapGet("/g/{code:length(6)}/invitation", async (string code, string? lang, GroupLinkService groups, SettingsService settings) =>
+{
+    if (await groups.FindAsync(code) is null) return Results.NotFound();
+    return InvitationFile(await settings.GetAsync(), lang);
+});
+app.MapGet("/g/{code:length(6)}/background", async (string code, GroupLinkService groups, SettingsService settings) =>
+{
+    if (await groups.FindAsync(code) is null) return Results.NotFound();
     var s = await settings.GetAsync();
     return MediaFile(s.CoupleId, s.PageBackgroundImageFile);
 });

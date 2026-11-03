@@ -1,0 +1,332 @@
+@page "/g/{code:length(6)}"
+@model GroupRsvpModel
+@{
+    ViewData["Title"] = string.IsNullOrEmpty(Model.Title) ? Model.T("אישור הגעה", "RSVP") : Model.Title;
+    ViewData["Lang"] = Model.IsHe ? "he" : "en";
+    ViewData["Bg"] = Model.Bg;
+    ViewData["Accent"] = Model.Accent;
+    ViewData["Dark"] = Model.Dark;
+    ViewData["BgImage"] = Model.BackgroundUrl;
+    var e = Model.Event;
+    var l = Model.Link;
+    var langQ = Model.ShowToggle ? $"lang={(Model.IsHe ? "he" : "en")}" : "";
+    string Handler(string h) => $"{Model.BasePath}?handler={h}" + (langQ == "" ? "" : "&" + langQ);
+    string Toggle(string lang) => $"{Model.BasePath}?lang={lang}";
+    var form = Model.Stage == GroupStage.Form;
+    var max = l.EffectiveMax;
+    var chips = max <= 12; // like the personal page: big chips for small groups, number boxes for large or unlimited ones
+    var icoErr = "<svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex:none;margin-top:2px\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 8v5\"/><path d=\"M12 16.5v.5\"/></svg>";
+}
+@functions {
+    string Msg(string field)
+    {
+        if (!Model.FieldErrors.TryGetValue(field, out var code)) return "";
+        return code switch
+        {
+            "name" => Model.T("נא למלא שם.", "Please enter a name."),
+            "duplicate" => Model.T("המספר הזה כבר רשום. אם האדם כבר אישר בעצמו הוא כבר נספר, אפשר להסיר אותו מהרשימה.", "This number is already registered. If that person already answered, they are already counted: remove them from the list."),
+            _ => Model.T("מספר הטלפון לא תקין. לדוגמה: 050-123-4567", "This phone number is not valid. Example: 050-123-4567"),
+        };
+    }
+    // One card for a person added to the answer. index/kind name the posted fields: AdultGuests[0].First, ChildGuests[1].Phone, ...
+    Microsoft.AspNetCore.Html.IHtmlContent Card(bool child, string idx, int number, PersonInput? p)
+    {
+        var kind = child ? "child" : "adult";
+        var list = child ? "ChildGuests" : "AdultGuests";
+        string F(string part) => $"{kind}[{idx}].{part}";
+        string Err(string field) => idx == "__I__" ? "" : Msg(F(field));
+        string Bad(string field) => Err(field) != "" ? "bad" : "";
+        var h = new Microsoft.AspNetCore.Html.HtmlContentBuilder();
+        h.AppendHtml($"<div class=\"person {kind}\" data-kind=\"{kind}\">");
+        h.AppendHtml("<strong>");
+        h.Append(child ? Model.T("ילד/ה ", "Child ") + number : Model.T("מבוגר/ת ", "Adult ") + number);
+        h.AppendHtml("</strong><div class=\"pair\">");
+        foreach (var (part, label, val) in new[] { ("First", Model.T("שם פרטי", "First name"), p?.First), ("Last", Model.T("שם משפחה", "Last name"), p?.Last) })
+        {
+            h.AppendHtml($"<label class=\"fld\">{System.Net.WebUtility.HtmlEncode(label)}<input type=\"text\" class=\"{Bad(part.ToLower())}\" name=\"{list}[{idx}].{part}\" maxlength=\"100\" autocomplete=\"off\" value=\"{System.Net.WebUtility.HtmlEncode(val ?? "")}\" />");
+            if (Err(part.ToLower()) != "") h.AppendHtml($"<span class=\"err\" role=\"alert\">{System.Net.WebUtility.HtmlEncode(Err(part.ToLower()))}</span>");
+            h.AppendHtml("</label>");
+        }
+        h.AppendHtml("</div>");
+        var phoneLabel = Model.T("טלפון נייד", "Mobile phone") + (child ? " (" + Model.T("לא חובה", "optional") + ")" : "");
+        h.AppendHtml($"<label class=\"fld\">{System.Net.WebUtility.HtmlEncode(phoneLabel)}<input type=\"tel\" dir=\"ltr\" inputmode=\"tel\" autocomplete=\"off\" placeholder=\"050-000-0000\" class=\"{Bad("phone")}\" name=\"{list}[{idx}].Phone\" value=\"{System.Net.WebUtility.HtmlEncode(p?.Phone ?? "")}\" />");
+        if (Err("phone") != "") h.AppendHtml($"<span class=\"err\" role=\"alert\">{System.Net.WebUtility.HtmlEncode(Err("phone"))}</span>");
+        h.AppendHtml("</label></div>");
+        return h;
+    }
+}
+<div class="wrap">
+    @if (Model.IsPreview)
+    {
+        <div class="preview-bar" role="note">@Model.T("תצוגה מקדימה: שום דבר לא נשמר, והאורחים לא רואים את הסרגל הזה.", "Preview: nothing is saved, and guests don't see this bar.")</div>
+    }
+    <div class="top">
+        <div class="hello"><b>@Model.T("שלום,", "Hello,")</b></div>
+        @if (Model.ShowToggle)
+        {
+            <div class="toggle">
+                <a href="@Toggle("he")" class="@(Model.IsHe ? "on" : "")" hreflang="he">עברית</a>
+                <a href="@Toggle("en")" class="@(Model.IsHe ? "" : "on")" hreflang="en">EN</a>
+            </div>
+        }
+    </div>
+
+    <div class="cols">
+        <section class="hero">
+            @if (Model.ImageUrl is not null)
+            {
+                <figure class="invitation"><img src="@Model.ImageUrl" alt="@Model.T("ההזמנה", "The invitation")@(string.IsNullOrEmpty(Model.CoupleDisplay) ? "" : " · " + Model.CoupleDisplay)" /></figure>
+            }
+            else
+            {
+                <div class="noimage">
+                    <hr />
+                    <div class="t">@Model.Title</div>
+                    @if (e.StartsAtLocal is { } s0) { <div>@s0.ToString(Model.T("dddd, d בMMMM yyyy · HH:mm", "dddd, d MMMM yyyy · HH:mm"), Model.Culture)</div> }
+                    <hr />
+                </div>
+            }
+        </section>
+
+        <section class="answer">
+            @if (Model.ImageUrl is not null)
+            {
+                <div>
+                    @if (!string.IsNullOrEmpty(Model.Title)) { <h1>@Model.Title</h1> }
+                    @if (e.StartsAtLocal is { } start) { <div class="when">@start.ToString(Model.T("dddd, d בMMMM yyyy · HH:mm", "dddd, d MMMM yyyy · HH:mm"), Model.Culture)</div> }
+                    <div class="where">@Model.VenueDisplay</div>
+                </div>
+            }
+            else
+            {
+                <div class="where">@Model.VenueDisplay</div>
+            }
+
+            @if (Model.Stage == GroupStage.Closed)
+            {
+                <div class="card notice" role="status">
+                    <b style="font-size: 18px">@Model.T("הקישור הזה כבר לא פעיל", "This link is no longer active")</b>
+                    <div>@Model.T("אישור ההגעה דרך הקישור הזה נסגר.", "RSVP through this link has closed.")</div>
+                    <div class="hint">@Model.T("כבר עניתם? התשובה שלכם נשמרה. רוצים לענות או לשנות משהו? פנו אל הזוג.", "Already answered? Your answer is saved. Want to answer or change something? Contact the couple.")</div>
+                </div>
+            }
+
+            @if (Model.Stage == GroupStage.Saved)
+            {
+                <div class="card saved" role="status">
+                    <div class="tick @(Model.SavedNames.Count > 0 ? "" : "no")"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+                    @if (Model.SavedNames.Count > 0)
+                    {
+                        var n = Model.SavedNames.Count;
+                        <b>@Model.T($"תודה {Model.First}! רשמנו {n} {(n == 1 ? "אורח" : "אורחים")}: {string.Join(", ", Model.SavedNames)}.",
+                            $"Thank you, {Model.First}! We have you down for {n} {(n == 1 ? "guest" : "guests")}: {string.Join(", ", Model.SavedNames)}.")</b>
+                    }
+                    else
+                    {
+                        <b>@Model.T($"תודה {Model.First}, עדכנתם שאתם לא מגיעים.", $"Thank you, {Model.First}. We have you down as not attending.")</b>
+                    }
+                    <div>@Model.T("כדי לשנות את התשובה, פתחו שוב את הקישור והזינו את אותו מספר טלפון.", "To change your answer, open the link again and enter the same phone number.")</div>
+                    <a class="linkbtn" href="@Toggle(Model.IsHe ? "he" : "en")">@Model.T("מילוי תשובה עבור מישהו אחר", "Answer for someone else")</a>
+                </div>
+            }
+
+            @if (Model.Stage is GroupStage.Phone or GroupStage.Counted or GroupStage.OnList)
+            {
+                <form method="post" action="@Handler("Phone")" asp-antiforgery="true" class="card" aria-labelledby="ask">
+                    <div>
+                        <h2 id="ask">@Model.T("מה מספר הטלפון שלך?", "What is your phone number?")</h2>
+                        <div class="hint">@Model.T("מספר הטלפון הוא הדרך שבה אנחנו מזהים אותך. איתו אפשר גם לחזור לקישור הזה ולעדכן את התשובה.", "Your phone number is how we identify you. It also lets you come back to this link and update your answer.")</div>
+                    </div>
+                    <label class="fld">@Model.T("טלפון נייד", "Mobile phone")
+                        <input type="tel" name="Phone" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="050-000-0000" value="@Model.Phone"
+                               class="@(Model.PhoneError is not null ? "bad" : Model.Stage != GroupStage.Phone ? "warn" : "")" aria-invalid="@(Model.PhoneError is not null ? "true" : "false")" />
+                        @if (Model.PhoneError is not null) { <span class="err" role="alert">@Model.PhoneError</span> }
+                    </label>
+
+                    @if (Model.Stage == GroupStage.Counted)
+                    {
+                        <div class="warnbox" role="status">
+                            <b>@Model.T("המספר הזה כבר רשום", "This number is already registered")</b>
+                            <span>@Model.T($"{Model.OwnerName} כבר הוסיפ/ה אותך לתשובה שלה, כך שכבר ספרנו אותך.", $"{Model.OwnerName} has already added you to their answer, so you are already counted.")</span>
+                        </div>
+                        <div class="submit inline"><button type="submit" formaction="@Handler("Takeover")">@Model.T("אני רוצה לענות בעצמי", "I want to answer for myself")</button></div>
+                        <div class="hint" style="text-align: center">@Model.T("נעביר אותך לתשובה נפרדת משלך, ונוריד אותך מהרשימה.", "We will move you to your own answer and remove you from their list.")</div>
+                        <a class="outline" href="@Toggle(Model.IsHe ? "he" : "en")">@Model.T("הזנת מספר אחר", "Use a different number")</a>
+                    }
+                    else if (Model.Stage == GroupStage.OnList)
+                    {
+                        <div class="warnbox" role="status">
+                            <b>@Model.T("המספר הזה כבר ברשימת המוזמנים", "This number is already on the guest list")</b>
+                            <span>@Model.T("קיבלתם מהזוג הודעה עם קישור אישי. אפשר לאשר הגעה דרכו.", "You received a message from the couple with a personal link. Please answer through that link.")</span>
+                        </div>
+                        <a class="outline" href="@Toggle(Model.IsHe ? "he" : "en")">@Model.T("הזנת מספר אחר", "Use a different number")</a>
+                    }
+                    else
+                    {
+                        @if (!Model.IsPreview) { <partial name="_Turnstile" model="@GroupRsvpModel.PhoneAction" /> }
+                        <div class="submit inline"><button type="submit">@Model.T("המשך", "Continue")</button></div>
+                    }
+                    <div class="hint">@Model.T("המספר משמש רק לאישור ההגעה לאירוע הזה.", "Your number is only used for the RSVP to this event.")</div>
+                </form>
+            }
+
+            @if (form)
+            {
+                var adultCards = Math.Max(0, Model.Adults - 1);
+                <form method="post" action="@Handler("Submit")" asp-antiforgery="true" class="card" aria-labelledby="ask" id="groupform" data-max="@max">
+                    <input type="hidden" name="Phone" value="@Model.Phone" />
+                    <input type="hidden" name="Takeover" value="@(Model.Takeover ? "true" : "false")" />
+                    @if (Model.Takeover)
+                    {
+                        <div class="warnbox" role="status">
+                            <b>@Model.T($"{Model.OwnerName} הוסיפ/ה אותך לתשובה שלה", $"{Model.OwnerName} added you to their answer")</b>
+                            <span>@Model.T("אחרי השליחה תהיה לך תשובה נפרדת, ונוריד אותך מהרשימה שלה. אפשר לבדוק את השם ולהוסיף אורחים משלך.", "Once you send this, you will have your own answer and we will remove you from theirs. Check your name and add your own guests if you like.")</span>
+                        </div>
+                    }
+                    @if (Model.Returning)
+                    {
+                        <div class="summary">@Model.T("מצאנו את התשובה הקודמת שלכם. אפשר לעדכן אותה.", "We found your earlier answer. You can update it.")</div>
+                    }
+                    <div>
+                        <h2 id="ask">@Model.T("מגיעים לחתונה?", "Will you be joining us?")</h2>
+                        <div class="hint">@Model.T("אפשר לשנות את התשובה עד תחילת האירוע.", "You can change your answer until the event starts.")</div>
+                    </div>
+                    <div class="hint">@Model.T("עונים מהמספר", "Answering from") <bdi dir="ltr"><b>@Model.Phone</b></bdi>
+                        <a class="linkbtn" href="@Toggle(Model.IsHe ? "he" : "en")" style="margin-inline-start: 8px">@Model.T("החלפת מספר", "Change number")</a></div>
+                    @if (Model.FormError is not null) { <div class="alert" role="alert">@Model.FormError</div> }
+
+                    <div class="person me">
+                        <strong>@Model.T("הפרטים שלך", "Your details")</strong>
+                        <div class="pair">
+                            <label class="fld">@Model.T("שם פרטי", "First name")
+                                <input type="text" name="First" maxlength="100" autocomplete="given-name" value="@Model.First" class="@(Model.HasError("me.first") ? "bad" : "")" />
+                                @if (Model.HasError("me.first")) { <span class="err" role="alert">@Msg("me.first")</span> }
+                            </label>
+                            <label class="fld">@Model.T("שם משפחה", "Last name")
+                                <input type="text" name="Last" maxlength="100" autocomplete="family-name" value="@Model.Last" class="@(Model.HasError("me.last") ? "bad" : "")" />
+                                @if (Model.HasError("me.last")) { <span class="err" role="alert">@Msg("me.last")</span> }
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="choices">
+                        <label class="choice"><input type="radio" name="Attending" value="true" checked="@(Model.Attending == true)" /><span>@Model.T("מגיעים", "Attending")</span></label>
+                        <label class="choice"><input type="radio" name="Attending" value="false" checked="@(Model.Attending == false)" /><span>@Model.T("לא מגיעים", "Not attending")</span></label>
+                    </div>
+
+                    <div class="count-block" data-max="@max">
+                        <div class="count-group">
+                            <div style="font-weight: 500">@Model.T("כמה מבוגרים?", "How many adults?") <span class="hint">· @Model.T("כולל אותך", "including you")</span></div>
+                            @if (chips)
+                            {
+                                <div class="chips">
+                                    @for (var n = 1; n <= max; n++)
+                                    {
+                                        <label class="chip"><input type="radio" name="Adults" value="@n" checked="@(Model.Adults == n)" />@n</label>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <input type="number" name="Adults" min="1" max="@max" value="@Model.Adults" inputmode="numeric" aria-label="@Model.T("מבוגרים", "Adults")" class="count-number" />
+                            }
+                        </div>
+                        @if (max > 1)
+                        {
+                            <div class="count-group">
+                                <div style="font-weight: 500">@Model.T("כמה ילדים?", "How many children?") <span class="hint">· @Model.T("אפשר להשאיר 0", "0 if none")</span></div>
+                                @if (chips)
+                                {
+                                    <div class="chips">
+                                        @for (var n = 0; n <= max - 1; n++)
+                                        {
+                                            <label class="chip"><input type="radio" name="Children" value="@n" checked="@(Model.Children == n)" />@n</label>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <input type="number" name="Children" min="0" max="@(max - 1)" value="@Model.Children" inputmode="numeric" aria-label="@Model.T("ילדים", "Children")" class="count-number" />
+                                }
+                            </div>
+                        }
+                        <div class="hint">@(l.NoGuestLimit ? Model.T("ללא הגבלת מספר אורחים. ", "No limit on the number of guests. ") : Model.T($"עד {max} אורחים בכל תשובה (מבוגרים וילדים). ", $"Up to {max} guests per answer (adults and children). "))@Model.T("לכל מבוגר נוסף צריך שם מלא ומספר טלפון. לילדים מספר טלפון הוא לא חובה.", "Each additional adult needs a full name and phone number. A phone number is optional for children.")</div>
+
+                        <div id="adultCards" class="cards">
+                            @for (var i = 0; i < adultCards; i++) { @Card(false, i.ToString(), i + 2, i < Model.AdultGuests.Count ? Model.AdultGuests[i] : null) }
+                        </div>
+                        <div id="childCards" class="cards">
+                            @for (var i = 0; i < Model.Children; i++) { @Card(true, i.ToString(), i + 1, i < Model.ChildGuests.Count ? Model.ChildGuests[i] : null) }
+                        </div>
+                    </div>
+
+                    @if (!Model.IsPreview) { <partial name="_Turnstile" model="@GroupRsvpModel.SubmitAction" /> }
+                    <div class="submit"><button type="submit">@(Model.Takeover ? Model.T("שמירת התשובה שלי", "Save my own answer") : Model.Returning ? Model.T("עדכון תשובה", "Update answer") : Model.T("שליחת תשובה", "Send answer"))</button></div>
+                </form>
+                <template id="tplAdult">@Card(false, "__I__", 0, null)</template>
+                <template id="tplChild">@Card(true, "__I__", 0, null)</template>
+            }
+
+            <div class="links">
+                @if (e.HasStartDate && Model.Stage == GroupStage.Saved && Model.SavedNames.Count > 0)
+                {
+                    <a href="@Model.MediaBase/event.ics"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17"/><path d="M8 3v4"/><path d="M16 3v4"/></svg>@Model.T("הוספה ליומן", "Add to calendar")</a>
+                    <a href="@Model.GoogleCalendarUrl" target="_blank" rel="noopener"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M12 13.5v4"/><path d="M10 15.5h4"/></svg>@Model.T("הוספה ל-Google Calendar", "Add to Google Calendar")</a>
+                }
+                @if (Model.WazeUrl is not null)
+                {
+                    <a href="@Model.WazeUrl" target="_blank" rel="noopener"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>@Model.T("ניווט ב-Waze", "Navigate with Waze")</a>
+                }
+                @if (Model.GoogleMapsUrl is not null)
+                {
+                    <a href="@Model.GoogleMapsUrl" target="_blank" rel="noopener"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>@Model.T("ניווט ב-Google Maps", "Navigate with Google Maps")</a>
+                }
+            </div>
+        </section>
+    </div>
+</div>
+
+@if (form)
+{
+<script>
+    // Headcount first, then the fields: the chips decide how many cards there are. Typed values stay when a chip changes.
+    (function () {
+        var f = document.getElementById('groupform');
+        if (!f) return;
+        var max = parseInt(f.dataset.max, 10);
+        var adultBox = document.getElementById('adultCards'), childBox = document.getElementById('childCards');
+        var tpl = { adult: document.getElementById('tplAdult').innerHTML, child: document.getElementById('tplChild').innerHTML };
+        var word = { adult: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.T("מבוגר/ת ", "Adult "))), child: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.T("ילד/ה ", "Child "))) };
+        function val(name) {
+            var p = f.querySelector('input[type=radio][name=' + name + ']:checked');
+            if (p) return parseInt(p.value, 10);
+            var b = f.querySelector('input[type=number][name=' + name + ']');
+            return b ? Math.max(0, parseInt(b.value, 10) || 0) : 0;
+        }
+        function fit(box, kind, want, first) {
+            var cards = box.querySelectorAll('.person');
+            for (var i = cards.length; i < want; i++) {
+                var d = document.createElement('div');
+                d.innerHTML = tpl[kind].replace(/__I__/g, i);
+                var c = d.firstElementChild;
+                c.querySelector('strong').textContent = word[kind] + (i + first);
+                box.appendChild(c);
+            }
+            for (var j = cards.length - 1; j >= want; j--) cards[j].remove();
+        }
+        function sync() {
+            var adults = val('Adults') || 1, children = val('Children');
+            f.querySelectorAll('input[type=radio][name=Adults]').forEach(function (i) { i.disabled = parseInt(i.value, 10) + children > max; });
+            f.querySelectorAll('input[type=radio][name=Children]').forEach(function (i) { i.disabled = parseInt(i.value, 10) + adults > max; });
+            var ab = f.querySelector('input[type=number][name=Adults]'); if (ab) ab.max = Math.max(1, max - children);
+            var cb = f.querySelector('input[type=number][name=Children]'); if (cb) cb.max = Math.max(0, max - adults);
+            adults = Math.min(adults, max); children = Math.min(children, Math.max(0, max - adults));
+            fit(adultBox, 'adult', adults - 1, 2);
+            fit(childBox, 'child', children, 1);
+        }
+        var onCount = function (ev) { if (ev.target.name === 'Adults' || ev.target.name === 'Children') sync(); };
+        f.addEventListener('change', onCount); f.addEventListener('input', onCount);
+        sync();
+    })();
+</script>
+}

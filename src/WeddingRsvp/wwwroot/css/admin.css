@@ -160,3 +160,4 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible { outline: 2px sol
 /* Cloudflare Turnstile widget on the sign-in pages */
 .cf-turnstile { margin-block: 12px; min-height: 65px; max-width: 100%; overflow: hidden; }
 .turnstile-note { margin: 0 0 12px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

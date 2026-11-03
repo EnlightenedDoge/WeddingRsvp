@@ -1,0 +1,100 @@
+@page "/admin/groups"
+@model WeddingRsvp.Pages.Admin.Groups.IndexModel
+@{ ViewData["Title"] = Ui.T("קישורים קבוצתיים", "Group links"); }
+<header class="page-head">
+    <div>
+        <h1>@Ui.T("קישורים קבוצתיים", "Group links")</h1>
+        <div class="sub">@Ui.T("קישור אחד שאפשר לשלוח לקבוצה שלמה, למשל בקבוצת וואטסאפ. כל מי שנכנס מזין טלפון ושם, ומי שעונה נוסף לרשימת האורחים.",
+            "One link you can send to a whole group, for example in a WhatsApp group. Everyone who opens it enters a phone number and name, and whoever answers is added to your guest list.")</div>
+    </div>
+    <div class="row"><a class="btn primary" href="/admin/groups?create=true">@Ui.T("יצירת קישור קבוצתי", "Create group link")</a></div>
+</header>
+
+@if (Model.ShowForm)
+{
+    <section class="card" aria-labelledby="formtitle">
+        <h2 id="formtitle">@(Model.EditId is null ? Ui.T("קישור קבוצתי חדש", "New group link") : Ui.T("עריכת קישור קבוצתי", "Edit group link"))</h2>
+        @if (Model.Error is not null) { <div class="error" role="alert">@Model.Error</div> }
+        <form method="post" asp-page-handler="Save" asp-route-id="@Model.EditId">
+            <div class="fields">
+                <label class="field"><span>@Ui.T("שם הקבוצה", "Group name")</span>
+                    <input name="Name" value="@Model.Name" maxlength="100" required />
+                    <small>@Ui.T("לשימושכם בלבד, האורחים לא רואים את השם.", "For your own use only: guests never see this name.")</small></label>
+                <label class="field"><span>@Ui.T("מקסימום אורחים בכל תשובה", "Maximum guests per answer")</span>
+                    <span class="row"><input name="MaxGuests" id="maxGuests" type="number" min="1" max="@GroupLink.MaxGuestsLimit" value="@Model.MaxGuests" style="max-width: 120px" />
+                    <label class="checks"><input type="checkbox" name="NoLimit" value="true" id="noLimit" checked="@Model.NoLimit" /> @Ui.T("ללא הגבלה", "No guest limit")</label></span>
+                    <small>@Ui.T($"כולל את מי שעונה. ללא הגבלה מאפשר עד {Guest.UnlimitedCap} אורחים בתשובה.", $"Including the person answering. With no limit an answer may name up to {Guest.UnlimitedCap} guests.")</small></label>
+            </div>
+            <div class="field">
+                <label class="checks"><input type="checkbox" name="HasExpiry" value="true" id="hasExpiry" checked="@Model.HasExpiry" /> @Ui.T("הגדרת תאריך תפוגה (לא חובה)", "Set an expiry date (optional)")</label>
+                <input type="datetime-local" name="ExpiresAt" id="expiresAt" value="@Model.ExpiresAt?.ToString("yyyy-MM-ddTHH:mm")" style="max-width: 280px" aria-label="@Ui.T("הקישור פעיל עד", "Link is valid until")" />
+                <small>@Ui.T("אחרי התאריך מי שנכנס לקישור יראה שהאישור דרכו נסגר. אפשר להאריך בכל עת. בלי תאריך, הקישור פעיל עד תחילת האירוע.",
+                    "After this date, anyone opening the link sees that RSVP through it has closed. You can extend it any time. Without a date, the link stays open until the event starts.")</small>
+            </div>
+            <div class="row">
+                <button type="submit" class="btn primary">@(Model.EditId is null ? Ui.T("יצירת הקישור", "Create link") : Ui.T("שמירה", "Save"))</button>
+                <a class="btn" href="/admin/groups">@Ui.T("ביטול", "Cancel")</a>
+            </div>
+        </form>
+    </section>
+}
+
+<section class="card">
+    @if (Model.Rows.Count == 0)
+    {
+        <p class="muted">@Ui.T("עדיין אין קישורים קבוצתיים.", "No group links yet.")</p>
+    }
+    else
+    {
+        <div class="tablewrap">
+        <table>
+            <thead><tr>
+                <th>@Ui.T("קבוצה", "Group")</th><th>@Ui.T("קישור", "Link")</th><th>@Ui.T("תשובות", "Answers")</th>
+                <th>@Ui.T("תוקף", "Valid until")</th><th>@Ui.T("סטטוס", "Status")</th><th><span class="sr-only">@Ui.T("פעולות", "Actions")</span></th>
+            </tr></thead>
+            <tbody>
+            @foreach (var r in Model.Rows)
+            {
+                var pill = r.Status switch { GroupLinkStatus.Active => "ok", GroupLinkStatus.Expired => "wait", _ => "" };
+                <tr>
+                    <td><b>@r.Link.Name</b><div class="faint">@Ui.T("נוצר ב-", "Created ")@Labels.Local(r.Link.CreatedAtUtc)</div></td>
+                    <td>
+                        <span class="ltr" id="url-@r.Link.Id">@Model.LinkUrl(r.Link)</span>
+                        <button type="button" class="btn copy" data-copy="@Model.LinkUrl(r.Link)" aria-label="@Ui.T("העתקת הקישור של", "Copy the link for") @r.Link.Name">@Ui.T("העתקה", "Copy")</button>
+                    </td>
+                    <td><b>@r.Answers @Ui.T("תשובות", "answers")</b><div class="faint">@r.Guests @Ui.T("אורחים", "guests")</div></td>
+                    <td>@(r.Link.ExpiresAtLocal is { } exp ? exp.ToString("dd/MM/yyyy HH:mm") : Ui.T("ללא תפוגה", "No expiry"))
+                        <div class="faint">@(r.Status == GroupLinkStatus.Off ? Ui.T("הושבת ידנית", "Turned off by you") : r.Status == GroupLinkStatus.Expired ? Ui.T("פג תוקף", "Expired") : r.Link.ExpiresAtLocal is null ? Ui.T("פעיל עד תחילת האירוע", "Open until the event starts") : "")</div></td>
+                    <td><span class="pill @pill">@(r.Status switch { GroupLinkStatus.Active => Ui.T("פעיל", "Active"), GroupLinkStatus.Expired => Ui.T("פג תוקף", "Expired"), _ => Ui.T("מושבת", "Off") })</span></td>
+                    <td class="actions">
+                        <a class="link" href="/admin/groups/@r.Link.Id">@Ui.T("תשובות", "Answers")</a>
+                        @if (r.Status == GroupLinkStatus.Expired)
+                        {
+                            <a class="link" href="/admin/groups?edit=@r.Link.Id">@Ui.T("הארכה", "Extend")</a>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="Toggle" asp-route-id="@r.Link.Id" class="inline"><button type="submit" class="link">@(r.Status == GroupLinkStatus.Off ? Ui.T("הפעלה מחדש", "Turn on again") : Ui.T("השבתה", "Turn off"))</button></form>
+                        }
+                        <a class="link" href="/admin/groups?edit=@r.Link.Id">@Ui.T("עריכה", "Edit")</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        </div>
+    }
+</section>
+
+<script>
+    document.querySelectorAll('button.copy').forEach(function (b) {
+        b.addEventListener('click', function () {
+            var done = function () { var t = b.textContent; b.textContent = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Ui.T("הועתק", "Copied"))); setTimeout(function () { b.textContent = t; }, 1500); };
+            if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(done); else done();
+        });
+    });
+    var has = document.getElementById('hasExpiry'), at = document.getElementById('expiresAt');
+    var nl = document.getElementById('noLimit'), mg = document.getElementById('maxGuests');
+    if (nl && mg) { var s2 = function () { mg.disabled = nl.checked; }; nl.addEventListener('change', s2); s2(); }
+    if (has && at) { var sync = function () { at.disabled = !has.checked; }; has.addEventListener('change', sync); sync(); }
+</script>

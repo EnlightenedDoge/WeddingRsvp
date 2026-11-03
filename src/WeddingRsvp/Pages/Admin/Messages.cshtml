@@ -114,3 +114,60 @@
     </table>
     </div>
 </section>
+
+<section class="card" id="groups">
+    <h2>@Ui.T("קישורים קבוצתיים", "Group links")</h2>
+    <p class="muted">@Ui.T("קישור אחד לקבוצה שלמה, למשל בקבוצת וואטסאפ. כל מי שנכנס מזין טלפון ושם, ומי שעונה נוסף לרשימת האורחים. לא נשלחות הודעות SMS בשבילם.",
+        "One link for a whole group, for example in a WhatsApp group. Everyone who opens it enters a phone and name, and whoever answers is added to your guest list. No SMS is sent for them.")</p>
+    <form method="post" asp-page-handler="CreateGroup">
+        <div class="fields">
+            <label class="field"><span>@Ui.T("שם הקבוצה", "Group name")</span><input name="GroupName" maxlength="100" required placeholder="@Ui.T("החברים מהעבודה", "Friends from work")" /></label>
+            <div class="field"><span>@Ui.T("מקסימום אורחים בתשובה", "Max guests per answer")</span><div class="row"><input name="GroupMax" id="gMax" type="number" min="1" max="50" value="4" style="max-width: 120px" /><label class="checks"><input type="checkbox" name="GroupNoLimit" value="true" id="gNoLimit" /> @Ui.T("ללא הגבלה", "No guest limit")</label></div></div>
+        </div>
+        <div class="field">
+            <label class="checks"><input type="checkbox" name="GroupHasExpiry" value="true" id="gHasExp" /> @Ui.T("תאריך תפוגה (לא חובה)", "Expiry date (optional)")</label>
+            <input type="datetime-local" name="GroupExpiresAt" id="gExp" style="max-width: 280px" disabled />
+        </div>
+        <button type="submit" class="btn primary">@Ui.T("יצירת קישור קבוצתי", "Create group link")</button>
+    </form>
+    @if (Model.GroupRows.Count > 0)
+    {
+        <div class="tablewrap" style="margin-block-start: 16px">
+        <table>
+            <thead><tr><th>@Ui.T("קבוצה", "Group")</th><th>@Ui.T("קישור", "Link")</th><th>@Ui.T("תשובות", "Answers")</th><th>@Ui.T("סטטוס", "Status")</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var r in Model.GroupRows)
+            {
+                <tr>
+                    <td><b>@r.Link.Name</b></td>
+                    <td><span class="ltr">@Model.GroupUrl(r.Link)</span> <button type="button" class="btn copy" data-copy="@Model.GroupUrl(r.Link)">@Ui.T("העתקה", "Copy")</button></td>
+                    <td>@r.Answers @Ui.T("תשובות", "answers") · @r.Guests @Ui.T("אורחים", "guests")</td>
+                    <td><span class="pill @(r.Status == GroupLinkStatus.Active ? "ok" : r.Status == GroupLinkStatus.Expired ? "wait" : "")">@(r.Status switch { GroupLinkStatus.Active => Ui.T("פעיל", "Active"), GroupLinkStatus.Expired => Ui.T("פג תוקף", "Expired"), _ => Ui.T("מושבת", "Off") })</span></td>
+                    <td class="actions">
+                        <a class="link" href="/admin/groups/@r.Link.Id">@Ui.T("תשובות", "Answers")</a>
+                        <a class="link" href="/admin/groups?edit=@r.Link.Id">@Ui.T("עריכה", "Edit")</a>
+                        @if (r.Status != GroupLinkStatus.Expired)
+                        {
+                            <form method="post" asp-page-handler="ToggleGroup" asp-route-id="@r.Link.Id" class="inline"><button type="submit" class="link">@(r.Status == GroupLinkStatus.Off ? Ui.T("הפעלה", "Turn on") : Ui.T("השבתה", "Turn off"))</button></form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        </div>
+    }
+</section>
+<script>
+    document.querySelectorAll('#groups button.copy').forEach(function (b) {
+        b.addEventListener('click', function () {
+            var done = function () { var t = b.textContent; b.textContent = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Ui.T("הועתק", "Copied"))); setTimeout(function () { b.textContent = t; }, 1500); };
+            if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(done); else done();
+        });
+    });
+    var gh = document.getElementById('gHasExp'), ge = document.getElementById('gExp');
+    var gn = document.getElementById('gNoLimit'), gm = document.getElementById('gMax');
+    gn.addEventListener('change', function () { gm.disabled = gn.checked; });
+    gh.addEventListener('change', function () { ge.disabled = !gh.checked; });
+</script>
+

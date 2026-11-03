@@ -15,6 +15,20 @@ public static class TokenGenerator
         return new string(chars);
     }
 
+    public const int GroupCodeLength = 6;
+
+    /// <summary>The short code in a group link (/g/{code}). Same alphabet, never the length of a guest token.</summary>
+    public static string NewGroupCode()
+    {
+        Span<char> chars = stackalloc char[GroupCodeLength];
+        for (var i = 0; i < GroupCodeLength; i++)
+            chars[i] = Alphabet[RandomNumberGenerator.GetInt32(Alphabet.Length)];
+        return new string(chars);
+    }
+
+    public static bool LooksValidGroupCode(string? code) =>
+        code is { Length: GroupCodeLength } && code.All(c => Alphabet.Contains(c));
+
     public static bool LooksValid(string? token) =>
         token is { Length: Length } && token.All(c => Alphabet.Contains(c));
 }

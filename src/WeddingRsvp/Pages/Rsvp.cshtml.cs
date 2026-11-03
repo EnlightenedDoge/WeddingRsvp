@@ -156,35 +156,10 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
         Event = await settings.GetAsync();
         IsClosed = !IsPreview && await rsvp.IsClosedAsync();
 
-        ShowToggle = Event.LanguageMode == LanguageMode.Both;
-        IsHe = Event.LanguageMode switch
-        {
-            LanguageMode.HebrewOnly => true,
-            LanguageMode.EnglishOnly => false,
-            _ => (Lang is "he" or "en" ? Lang : Event.DefaultGuestLanguage) != "en",
-        };
-
-        var en = !IsHe;
-        var hasHe = Event.InvitationImageFile is not null;
-        var hasEn = Event.InvitationImageFileEn is not null;
-        var ticks = (en && hasEn ? Event.InvitationImageEnUpdatedAtUtc : hasHe ? Event.InvitationImageUpdatedAtUtc : Event.InvitationImageEnUpdatedAtUtc)?.Ticks;
-        ImageUrl = hasHe || hasEn ? $"{BasePath}/invitation?lang={(en ? "en" : "he")}&v={ticks}" : null;
-
-        GoogleCalendarUrl = CalendarLinks.GoogleCalendarUrl(Event) ?? "";
-        WazeUrl = CalendarLinks.WazeUrl(Event);
-        GoogleMapsUrl = CalendarLinks.GoogleMapsUrl(Event);
-
-        Bg = HexColor.OrNull(Event.PageBackgroundColor) ?? Bg;
-        Accent = HexColor.OrNull(Event.PageAccentColor) ?? Accent;
-        BackgroundUrl = Event.PageBackgroundImageFile is null ? null : $"{BasePath}/background?v={Event.PageBackgroundImageUpdatedAtUtc?.Ticks}";
-        Dark = BackgroundUrl is not null || HexColor.IsDark(Bg);
-
-        CoupleDisplay = en && !string.IsNullOrWhiteSpace(Event.CoupleNamesEn) ? Event.CoupleNamesEn : Event.CoupleNames;
-        Title = !string.IsNullOrWhiteSpace(Event.Title) ? Event.Title
-            : string.IsNullOrWhiteSpace(CoupleDisplay) ? ""
-            : T($"החתונה של {CoupleDisplay}", $"The wedding of {CoupleDisplay}");
-        var venue = en && !string.IsNullOrWhiteSpace(Event.VenueNameEn) ? Event.VenueNameEn : Event.VenueName;
-        var addr = en && !string.IsNullOrWhiteSpace(Event.VenueAddressEn) ? Event.VenueAddressEn : Event.VenueAddress;
-        VenueDisplay = string.Join(", ", new[] { venue, addr }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        var look = GuestPageLook.Build(Event, Lang, BasePath);
+        ShowToggle = look.ShowToggle; IsHe = look.IsHe; ImageUrl = look.ImageUrl;
+        GoogleCalendarUrl = look.GoogleCalendarUrl; WazeUrl = look.WazeUrl; GoogleMapsUrl = look.GoogleMapsUrl;
+        Bg = look.Bg; Accent = look.Accent; BackgroundUrl = look.BackgroundUrl; Dark = look.Dark;
+        CoupleDisplay = look.CoupleDisplay; Title = look.Title; VenueDisplay = look.VenueDisplay;
     }
 }

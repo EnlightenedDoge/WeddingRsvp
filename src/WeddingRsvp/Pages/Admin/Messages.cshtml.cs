@@ -1,16 +1,29 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using WeddingRsvp.Data;
 using WeddingRsvp.Domain;
+using Microsoft.Extensions.Options;
+using WeddingRsvp.Options;
 using WeddingRsvp.Services;
+using WeddingRsvp.Tenancy;
 
 namespace WeddingRsvp.Pages.Admin;
 
 public class MessagesModel(
     AppDbContext db, CampaignService campaign, SettingsService settings, SendingWindow window, IsraelClock clock, Ui ui,
-    AllocationService allocation, ProviderCircuitBreaker breaker) : PageModel
+    AllocationService allocation, ProviderCircuitBreaker breaker,
+    GroupLinkService groups, AuditLog audit, UserManager<AppUser> users, IOptions<AppOptions> app, ITenantContext tenant) : PageModel
 {
+    public List<GroupLinkRow> GroupRows { get; private set; } = [];
+    public string GroupUrl(GroupLink l) => MessageTemplates.GroupLink(app.Value.PublicBaseUrl, l.Code);
+    [BindProperty] public string? GroupName { get; set; }
+    [BindProperty] public int GroupMax { get; set; } = 4;
+    [BindProperty] public bool GroupNoLimit { get; set; }
+    [BindProperty] public bool GroupHasExpiry { get; set; }
+    [BindProperty] public DateTime? GroupExpiresAt { get; set; }
+
     public EventSettings Event { get; private set; } = null!;
     public bool InSendingWindow { get; private set; }
     public int ReadyToInvite { get; private set; }
@@ -36,6 +49,7 @@ public class MessagesModel(
     public async Task OnGetAsync()
     {
         Event = await settings.GetAsync();
+        GroupRows = await groups.ListAsync();
         Remaining = await allocation.BalanceAsync();
         var (inviteGuests, inviteCredits) = await campaign.InviteCostAsync();
         InviteCredits = inviteCredits;
@@ -47,7 +61,7 @@ public class MessagesModel(
         BothMode = Event.LanguageMode == LanguageMode.Both;
         InSendingWindow = window.IsAllowed(clock.LocalNow);
         MissingForInvite = MessageTemplates.MissingFields(Event, MessageKind.Invite);
-        ReadyToInvite = await db.Guests.CountAsync(g => g.PhoneE164 != null && g.InviteSentAtUtc == null);
+        ReadyToInvite = await db.Guests.CountAsync(g => g.PhoneE164 != null && g.InviteSentAtUtc == null && g.GroupLinkId == null);
         Counts = await db.Messages.GroupBy(m => m.Status)
             .Select(x => new { x.Key, Count = x.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count);
@@ -72,6 +86,31 @@ public class MessagesModel(
         }
         var n = await campaign.QueueInvitesAsync();
         TempData["Flash"] = n == 0 ? ui.T("אין הזמנות חדשות לשליחה", "No new invitations to send") : ui.T($"{n} הזמנות נכנסו לתור", $"{n} invitations queued");
+        return RedirectToPage();
+    }
+
+    /// <summary>Creates a group link from the form on this page.</summary>
+    public async Task<IActionResult> OnPostCreateGroupAsync()
+    {
+        var expires = GroupHasExpiry ? GroupExpiresAt : null;
+        if (GroupNoLimit) GroupMax = 0;
+        if (GroupLinkService.Validate(GroupName, GroupMax) is not null || (GroupHasExpiry && expires is null))
+        {
+            TempData["Flash"] = ui.T("לא נוצר קישור: נא למלא שם לקבוצה, מספר אורחים בין 1 ל-50 או ללא הגבלה, ותאריך אם סומן.", "Link not created: enter a group name, 1 to 50 guests or no limit, and a date if expiry is ticked.");
+            return RedirectToPage();
+        }
+        var l = await groups.CreateAsync(GroupName!, GroupMax, expires);
+        await audit.WriteAsync("grouplink.created", await users.GetUserAsync(User), tenant.CoupleId, l.Name);
+        TempData["Flash"] = ui.T("הקישור הקבוצתי נוצר. אפשר להעתיק ולשלוח אותו.", "The group link is created, ready to copy and send.");
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostToggleGroupAsync(int id)
+    {
+        var l = await groups.GetAsync(id);
+        if (l is null) return NotFound();
+        await groups.SetOffAsync(id, !l.IsOff);
+        await audit.WriteAsync(l.IsOff ? "grouplink.off" : "grouplink.on", await users.GetUserAsync(User), tenant.CoupleId, l.Name);
         return RedirectToPage();
     }
 

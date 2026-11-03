@@ -30,7 +30,7 @@ public sealed class CampaignService(
         if (MessageTemplates.MissingFields(s, MessageKind.Invite).Count > 0) return 0;
         var queued = await QueuedGuestIdsAsync(MessageKind.Invite, ct);
         var guests = await db.Guests
-            .Where(g => g.PhoneE164 != null && g.InviteSentAtUtc == null)
+            .Where(g => g.PhoneE164 != null && g.InviteSentAtUtc == null && g.GroupLinkId == null)
             .ToListAsync(ct);
 
         var n = 0;
@@ -53,7 +53,7 @@ public sealed class CampaignService(
         if (MessageTemplates.MissingFields(s, MessageKind.Invite).Count > 0) return (0, 0);
         var queued = await QueuedGuestIdsAsync(MessageKind.Invite, ct);
         var guests = await db.Guests.AsNoTracking()
-            .Where(g => g.PhoneE164 != null && g.InviteSentAtUtc == null).ToListAsync(ct);
+            .Where(g => g.PhoneE164 != null && g.InviteSentAtUtc == null && g.GroupLinkId == null).ToListAsync(ct);
         var link = MessageTemplates.GuestLink(app.Value.PublicBaseUrl, "TESTTESTAB");
         var pending = guests.Where(g => !queued.Contains(g.Id)).ToList();
         return (pending.Count, pending.Sum(g => sms.Credits(MessageTemplates.Body(s, MessageKind.Invite, g.Name, link))));
