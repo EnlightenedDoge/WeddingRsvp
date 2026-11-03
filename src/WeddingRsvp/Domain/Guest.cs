@@ -90,4 +90,7 @@ public class Guest : ITenantOwned
     public List<MessageLog> Messages { get; set; } = new();
 
     public bool HasValidPhone => PhoneE164 is not null;
+
+    /// <summary>The family name in the everyday sense: the last word of the name ("Dan Cohen" is Cohen). Used to sort the list by surname.</summary>
+    public string Surname => Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) is { Length: > 0 } w ? w[^1] : "";
 }

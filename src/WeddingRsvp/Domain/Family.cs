@@ -15,6 +15,8 @@ public class Family : ITenantOwned
     /// </summary>
     public string? ExternalId { get; set; }
     public const int ExternalIdMax = 64;
+    /// <summary>The identifier shown to the couple: the one they gave (import column), or the generated F&lt;id&gt; (also what the CSV export uses).</summary>
+    public string DisplayId => ExternalId ?? "F" + Id;
     public DateTime CreatedAtUtc { get; set; }
     public const int NameMax = 100;
 }

@@ -12,7 +12,7 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
     /// <summary>all | pending | attending | declined | invalid | uninvited | opened</summary>
     [BindProperty(SupportsGet = true)] public string Filter { get; set; } = "all";
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
-    /// <summary>name | family | status | sent</summary>
+    /// <summary>name | surname | family | status | sent</summary>
     [BindProperty(SupportsGet = true)] public string Sort { get; set; } = "name";
     /// <summary>asc | desc</summary>
     [BindProperty(SupportsGet = true)] public string Dir { get; set; } = "asc";
@@ -33,7 +33,7 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
     public sealed record FamilyRow(Family Family, List<Guest> Members)
     {
         /// <summary>The identifier the couple gave (import column), or the generated F&lt;id&gt; that the CSV export uses.</summary>
-        public string Identifier => Family.ExternalId ?? "F" + Family.Id;
+        public string Identifier => Family.DisplayId;
         /// <summary>People the family is invited with together; null when a member has no limit.</summary>
         public int? Invited => Members.Any(m => m.NoGuestLimit) ? null : Members.Sum(m => m.InvitedCount);
         public Guest Answer => Members.OrderByDescending(m => m.RespondedAtUtc).First();
@@ -66,6 +66,12 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
             q = q.Where(g => g.Name.Contains(Q) || g.PhoneRaw.Contains(Q));
 
         Guests = await Sorted(q).ToListAsync();
+        if (Sort == "surname") // the last word of the name: sorted here because it cannot be expressed in the query
+        {
+            var cmp = StringComparer.Create(System.Globalization.CultureInfo.CurrentCulture, ignoreCase: true);
+            var ordered = Desc ? Guests.OrderByDescending(g => g.Surname, cmp) : Guests.OrderBy(g => g.Surname, cmp);
+            Guests = ordered.ThenBy(g => g.Name, cmp).ThenBy(g => g.Id).ToList();
+        }
         FamilyOptions = await families.OptionsAsync();
         FamilyCount = await db.Families.CountAsync();
     }
@@ -77,8 +83,10 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
     {
         IOrderedQueryable<Guest> o = (Sort, Desc) switch
         {
-            ("family", false) => q.OrderBy(g => g.Family == null).ThenBy(g => g.Family!.Name),
-            ("family", true) => q.OrderBy(g => g.Family != null).ThenByDescending(g => g.Family!.Name),
+            // Family group: by family name, then by the group itself (identifier, then id), so the members of one group stay together
+            // even when two groups share a name.
+            ("family", false) => q.OrderBy(g => g.Family == null).ThenBy(g => g.Family!.Name).ThenBy(g => g.Family!.ExternalId).ThenBy(g => g.FamilyId),
+            ("family", true) => q.OrderBy(g => g.Family != null).ThenByDescending(g => g.Family!.Name).ThenByDescending(g => g.Family!.ExternalId).ThenByDescending(g => g.FamilyId),
             ("status", false) => q.OrderBy(g => g.Status),
             ("status", true) => q.OrderByDescending(g => g.Status),
             ("sent", false) => q.OrderBy(g => g.InviteSentAtUtc == null).ThenBy(g => g.InviteSentAtUtc),

@@ -19,7 +19,7 @@ public static class GuestCsv
                 _ => "טרם ענו",
             };
             sb.AppendLine(string.Join(",",
-                CsvReader.EscapeText(g.Name), CsvReader.EscapeText(g.Family?.Name), CsvReader.EscapeText(g.Family is { } fm ? fm.ExternalId ?? "F" + fm.Id : null),
+                CsvReader.EscapeText(g.Name), CsvReader.EscapeText(g.Family?.Name), CsvReader.EscapeText(g.Family?.DisplayId),
                 CsvReader.Escape(g.PhoneRaw), g.NoGuestLimit ? CsvReader.Escape("ללא הגבלה") : g.InvitedCount.ToString(),
                 status, g.AttendingCount, g.AttendingAdults, g.AttendingChildren, g.DietVegetarian, g.DietVegan, g.DietGlutenFree,
                 CsvReader.EscapeText(g.DietNote), CsvReader.EscapeText(g.Notes)));

@@ -61,20 +61,24 @@ else
     <table>
         <thead><tr>
             <th class="selcell"><input type="checkbox" id="selall" aria-label="@Ui.T("בחירת כל האורחים המוצגים", "Select all shown guests")" /></th>
-            <th><a class="sortlink" href="@Model.SortUrl("name")">@Ui.T("שם", "Name")@Model.SortMark("name")</a></th>
-            <th><a class="sortlink" href="@Model.SortUrl("family")">@Ui.T("משפחה", "Family")@Model.SortMark("family")</a></th>
+            <th><a class="sortlink" href="@Model.SortUrl("name")">@Ui.T("שם", "Name")@Model.SortMark("name")</a>
+                <a class="sortlink faint" href="@Model.SortUrl("surname")" title="@Ui.T("מיון לפי שם משפחה (המילה האחרונה בשם)", "Sort by surname (the last word of the name)")">· @Ui.T("שם משפחה", "Surname")@Model.SortMark("surname")</a></th>
+            <th><a class="sortlink" href="@Model.SortUrl("family")" title="@Ui.T("מיון לפי קבוצת משפחה: חברי אותה קבוצה יחד", "Sort by family group: members of a group stay together")">@Ui.T("קבוצת משפחה (מזהה)", "Family group (id)")@Model.SortMark("family")</a></th>
             <th>@Ui.T("טלפון", "Phone")</th><th>@Ui.T("מוזמנים", "Invited")</th>
             <th><a class="sortlink" href="@Model.SortUrl("status")">@Ui.T("סטטוס", "Status")@Model.SortMark("status")</a></th>
             <th><a class="sortlink" href="@Model.SortUrl("sent")">@Ui.T("הזמנה נשלחה", "Invite sent")@Model.SortMark("sent")</a></th>
             <th>@Ui.T("תזכורות", "Reminders")</th><th>@Ui.T("פתחו קישור", "Opened link")</th><th aria-hidden="true"></th>
         </tr></thead>
         <tbody>
+        @{ int? prevFamily = null; var first = true; }
         @foreach (var g in Model.Guests)
         {
-            <tr class="clickrow @(g.PhoneE164 is null ? "bad" : "")" data-href="/admin/guests/edit/@g.Id">
+            var newGroup = Model.Sort == "family" && g.FamilyId != prevFamily && !first;
+            prevFamily = g.FamilyId; first = false;
+            <tr class="clickrow @(g.PhoneE164 is null ? "bad" : "") @(newGroup ? "famstart" : "")" data-href="/admin/guests/edit/@g.Id">
                 <td class="selcell"><input type="checkbox" name="ids" value="@g.Id" class="selrow" aria-label="@Ui.T("בחירה", "Select") @g.Name" /></td>
                 <td><a href="/admin/guests/edit/@g.Id"><b>@g.Name</b></a>@if (g.GroupLinkId is not null) { <div class="faint">@Ui.T("דרך קישור קבוצתי", "Via group link")@(g.IsChild ? " · " + Ui.T("ילד/ה", "child") : "")</div> }</td>
-                <td>@g.Family?.Name</td>
+                <td>@if (g.Family is { } fam) { <b>@fam.Name</b> <span class="faint ltr">(@fam.DisplayId)</span> }</td>
                 <td class="ltr">@g.PhoneRaw @if (g.PhoneError is not null) { <div class="faint">@Labels.Problem(g.PhoneError)</div> }</td>
                 <td>@(g.NoGuestLimit ? Ui.T("ללא הגבלה", "No limit") : g.InvitedCount.ToString())</td>
                 <td><span class="pill @Labels.StatusPill(g.Status)">@Labels.Status(g.Status)@(g.Status == RsvpStatus.Attending ? " · " + Labels.Headcount(g.AttendingAdults, g.AttendingChildren) : "")</span>@if (g.HasDiet) { <span class="pill" title="@g.DietNote">@Ui.T("תזונה", "Diet")</span> }@if (g.Status == RsvpStatus.Attending) { <div><button type="button" class="link qe-open" data-id="@g.Id" data-name="@g.Name" data-adults="@g.AttendingAdults" data-children="@g.AttendingChildren" data-veg="@g.DietVegetarian" data-vegan="@g.DietVegan" data-gf="@g.DietGlutenFree" data-note="@g.DietNote" data-family="@(g.FamilyId is null ? "0" : "1")">@Ui.T("עריכת כמות", "Edit headcount")</button></div> }</td>

@@ -318,4 +318,37 @@ public sealed class GuestSortTests
     [Fact] public async Task By_status_then_name() => Assert.Equal(new[] { "Bob", "Cat", "Amy", "Zed" }, await OrderAsync("status", "asc"));
     [Fact] public async Task By_invite_sent_puts_uninvited_last() => Assert.Equal(new[] { "Bob", "Zed", "Amy", "Cat" }, await OrderAsync("sent", "asc"));
     [Fact] public async Task An_unknown_sort_falls_back_to_name() => Assert.Equal(new[] { "Amy", "Bob", "Cat", "Zed" }, await OrderAsync("bogus", "asc"));
+
+    private static async Task<string[]> OrderAltAsync(string sort, string dir)
+    {
+        using var conn = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        conn.Open();
+        var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<WeddingRsvp.Data.AppDbContext>().UseSqlite(conn).Options;
+        using var setup = new WeddingRsvp.Data.AppDbContext(options, new WeddingRsvp.Tenancy.TenantContext());
+        setup.Database.EnsureCreated();
+        var c = new WeddingRsvp.Domain.Couple { DisplayName = "A" };
+        setup.Couples.Add(c);
+        setup.SaveChanges();
+        var tenant = new WeddingRsvp.Tenancy.TenantContext(); tenant.Use(c.Id);
+        using var db = new WeddingRsvp.Data.AppDbContext(options, tenant);
+        var a1 = new WeddingRsvp.Domain.Family { Name = "Cohen", ExternalId = "A1" };
+        var b7 = new WeddingRsvp.Domain.Family { Name = "Cohen", ExternalId = "B7" };
+        db.Guests.AddRange(
+            new WeddingRsvp.Domain.Guest { Name = "Dan Cohen", Token = "TokenAAAA2", Family = a1 },
+            new WeddingRsvp.Domain.Guest { Name = "Abe Cohen", Token = "TokenBBBB2", Family = b7 },
+            new WeddingRsvp.Domain.Guest { Name = "Dina Cohen", Token = "TokenCCCC2", Family = a1 },
+            new WeddingRsvp.Domain.Guest { Name = "Zoe Adams", Token = "TokenDDDD2" },
+            new WeddingRsvp.Domain.Guest { Name = "Beni", Token = "TokenEEEE2" });
+        db.SaveChanges();
+        var page = new WeddingRsvp.Pages.Admin.Guests.IndexModel(db, new WeddingRsvp.Services.Ui(), new FamilyService(db), new IsraelClock(TimeProvider.System), null!) { Sort = sort, Dir = dir };
+        await page.OnGetAsync();
+        return page.Guests.Select(g => g.Name).ToArray();
+    }
+
+    [Fact] public async Task Family_sort_keeps_each_group_together_even_when_two_groups_share_a_name() =>
+        Assert.Equal(new[] { "Dan Cohen", "Dina Cohen", "Abe Cohen", "Beni", "Zoe Adams" }, await OrderAltAsync("family", "asc"));
+    [Fact] public async Task Surname_sort_uses_the_last_word_of_the_name() =>
+        Assert.Equal(new[] { "Zoe Adams", "Beni", "Abe Cohen", "Dan Cohen", "Dina Cohen" }, await OrderAltAsync("surname", "asc"));
+    [Fact] public async Task Surname_sort_descending_keeps_name_order_within_a_surname() =>
+        Assert.Equal(new[] { "Abe Cohen", "Dan Cohen", "Dina Cohen", "Beni", "Zoe Adams" }, await OrderAltAsync("surname", "desc")); // ties keep the name order
 }
