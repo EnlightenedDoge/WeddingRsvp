@@ -80,8 +80,8 @@ public class EventSettings : ITenantOwned
     /// <summary>Kill switch: when true the dispatcher sends nothing (queue keeps growing).</summary>
     public bool SendingPaused { get; set; }
 
-    /// <summary>Ask attending guests about dietary needs (vegetarian / vegan / gluten-free counts and a note) on the guest page.</summary>
-    public bool AskDietary { get; set; }
+    /// <summary>Ask attending guests about dietary needs (vegetarian / vegan / gluten-free counts and a note) on the guest page. On by default; the couple can turn it off on the Event page.</summary>
+    public bool AskDietary { get; set; } = true;
 
     /// <summary>Optional age range that counts as a "child" on the guest page (either end may be empty). Shown next to the children choice.</summary>
     public int? ChildMinAge { get; set; }
