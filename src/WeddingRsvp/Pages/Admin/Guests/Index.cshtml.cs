@@ -12,6 +12,16 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
     /// <summary>all | pending | attending | declined | invalid | uninvited | opened</summary>
     [BindProperty(SupportsGet = true)] public string Filter { get; set; } = "all";
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
+    /// <summary>name | family | status | sent</summary>
+    [BindProperty(SupportsGet = true)] public string Sort { get; set; } = "name";
+    /// <summary>asc | desc</summary>
+    [BindProperty(SupportsGet = true)] public string Dir { get; set; } = "asc";
+    public bool Desc => Dir == "desc";
+
+    /// <summary>The list's own URL with another sort; choosing the column that is already sorted flips the direction.</summary>
+    public string SortUrl(string column) =>
+        $"/admin/guests?sort={column}&dir={(Sort == column && !Desc ? "desc" : "asc")}&filter={Uri.EscapeDataString(Filter)}&q={Uri.EscapeDataString(Q ?? "")}";
+    public string SortMark(string column) => Sort != column ? "" : Desc ? " ▼" : " ▲";
 
     /// <summary>guests | families</summary>
     [BindProperty(SupportsGet = true)] public string View { get; set; } = "guests";
@@ -55,12 +65,29 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
         if (!string.IsNullOrWhiteSpace(Q))
             q = q.Where(g => g.Name.Contains(Q) || g.PhoneRaw.Contains(Q));
 
-        Guests = await q.OrderBy(g => g.Name).ToListAsync();
+        Guests = await Sorted(q).ToListAsync();
         FamilyOptions = await families.OptionsAsync();
         FamilyCount = await db.Families.CountAsync();
     }
 
     public int FamilyCount { get; private set; }
+
+    /// <summary>The chosen sort, always ending with the name (then the id) so the order is stable. Guests without a family, or not yet invited, come last when ascending.</summary>
+    private IQueryable<Guest> Sorted(IQueryable<Guest> q)
+    {
+        IOrderedQueryable<Guest> o = (Sort, Desc) switch
+        {
+            ("family", false) => q.OrderBy(g => g.Family == null).ThenBy(g => g.Family!.Name),
+            ("family", true) => q.OrderBy(g => g.Family != null).ThenByDescending(g => g.Family!.Name),
+            ("status", false) => q.OrderBy(g => g.Status),
+            ("status", true) => q.OrderByDescending(g => g.Status),
+            ("sent", false) => q.OrderBy(g => g.InviteSentAtUtc == null).ThenBy(g => g.InviteSentAtUtc),
+            ("sent", true) => q.OrderBy(g => g.InviteSentAtUtc != null).ThenByDescending(g => g.InviteSentAtUtc),
+            (_, true) => q.OrderByDescending(g => g.Name),
+            _ => q.OrderBy(g => g.Name),
+        };
+        return o.ThenBy(g => g.Name).ThenBy(g => g.Id);
+    }
     public List<Services.FamilyService.FamilyOption> FamilyOptions { get; private set; } = new();
 
     /// <summary>The bulk bar on the Guests list: invite | invited | family | unfamily | export | delete, applied to the ticked guests.</summary>

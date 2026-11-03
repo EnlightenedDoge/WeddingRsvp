@@ -283,3 +283,39 @@ public sealed class BulkGuestTests : IDisposable
 
     public void Dispose() => _conn.Dispose();
 }
+
+public sealed class GuestSortTests
+{
+    private static async Task<string[]> OrderAsync(string sort, string dir)
+    {
+        using var conn = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        conn.Open();
+        var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<WeddingRsvp.Data.AppDbContext>().UseSqlite(conn).Options;
+        using var setup = new WeddingRsvp.Data.AppDbContext(options, new WeddingRsvp.Tenancy.TenantContext());
+        setup.Database.EnsureCreated();
+        var c = new WeddingRsvp.Domain.Couple { DisplayName = "A" };
+        setup.Couples.Add(c);
+        setup.SaveChanges();
+        var tenant = new WeddingRsvp.Tenancy.TenantContext(); tenant.Use(c.Id);
+        using var db = new WeddingRsvp.Data.AppDbContext(options, tenant);
+        var levi = new WeddingRsvp.Domain.Family { Name = "Levi" };
+        var cohen = new WeddingRsvp.Domain.Family { Name = "Cohen" };
+        db.Guests.AddRange(
+            new WeddingRsvp.Domain.Guest { Name = "Zed", Token = "TokenAAAA2", Family = levi, Status = RsvpStatus.Declined, InviteSentAtUtc = new DateTime(2026, 1, 3) },
+            new WeddingRsvp.Domain.Guest { Name = "Amy", Token = "TokenBBBB2", Family = cohen, Status = RsvpStatus.Attending },
+            new WeddingRsvp.Domain.Guest { Name = "Bob", Token = "TokenCCCC2", Status = RsvpStatus.Pending, InviteSentAtUtc = new DateTime(2026, 1, 1) },
+            new WeddingRsvp.Domain.Guest { Name = "Cat", Token = "TokenDDDD2", Family = cohen, Status = RsvpStatus.Pending });
+        db.SaveChanges();
+        var page = new WeddingRsvp.Pages.Admin.Guests.IndexModel(db, new WeddingRsvp.Services.Ui(), new FamilyService(db), new IsraelClock(TimeProvider.System), null!) { Sort = sort, Dir = dir };
+        await page.OnGetAsync();
+        return page.Guests.Select(g => g.Name).ToArray();
+    }
+
+    [Fact] public async Task By_name() => Assert.Equal(new[] { "Amy", "Bob", "Cat", "Zed" }, await OrderAsync("name", "asc"));
+    [Fact] public async Task By_name_descending() => Assert.Equal(new[] { "Zed", "Cat", "Bob", "Amy" }, await OrderAsync("name", "desc"));
+    [Fact] public async Task By_family_puts_guests_without_one_last() => Assert.Equal(new[] { "Amy", "Cat", "Zed", "Bob" }, await OrderAsync("family", "asc"));
+    [Fact] public async Task By_family_descending() => Assert.Equal(new[] { "Bob", "Zed", "Amy", "Cat" }, await OrderAsync("family", "desc"));
+    [Fact] public async Task By_status_then_name() => Assert.Equal(new[] { "Bob", "Cat", "Amy", "Zed" }, await OrderAsync("status", "asc"));
+    [Fact] public async Task By_invite_sent_puts_uninvited_last() => Assert.Equal(new[] { "Bob", "Zed", "Amy", "Cat" }, await OrderAsync("sent", "asc"));
+    [Fact] public async Task An_unknown_sort_falls_back_to_name() => Assert.Equal(new[] { "Amy", "Bob", "Cat", "Zed" }, await OrderAsync("bogus", "asc"));
+}
