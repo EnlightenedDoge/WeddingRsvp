@@ -220,3 +220,9 @@ two-second report.
 ## Group links
 
 One shared link per group (`/g/{code}`), managed under Messages or Group links. Everyone who opens it enters a phone number and name; whoever answers (and the people they add) becomes a guest, never sent invitations or reminders. Each link can require an **SMS code** (off by default; on edit/take-over, or every visit). Each code is one SMS from the couple's allocation, so a link with verification stops working when the allocation or the SMS provider runs out. The phone step and resend are protected by Turnstile when it is on.
+
+**Privacy note.** With verification **off**, anyone who knows a phone number can type it into the link, and if another person added that number the "counted" card shows that person's name and offers a take-over. With verification on, the name is hidden and a take-over needs the SMS code. Couples who want to avoid this should turn verification on for links shared in large or public groups.
+
+**Behaviour to know.** Children need a first and last name; a phone is optional for them (no phone means no `PhoneError`, so they are not flagged as invalid). Adults need a phone. A phone that is already on the couple's own list gets a "use your personal link" message instead. Limit 0 means no guest limit (up to 99 answers per person, as for regular invitations). Limits of 12 or fewer show chips, larger ones number boxes.
+
+**Still to check before go-live:** Turnstile and the 30/min/IP limit on `POST /g/*` on the real domain, and the layout on real phones at 320/360/390px.
