@@ -115,6 +115,25 @@ public class MessagesModel(
         return RedirectToPage();
     }
 
+    [BindProperty] public int? ChildMinAge { get; set; }
+    [BindProperty] public int? ChildMaxAge { get; set; }
+
+    public async Task<IActionResult> OnPostChildAgeAsync()
+    {
+        if (ChildMinAge is < 0 or > EventSettings.MaxChildAge || ChildMaxAge is < 0 or > EventSettings.MaxChildAge
+            || (ChildMinAge is { } a && ChildMaxAge is { } b && a > b))
+        {
+            TempData["Flash"] = ui.T($"טווח גילאים לא תקין: מספרים בין 0 ל-{EventSettings.MaxChildAge}, והראשון לא גדול מהשני.", $"Invalid age range: numbers from 0 to {EventSettings.MaxChildAge}, the first not above the second.");
+            return RedirectToPage();
+        }
+        var s = await settings.GetAsync();
+        s.ChildMinAge = ChildMinAge;
+        s.ChildMaxAge = ChildMaxAge;
+        await db.SaveChangesAsync();
+        TempData["Flash"] = ui.T("טווח הגילאים נשמר", "The age range is saved");
+        return RedirectToPage();
+    }
+
     public async Task<IActionResult> OnPostTogglePauseAsync()
     {
         var s = await settings.GetAsync();

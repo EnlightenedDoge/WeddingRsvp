@@ -225,6 +225,12 @@ namespace WeddingRsvp.Migrations
                     b.Property<DateTime?>("AutoInviteAtLocal")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("ChildMaxAge")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ChildMinAge")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("CoupleId")
                         .HasColumnType("INTEGER");
 

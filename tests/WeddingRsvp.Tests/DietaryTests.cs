@@ -79,3 +79,17 @@ public sealed class DietaryTests : IDisposable
 
     public void Dispose() => _conn.Dispose();
 }
+
+public sealed class ChildAgeLabelTests
+{
+    [Theory]
+    [InlineData(3, 12, true, "גילאי 3–12")]
+    [InlineData(3, 12, false, "ages 3–12")]
+    [InlineData(null, 12, false, "up to age 12")]
+    [InlineData(null, 12, true, "עד גיל 12")]
+    [InlineData(3, null, false, "from age 3")]
+    [InlineData(5, 5, false, "age 5")]
+    [InlineData(null, null, false, null)]
+    public void Label_reads_naturally(int? min, int? max, bool he, string? expected) =>
+        Assert.Equal(expected, new WeddingRsvp.Domain.EventSettings { ChildMinAge = min, ChildMaxAge = max }.ChildAgeLabel(he));
+}

@@ -128,7 +128,7 @@
                         @if (max > 1)
                         {
                             <div class="count-group">
-                                <div style="font-weight: 500">@Model.T("כמה ילדים?", "How many children?") <span class="hint">· @Model.T("אפשר להשאיר 0", "0 if none")</span></div>
+                                <div style="font-weight: 500">@Model.T("כמה ילדים?", "How many children?")@(e.ChildAgeLabel(Model.IsHe) is { } ages ? " (" + ages + ")" : "") <span class="hint">· @Model.T("אפשר להשאיר 0", "0 if none")</span></div>
                                 @if (chips)
                                 {
                                     <div class="chips">

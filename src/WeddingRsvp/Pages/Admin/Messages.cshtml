@@ -63,6 +63,17 @@
 
 <div class="narrow">
 <section class="card">
+    <h2>@Ui.T("גיל ילדים", "Children's age")</h2>
+    <p class="hint">@Ui.T("אופציונלי. הטווח מוצג לאורחים ליד בחירת מספר הילדים (בדף ההזמנה ובקישורים קבוצתיים). אפשר למלא רק צד אחד, למשל \"עד גיל 12\".", "Optional. Shown to guests next to the number of children (on the invitation and on group links). You can fill in just one end, e.g. \"up to age 12\".")</p>
+    <form method="post" asp-page-handler="ChildAge">
+        <div class="fields">
+            <label class="field"><span>@Ui.T("מגיל", "From age")</span><input name="ChildMinAge" type="number" min="0" max="@EventSettings.MaxChildAge" value="@Model.Event?.ChildMinAge" inputmode="numeric" /></label>
+            <label class="field"><span>@Ui.T("עד גיל", "Up to age")</span><input name="ChildMaxAge" type="number" min="0" max="@EventSettings.MaxChildAge" value="@Model.Event?.ChildMaxAge" inputmode="numeric" /></label>
+        </div>
+        <button type="submit" class="btn">@Ui.T("שמירה", "Save")</button>
+    </form>
+</section>
+<section class="card">
     <h2>@Ui.T("הודעת בדיקה", "Test message")</h2>
     <p class="hint"><a href="/admin/preview" target="_blank" rel="noopener">@Ui.T("תצוגה מקדימה של דף האורחים", "Preview the guest page")</a> · @Ui.T("כך האורחים יראו את ההזמנה. אפשר ללחוץ על התשובות, שום דבר לא נשמר.", "This is what guests see. You can press the answers; nothing is saved.")</p>
     <form method="post" asp-page-handler="Test">

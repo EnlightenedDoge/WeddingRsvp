@@ -83,6 +83,21 @@ public class EventSettings : ITenantOwned
     /// <summary>Ask attending guests about dietary needs (vegetarian / vegan / gluten-free counts and a note) on the guest page.</summary>
     public bool AskDietary { get; set; }
 
+    /// <summary>Optional age range that counts as a "child" on the guest page (either end may be empty). Shown next to the children choice.</summary>
+    public int? ChildMinAge { get; set; }
+    public int? ChildMaxAge { get; set; }
+    public const int MaxChildAge = 25;
+
+    /// <summary>"ages 3–12" / "up to 12" / "from 3" in the page language, or null when no range is set.</summary>
+    public string? ChildAgeLabel(bool hebrew) => (ChildMinAge, ChildMaxAge) switch
+    {
+        ({ } a, { } b) when a == b => hebrew ? $"גיל {a}" : $"age {a}",
+        ({ } a, { } b) => hebrew ? $"גילאי {a}–{b}" : $"ages {a}–{b}",
+        (null, { } b) => hebrew ? $"עד גיל {b}" : $"up to age {b}",
+        ({ } a, null) => hebrew ? $"מגיל {a}" : $"from age {a}",
+        _ => null,
+    };
+
     public bool HasStartDate => StartsAtLocal.HasValue;
 
     public string VenueDisplay =>
@@ -119,6 +134,8 @@ public class EventSettings : ITenantOwned
         ReminderIntervalDays = Math.Max(1, s.ReminderIntervalDays);
         MaxReminders = Math.Max(0, s.MaxReminders);
         AskDietary = s.AskDietary;
+        ChildMinAge = s.ChildMinAge;
+        ChildMaxAge = s.ChildMaxAge;
         ThankYouEnabled = s.ThankYouEnabled;
         ThankYouAudience = s.ThankYouAudience;
         ThankYouHourLocal = Math.Clamp(s.ThankYouHourLocal, 0, 23);
