@@ -166,3 +166,8 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible { outline: 2px sol
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-block-end: 12px; }
 .tabs a { padding: 9px 16px; border-radius: 999px; border: 1px solid var(--line, #D8DDDA); background: #fff; color: inherit; text-decoration: none; font-weight: 500; }
 .tabs a.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Quick edit dialog (headcount and dietary needs from the lists). */
+dialog.qe { border: 1px solid var(--line, #D8DDDA); border-radius: 14px; padding: 20px; width: min(440px, calc(100vw - 32px)); }
+dialog.qe::backdrop { background: rgba(20, 30, 28, .45); }
+button.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }

@@ -132,5 +132,27 @@ public sealed class FamilyTests : IDisposable
         Assert.Equal("שלום Dan\n\nHello Dan", MessageTemplates.Body(s, MessageKind.Invite, "Dan", "l"));
     }
 
+    [Fact]
+    public async Task Couples_quick_edit_changes_headcount_and_diet_for_the_whole_family()
+    {
+        await ImportAsync(Csv);
+        var dan = (await GuestsAsync()).Single(x => x.Name == "Dan");
+        using (var db = Db())
+        {
+            var svc = new FamilyService(db);
+            Assert.Equal(AttendanceEdit.NotAttending, await svc.EditAttendanceAsync(dan.Id, 2, 0, new DietaryAnswer(0, 0, 0, null), DateTime.UtcNow));
+        }
+        await SubmitAsync(dan.Token, true, 2, 0);
+        using (var db = Db())
+        {
+            var svc = new FamilyService(db);
+            Assert.Equal(AttendanceEdit.InvalidCount, await svc.EditAttendanceAsync(dan.Id, 4, 1, new DietaryAnswer(0, 0, 0, null), DateTime.UtcNow)); // 5 > 2 + 2
+            Assert.Equal(AttendanceEdit.InvalidDiet, await svc.EditAttendanceAsync(dan.Id, 3, 0, new DietaryAnswer(4, 0, 0, null), DateTime.UtcNow));
+            Assert.Equal(AttendanceEdit.Saved, await svc.EditAttendanceAsync(dan.Id, 3, 1, new DietaryAnswer(1, 1, 0, " no nuts "), DateTime.UtcNow));
+        }
+        foreach (var m in (await GuestsAsync()).Where(x => x.Name is "Dan" or "Dina"))
+            Assert.Equal((4, 1, 1, 1, "no nuts", RsvpSource.Manual), (m.AttendingCount, m.AttendingChildren, m.DietVegetarian, m.DietVegan, m.DietNote, m.Source));
+    }
+
     public void Dispose() => _conn.Dispose();
 }

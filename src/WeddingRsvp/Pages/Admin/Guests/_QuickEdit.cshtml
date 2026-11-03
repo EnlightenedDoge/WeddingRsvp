@@ -1,0 +1,44 @@
+@* The quick edit dialog: buttons with class "qe-open" and data-id/-name/-adults/-children/-veg/-vegan/-gf/-note open it. Posts to the Guests page. *@
+<dialog id="qe" class="qe">
+    <form method="post" asp-page="/Admin/Guests/Index" asp-page-handler="QuickEdit">
+        <input type="hidden" name="id" id="qe-id" />
+        <input type="hidden" name="returnUrl" id="qe-return" />
+        <h2 id="qe-name" style="margin-block-start: 0"></h2>
+        <div class="fields">
+            <label class="field"><span>@Ui.T("מבוגרים שמגיעים", "Adults attending")</span><input name="adults" id="qe-adults" type="number" min="1" inputmode="numeric" required /></label>
+            <label class="field"><span>@Ui.T("ילדים שמגיעים", "Children attending")</span><input name="children" id="qe-children" type="number" min="0" inputmode="numeric" required /></label>
+        </div>
+        <h3>@Ui.T("העדפות תזונה", "Dietary needs")</h3>
+        <div class="fields">
+            <label class="field"><span>@Ui.T("צמחוני", "Vegetarian")</span><input name="vegetarian" id="qe-veg" type="number" min="0" inputmode="numeric" /></label>
+            <label class="field"><span>@Ui.T("טבעוני", "Vegan")</span><input name="vegan" id="qe-vegan" type="number" min="0" inputmode="numeric" /></label>
+            <label class="field"><span>@Ui.T("ללא גלוטן", "Gluten-free")</span><input name="glutenFree" id="qe-gf" type="number" min="0" inputmode="numeric" /></label>
+        </div>
+        <label class="field"><span>@Ui.T("אלרגיות והערות", "Allergies and notes")</span><textarea name="note" id="qe-note" rows="2" maxlength="@Guest.DietNoteMax"></textarea></label>
+        <p class="hint" id="qe-family" hidden>@Ui.T("האורח שייך למשפחה: השינוי יחול על כל בני המשפחה.", "This guest is in a family: the change applies to the whole family.")</p>
+        <div class="row">
+            <button type="submit" class="btn primary">@Ui.T("שמירה", "Save")</button>
+            <button type="button" class="btn" id="qe-cancel">@Ui.T("ביטול", "Cancel")</button>
+        </div>
+    </form>
+</dialog>
+<script>
+    (function () {
+        var dlg = document.getElementById('qe');
+        if (!dlg || !dlg.showModal) return;
+        function set(id, v) { document.getElementById(id).value = v || ''; }
+        document.addEventListener('click', function (e) {
+            var b = e.target.closest('.qe-open');
+            if (!b) return;
+            e.preventDefault();
+            var d = b.dataset;
+            set('qe-id', d.id); set('qe-adults', d.adults); set('qe-children', d.children);
+            set('qe-veg', d.veg); set('qe-vegan', d.vegan); set('qe-gf', d.gf); set('qe-note', d.note);
+            set('qe-return', location.pathname + location.search);
+            document.getElementById('qe-name').textContent = d.name;
+            document.getElementById('qe-family').hidden = d.family !== '1';
+            dlg.showModal();
+        });
+        document.getElementById('qe-cancel').addEventListener('click', function () { dlg.close(); });
+    })();
+</script>

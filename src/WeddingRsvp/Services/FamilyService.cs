@@ -9,6 +9,8 @@ namespace WeddingRsvp.Services;
 /// answer (status, headcount, dietary needs), so a member's page and the lists read their own row. Totals count a family once
 /// (see <see cref="DashboardService"/>).
 /// </summary>
+public enum AttendanceEdit { Saved, NotFound, NotAttending, InvalidCount, InvalidDiet }
+
 public sealed class FamilyService(AppDbContext db)
 {
     public async Task<List<Family>> ListAsync(CancellationToken ct = default) =>
@@ -89,6 +91,32 @@ public sealed class FamilyService(AppDbContext db)
     /// <summary>Queued reminders of every member are cancelled once any of them has answered (done by the caller).</summary>
     public async Task<List<int>> MemberIdsAsync(int familyId, CancellationToken ct = default) =>
         await db.Guests.Where(x => x.FamilyId == familyId).Select(x => x.Id).ToListAsync(ct);
+
+    /// <summary>
+    /// The couple corrects how many people are attending for a guest who has said yes, and their dietary needs (the quick edit on the lists).
+    /// Recorded as a manual answer; the limit is the guest's invitation (the whole family's for a family member), and a family's members
+    /// all get the new answer.
+    /// </summary>
+    public async Task<AttendanceEdit> EditAttendanceAsync(int guestId, int adults, int children, DietaryAnswer diet, DateTime nowUtc, CancellationToken ct = default)
+    {
+        var g = await db.Guests.FirstOrDefaultAsync(x => x.Id == guestId, ct);
+        if (g is null) return AttendanceEdit.NotFound;
+        if (g.Status != RsvpStatus.Attending) return AttendanceEdit.NotAttending;
+        var invited = g.FamilyId is { } fid ? await InvitedAsync(fid, ct) : g.InvitedCount;
+        var max = invited > 0 ? invited : Guest.UnlimitedCap;
+        if (adults < 1 || children < 0 || (long)adults + children > max) return AttendanceEdit.InvalidCount;
+        if (!diet.IsValid(adults + children)) return AttendanceEdit.InvalidDiet;
+
+        g.AttendingCount = adults + children;
+        g.AttendingChildren = children;
+        g.DietVegetarian = diet.Vegetarian; g.DietVegan = diet.Vegan; g.DietGlutenFree = diet.GlutenFree;
+        g.DietNote = string.IsNullOrWhiteSpace(diet.Note) ? null : diet.Note.Trim();
+        g.Source = RsvpSource.Manual;
+        g.RespondedAtUtc = nowUtc;
+        await ShareAnswerAsync(g, ct);
+        await db.SaveChangesAsync(ct);
+        return AttendanceEdit.Saved;
+    }
 
     private static void CopyAnswer(Guest from, Guest to)
     {

@@ -7,7 +7,7 @@ using WeddingRsvp.Domain;
 
 namespace WeddingRsvp.Pages.Admin.Guests;
 
-public class IndexModel(AppDbContext db, Services.Ui ui) : PageModel
+public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService families, Services.IsraelClock clock) : PageModel
 {
     /// <summary>all | pending | attending | declined | invalid | uninvited | opened</summary>
     [BindProperty(SupportsGet = true)] public string Filter { get; set; } = "all";
@@ -60,6 +60,22 @@ public class IndexModel(AppDbContext db, Services.Ui ui) : PageModel
     }
 
     public int FamilyCount { get; private set; }
+
+    /// <summary>Quick edit from a list (also used by the dashboard): attending people and dietary needs of one guest.</summary>
+    public async Task<IActionResult> OnPostQuickEditAsync(int id, int adults, int children, int vegetarian, int vegan, int glutenFree, string? note, string? returnUrl)
+    {
+        var result = await families.EditAttendanceAsync(id, adults, children,
+            new Services.DietaryAnswer(vegetarian, vegan, glutenFree, note), clock.UtcNow);
+        TempData["Flash"] = result switch
+        {
+            Services.AttendanceEdit.Saved => ui.T("נשמר", "Saved"),
+            Services.AttendanceEdit.NotAttending => ui.T("אפשר לעדכן כמות רק לאורח שאישר הגעה", "Only a guest who confirmed can be edited here"),
+            Services.AttendanceEdit.InvalidCount => ui.T("לפחות מבוגר אחד, ובסך הכול לא יותר ממספר המוזמנים", "At least 1 adult, and no more than the number invited in total"),
+            Services.AttendanceEdit.InvalidDiet => ui.T($"העדפות תזונה: מספרים בין 0 למספר המגיעים, והערה עד {Guest.DietNoteMax} תווים", $"Dietary needs: numbers from 0 up to the people attending, and a note of at most {Guest.DietNoteMax} characters"),
+            _ => ui.T("האורח לא נמצא", "Guest not found"),
+        };
+        return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/admin/guests");
+    }
 
     private async Task LoadFamiliesAsync()
     {

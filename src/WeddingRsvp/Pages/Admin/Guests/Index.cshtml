@@ -37,7 +37,7 @@
                 <td><b>@f.Family.Name</b> <span class="faint ltr">(@f.Identifier)</span></td>
                 <td>@foreach (var m in f.Members) { <div><a href="/admin/guests/edit/@m.Id">@m.Name</a> <span class="faint ltr">@m.PhoneRaw</span></div> }</td>
                 <td>@(f.Invited is { } n ? n.ToString() : Ui.T("ללא הגבלה", "No limit"))</td>
-                <td><span class="pill @Labels.StatusPill(a.Status)">@Labels.Status(a.Status)@(a.Status == RsvpStatus.Attending ? " · " + Labels.Headcount(a.AttendingAdults, a.AttendingChildren) : "")</span>@if (a.HasDiet) { <span class="pill" title="@a.DietNote">@Ui.T("תזונה", "Diet")</span> }</td>
+                <td><span class="pill @Labels.StatusPill(a.Status)">@Labels.Status(a.Status)@(a.Status == RsvpStatus.Attending ? " · " + Labels.Headcount(a.AttendingAdults, a.AttendingChildren) : "")</span>@if (a.HasDiet) { <span class="pill" title="@a.DietNote">@Ui.T("תזונה", "Diet")</span> }@if (a.Status == RsvpStatus.Attending) { <div><button type="button" class="link qe-open" data-id="@a.Id" data-name="@a.Name" data-adults="@a.AttendingAdults" data-children="@a.AttendingChildren" data-veg="@a.DietVegetarian" data-vegan="@a.DietVegan" data-gf="@a.DietGlutenFree" data-note="@a.DietNote" data-family="@(a.FamilyId is null ? "0" : "1")">@Ui.T("עריכת כמות", "Edit headcount")</button></div> }</td>
             </tr>
         }
         </tbody>
@@ -68,7 +68,7 @@ else
                 <td><a href="/admin/guests/edit/@g.Id"><b>@g.Name</b></a>@if (g.GroupLinkId is not null) { <div class="faint">@Ui.T("דרך קישור קבוצתי", "Via group link")@(g.IsChild ? " · " + Ui.T("ילד/ה", "child") : "")</div> }</td>
                 <td class="ltr">@g.PhoneRaw @if (g.PhoneError is not null) { <div class="faint">@Labels.Problem(g.PhoneError)</div> }</td>
                 <td>@(g.NoGuestLimit ? Ui.T("ללא הגבלה", "No limit") : g.InvitedCount.ToString())</td>
-                <td><span class="pill @Labels.StatusPill(g.Status)">@Labels.Status(g.Status)@(g.Status == RsvpStatus.Attending ? " · " + Labels.Headcount(g.AttendingAdults, g.AttendingChildren) : "")</span>@if (g.HasDiet) { <span class="pill" title="@g.DietNote">@Ui.T("תזונה", "Diet")</span> }</td>
+                <td><span class="pill @Labels.StatusPill(g.Status)">@Labels.Status(g.Status)@(g.Status == RsvpStatus.Attending ? " · " + Labels.Headcount(g.AttendingAdults, g.AttendingChildren) : "")</span>@if (g.HasDiet) { <span class="pill" title="@g.DietNote">@Ui.T("תזונה", "Diet")</span> }@if (g.Status == RsvpStatus.Attending) { <div><button type="button" class="link qe-open" data-id="@g.Id" data-name="@g.Name" data-adults="@g.AttendingAdults" data-children="@g.AttendingChildren" data-veg="@g.DietVegetarian" data-vegan="@g.DietVegan" data-gf="@g.DietGlutenFree" data-note="@g.DietNote" data-family="@(g.FamilyId is null ? "0" : "1")">@Ui.T("עריכת כמות", "Edit headcount")</button></div> }</td>
                 <td>@Labels.Local(g.InviteSentAtUtc)</td>
                 <td>@g.RemindersSent</td>
                 <td>@Labels.Local(g.FirstOpenedAtUtc)</td>
@@ -95,3 +95,4 @@ else
     });
 </script>
 }
+<partial name="_QuickEdit" />

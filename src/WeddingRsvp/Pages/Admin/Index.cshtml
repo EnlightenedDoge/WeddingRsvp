@@ -78,6 +78,7 @@
                 <div><a href="/admin/guests/edit/@g.Id"><b>@g.Name</b></a>
                     <div class="faint">@Labels.Local(g.RespondedAtUtc)</div></div>
                 <span class="pill ok" title="@Ui.T("מוזמנים", "Invited"): @(g.NoGuestLimit ? Ui.T("ללא הגבלה", "no limit") : g.InvitedCount.ToString())">@Ui.T("מגיעים", "Attending") · @Labels.Headcount(g.AttendingAdults, g.AttendingChildren)</span>
+                <button type="button" class="link qe-open" data-id="@g.Id" data-name="@g.Name" data-adults="@g.AttendingAdults" data-children="@g.AttendingChildren" data-veg="@g.DietVegetarian" data-vegan="@g.DietVegan" data-gf="@g.DietGlutenFree" data-note="@g.DietNote" data-family="@(g.FamilyId is null ? "0" : "1")">@Ui.T("עריכת כמות", "Edit headcount")</button>
             </div>
         }
         @if (s.Attending.Count == 0)
@@ -110,3 +111,4 @@
         </section>
     </div>
 </div>
+<partial name="/Pages/Admin/Guests/_QuickEdit.cshtml" />
