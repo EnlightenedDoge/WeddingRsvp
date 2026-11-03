@@ -156,3 +156,32 @@ public sealed class FamilyTests : IDisposable
 
     public void Dispose() => _conn.Dispose();
 }
+
+public sealed class FamilyTabTests
+{
+    [Fact]
+    public async Task Families_tab_lists_one_row_per_family_with_all_members()
+    {
+        using var conn = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        conn.Open();
+        var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<WeddingRsvp.Data.AppDbContext>().UseSqlite(conn).Options;
+        using var setup = new WeddingRsvp.Data.AppDbContext(options, new WeddingRsvp.Tenancy.TenantContext());
+        setup.Database.EnsureCreated();
+        var c = new WeddingRsvp.Domain.Couple { DisplayName = "A" };
+        setup.Couples.Add(c);
+        setup.SaveChanges();
+        var tenant = new WeddingRsvp.Tenancy.TenantContext(); tenant.Use(c.Id);
+        using var db = new WeddingRsvp.Data.AppDbContext(options, tenant);
+        var fam = new WeddingRsvp.Domain.Family { Name = "Cohen", ExternalId = "A1" };
+        db.Guests.AddRange(
+            new WeddingRsvp.Domain.Guest { Name = "Dan", Token = "TokenAAAA2", Family = fam },
+            new WeddingRsvp.Domain.Guest { Name = "Dina", Token = "TokenBBBB2", Family = fam },
+            new WeddingRsvp.Domain.Guest { Name = "Solo", Token = "TokenCCCC2" });
+        db.SaveChanges();
+
+        var page = new WeddingRsvp.Pages.Admin.Guests.IndexModel(db, new WeddingRsvp.Services.Ui(), new FamilyService(db), new IsraelClock(TimeProvider.System)) { View = "families" };
+        await page.OnGetAsync();
+        var row = Assert.Single(page.Families);
+        Assert.Equal(new[] { "Dan", "Dina" }, row.Members.Select(m => m.Name).ToArray());
+    }
+}

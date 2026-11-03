@@ -80,8 +80,8 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
     private async Task LoadFamiliesAsync()
     {
         var members = await db.Guests.AsNoTracking().Include(g => g.Family).Where(g => g.FamilyId != null).OrderBy(g => g.Name).ToListAsync();
-        Families = members.GroupBy(g => g.Family!)
-            .Select(x => new FamilyRow(x.Key, x.ToList()))
+        Families = members.GroupBy(g => g.FamilyId!.Value) // not by Family: untracked queries give each member its own instance
+            .Select(x => new FamilyRow(x.First().Family!, x.ToList()))
             .Where(f => string.IsNullOrWhiteSpace(Q)
                 || f.Family.Name.Contains(Q, StringComparison.OrdinalIgnoreCase) || f.Identifier.Contains(Q, StringComparison.OrdinalIgnoreCase)
                 || f.Members.Any(g => g.Name.Contains(Q, StringComparison.OrdinalIgnoreCase)))
