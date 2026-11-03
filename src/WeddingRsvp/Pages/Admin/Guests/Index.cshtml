@@ -2,7 +2,7 @@
 @model WeddingRsvp.Pages.Admin.Guests.IndexModel
 @{ ViewData["Title"] = Ui.T("אורחים", "Guests"); }
 <header class="page-head">
-    <div><h1>@Ui.T("אורחים", "Guests")</h1><div class="sub">@Model.Guests.Count @Ui.T("הזמנות", "invitations")</div></div>
+    <div><h1>@Ui.T("אורחים", "Guests")</h1><div class="sub">@(Model.ShowFamilies ? Model.Families.Count + " " + Ui.T("משפחות", "families") : Model.Guests.Count + " " + Ui.T("הזמנות", "invitations"))</div></div>
     <div class="row">
         <a class="btn" href="/admin/export.csv">@Ui.T("ייצוא CSV", "Export CSV")</a>
         <a class="btn" href="/admin/import">@Ui.T("ייבוא רשימה", "Import list")</a>
@@ -10,6 +10,44 @@
     </div>
 </header>
 
+<nav class="tabs" aria-label="@Ui.T("תצוגה", "View")">
+    <a href="/admin/guests" class="@(Model.ShowFamilies ? "" : "on")">@Ui.T("אורחים", "Guests")</a>
+    <a href="/admin/guests?view=families" class="@(Model.ShowFamilies ? "on" : "")">@Ui.T("משפחות (מזהה משפחה)", "Families (family id)")</a>
+</nav>
+
+@if (Model.ShowFamilies)
+{
+<section class="card">
+    <form method="get" class="toolbar">
+        <input type="hidden" name="view" value="families" />
+        <input type="search" name="q" value="@Model.Q" placeholder="@Ui.T("חיפוש לפי משפחה, מזהה או שם", "Search by family, id or member name")" />
+        <button type="submit" class="btn">@Ui.T("חיפוש", "Search")</button>
+    </form>
+    <div class="tablewrap">
+    <table>
+        <thead><tr>
+            <th>@Ui.T("משפחה (מזהה)", "Family (id)")</th><th>@Ui.T("בני משפחה", "Members")</th><th>@Ui.T("מוזמנים", "Invited")</th>
+            <th>@Ui.T("תשובה", "Answer")</th>
+        </tr></thead>
+        <tbody>
+        @foreach (var f in Model.Families)
+        {
+            var a = f.Answer;
+            <tr>
+                <td><b>@f.Family.Name</b> <span class="faint ltr">(@f.Identifier)</span></td>
+                <td>@foreach (var m in f.Members) { <div><a href="/admin/guests/edit/@m.Id">@m.Name</a> <span class="faint ltr">@m.PhoneRaw</span></div> }</td>
+                <td>@(f.Invited is { } n ? n.ToString() : Ui.T("ללא הגבלה", "No limit"))</td>
+                <td><span class="pill @Labels.StatusPill(a.Status)">@Labels.Status(a.Status)@(a.Status == RsvpStatus.Attending ? " · " + Labels.Headcount(a.AttendingAdults, a.AttendingChildren) : "")</span>@if (a.HasDiet) { <span class="pill" title="@a.DietNote">@Ui.T("תזונה", "Diet")</span> }</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    </div>
+    @if (Model.Families.Count == 0) { <p class="muted">@Ui.T("עוד אין משפחות. אפשר לקבץ אורחים למשפחה בעריכת אורח או בייבוא (עמודות שם משפחה ומזהה משפחה).", "No families yet. Group guests into a family when editing a guest, or in the import (family name and family identifier columns).")</p> }
+</section>
+}
+else
+{
 <section class="card">
     <form method="get" class="toolbar">
         <select asp-for="Filter" asp-items="Model.FilterOptions" style="flex: 0 1 220px"></select>
@@ -56,3 +94,4 @@
         });
     });
 </script>
+}
