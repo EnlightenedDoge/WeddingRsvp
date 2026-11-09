@@ -21,6 +21,11 @@ See `README.md` ("Status and roadmap", "Run locally", "Notes for contributors") 
   audited, account page blocked while acting), guest portal (`Rsvp.cshtml`, `public.css`, he/en toggle, couple-chosen look),
   Event page with language mode, per-language templates/images and page look. Language mode renders SMS via `MessageTemplates.Body`.
 - **Delivery signal:** message status goes Sent -> Delivered (SMS4FREE delivery report via `/webhooks/sms-delivery/{secret}`, `DeliveryReports`) -> Opened (a person actually looked at the guest page: the page reports back with a "seen" beacon, `RsvpService.SeenAsync`; also implies delivered. Merely loading the page does NOT count, because scanners fetch it within a second of sending). Reports need `App__DeliveryWebhookSecret` and a public base URL. Verified live 2026-10-28: the callback `msgId` echoes our `usermsgid`.
+- **Guest answer lost to antiforgery (fixed 2026-11-09):** two RSVP posts from a phone came back 400 and showed the grey "link not found"
+  page instead of the thank-you (proxy log `proxy-host-2_access.log`; app logs POSTs now too). The token pair was identity-bound and the
+  phone had the couple's portal signed in, so the page rendered anonymous (the `Strict` auth cookie is withheld when the link is opened
+  from an SMS app) while the post carried the session. `Rsvp.cshtml.cs` is `[IgnoreAntiforgeryToken]` like `GroupRsvpModel`, the antiforgery
+  cookie is `Lax`, and non-404 errors no longer claim the link is wrong.
 - **Turnstile (built 2026-10-28):** `TurnstileVerifier` (siteverify; action and hostname checked; secret never logged) and `TurnstileGate` (active only on the
   public port; `Active`, `CheckFormAsync(action)`). Widget partial `Pages/Shared/_Turnstile.cshtml` on `/signin`, `/signin/2fa`, `/set-password`; token verified
   **before** any credential is looked at, refusals audited (`signin.failed` / `turnstile`) and never counted towards lockout; the guest page's invisible widget feeds the
@@ -126,6 +131,9 @@ Design:
 - **Tenant isolation:** a couple's session can never read or write another couple's guests, messages or settings.
   A site admin acts on a couple only through an explicit "open as couple" session, never by loosening filters.
 - Group-link guests (`GroupLinkId != null`) are never queued an invitation or reminder; a child without a phone has `PhoneE164 = null` and no `PhoneError` (not an invalid number).
+- **A guest is never dead-ended by an error page.** The guest pages (`/{token}`, `/g/{code}`) take no antiforgery token: the link in the
+  URL is the only credential, and a stale token used to turn an answer into a bare 400 that `UseStatusCodePagesWithReExecute` re-rendered
+  as "link not found" (grey page, nothing saved; live 2026-11-09). `/not-found` now gets `?code={0}` and only calls a link missing on a 404.
 - A guest never has two **queued** messages of the same kind (all planners are idempotent; they run every tick).
 - Reminders are never sent to someone who already answered (cancelled at submit time **and** re-checked at dispatch).
 - **Provider outages never lose or double-send:** an `AccountLevel` failure leaves the message Queued (no attempt

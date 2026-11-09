@@ -1,8 +1,8 @@
 @page "/not-found"
+@model NotFoundModel
 @{
     Layout = null;
-    ViewData["Title"] = Ui.T("הקישור לא נמצא", "Link not found");
-    Response.StatusCode = StatusCodes.Status404NotFound;
+    ViewData["Title"] = Model.LinkMissing ? Ui.T("הקישור לא נמצא", "Link not found") : Ui.T("משהו לא עבד", "Something went wrong");
 }
 <!DOCTYPE html>
 <html lang="@Ui.Lang" dir="@Ui.Dir">
@@ -22,9 +22,21 @@
     <div class="center">
         <div class="card">
             <div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></div>
-            <h1 style="font-size: 22px">@Ui.T("הקישור לא נמצא", "Link not found")</h1>
-            <div>@Ui.T("לא הצלחנו למצוא הזמנה לקישור הזה.", "We could not find an invitation for this link.")</div>
-            <div style="color: var(--muted); font-size: 14px">@Ui.T("בדקו שהעתקתם את הקישור המלא מההודעה שקיבלתם, או פנו אל הזוג.", "Check that you copied the full link from your message, or contact the couple.")</div>
+            @if (Model.LinkMissing)
+            {
+                <h1 style="font-size: 22px">@Ui.T("הקישור לא נמצא", "Link not found")</h1>
+                <div>@Ui.T("לא הצלחנו למצוא הזמנה לקישור הזה.", "We could not find an invitation for this link.")</div>
+                <div style="color: var(--muted); font-size: 14px">@Ui.T("בדקו שהעתקתם את הקישור המלא מההודעה שקיבלתם, או פנו אל הזוג.", "Check that you copied the full link from your message, or contact the couple.")</div>
+            }
+            else
+            {
+                @* The guest's link is fine; it was our end. Never say "link not found" here - they would stop trying. *@
+                <h1 style="font-size: 22px">@Ui.T("משהו לא עבד", "Something went wrong")</h1>
+                <div>@(Model.TooBusy
+                    ? Ui.T("יש כרגע עומס על העמוד. נסו שוב בעוד רגע - הקישור שלכם תקין.", "The page is busy right now. Try again in a moment - your link is fine.")
+                    : Ui.T("התשובה שלכם לא נשמרה. נסו שוב בעוד רגע - הקישור שלכם תקין.", "Your answer was not saved. Try again in a moment - your link is fine."))</div>
+                <div style="color: var(--muted); font-size: 14px">@Ui.T("אם זה חוזר, פנו אל הזוג.", "If it keeps happening, contact the couple.")</div>
+            }
         </div>
     </div>
 </body>

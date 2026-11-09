@@ -132,7 +132,10 @@ builder.Services.AddAuthorization(o =>
 });
 builder.Services.AddAntiforgery(o =>
 {
-    o.Cookie.SameSite = SameSiteMode.Strict;
+    // Lax, not Strict: these pages are opened from links in SMS and chat apps, and a browser that withholds a Strict cookie on such an
+    // entry makes the first form post come back as a bare 400. SameSite is not what protects this cookie - the token pair is - and Lax
+    // still never travels with a cross-site POST.
+    o.Cookie.SameSite = SameSiteMode.Lax;
     // Secure follows the request (nginx forwards X-Forwarded-Proto: https). The "HTTPS only" rule is enforced per port in the
     // port middleware, so the private admin port alone can be allowed over plain HTTP (App__AdminAllowPlainHttp).
     o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
@@ -294,7 +297,9 @@ app.UseRequestLocalization(new RequestLocalizationOptions()
     .SetDefaultCulture("he-IL")
     .AddSupportedCultures("he-IL", "en")
     .AddSupportedUICultures("he-IL", "en"));
-app.UseStatusCodePagesWithReExecute("/not-found");
+// An empty-bodied error used to come back as the "link not found" page whatever it was (a 400 or a 429 told a guest their link was
+// wrong). The code travels with it, and only a 404 is a missing link.
+app.UseStatusCodePagesWithReExecute("/not-found", "?code={0}");
 app.UseStaticFiles();
 app.UseRouting();
 app.UseRateLimiter();

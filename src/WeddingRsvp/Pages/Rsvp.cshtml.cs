@@ -7,6 +7,13 @@ using WeddingRsvp.Services;
 
 namespace WeddingRsvp.Pages;
 
+/// <remarks>
+/// No antiforgery check, like the group page: the 10-char link in the URL is the only credential a guest has, and anyone who knows it
+/// can answer anyway, so the check adds nothing here - while a stale or missing token used to cost a guest their answer. The page
+/// returned a bare 400, which <c>UseStatusCodePagesWithReExecute</c> re-rendered as the "link not found" page: a grey page instead of
+/// the thank-you, and nothing saved (seen live 2026-11-09, twice in a row, from a phone that had the couple's portal signed in).
+/// </remarks>
+[IgnoreAntiforgeryToken]
 public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpModel> log, IAuthorizationService authz) : PageModel
 {
     /// <summary>The couple's own preview (/admin/preview): same page, nothing stored, no open report.</summary>
@@ -109,6 +116,8 @@ public class RsvpModel(RsvpService rsvp, SettingsService settings, ILogger<RsvpM
     {
         if (IsPreview) return await PreviewPostAsync();
         Adults ??= Count > 0 ? Count : 1;
+        log.LogInformation("Guest page POST from {Ip}: attending {Attending}, {Adults} adults, {Children} children",
+            HttpContext.Connection.RemoteIpAddress, Attending, Adults, Children);
         if (!IsPreview && await rsvp.FindAsync(token) is { IsDemo: true } demo) { _demoLink = true; return await PreviewPostAsync(demo); }
         var result = await rsvp.SubmitAsync(token, Attending, Adults.Value, Children, DietAnswer());
         if (result == RsvpResult.NotFound) return NotFound();
