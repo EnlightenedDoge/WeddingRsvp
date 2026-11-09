@@ -3,11 +3,11 @@
 SMS-based wedding invitation & RSVP platform. Guests get an SMS with a personal link → a mobile RSVP page
 (invitation image, attending yes/no, headcount, add-to-calendar, Waze). Each couple signs in to their own
 account and manages their own guests and messages; a **site admin** creates and manages the couples'
-accounts. ASP.NET Core 8 Razor Pages + EF Core SQLite, one container behind Nginx Proxy Manager.
+accounts. ASP.NET Core 10 Razor Pages + EF Core SQLite, one container behind Nginx Proxy Manager.
 
 Read `README.md` too (deployment, SMS provider, delivery reports, roadmap).
 
-## Status (2026-10-28)
+## Status (2026-11-09)
 
 See `README.md` ("Status and roadmap", "Run locally", "Notes for contributors") for deferred work, run recipes and pitfalls.
 
