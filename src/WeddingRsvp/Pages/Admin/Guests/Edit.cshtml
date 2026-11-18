@@ -27,12 +27,17 @@
                 <input asp-for="Input.FamilyName" id="familyName" maxlength="@Family.NameMax" placeholder="@Ui.T("שם המשפחה (למשל כהן)", "Family name (e.g. Cohen)")" />
                 <small>@Ui.T("אורחים באותה משפחה חולקים תשובה אחת: תשובה של אחד תקפה לכולם, והדף פונה אליהם \"משפחת …\". שם משפחה יכול להופיע יותר מפעם אחת; אפשר גם לשנות כאן את שם המשפחה שנבחרה.", "Guests in the same family share one answer: one member's reply counts for all, and the page greets them as \"… family\". A name can be used by more than one family; you can also rename the selected family here.")</small>
                 <span asp-validation-for="Input.FamilyName" class="field-validation-error"></span></div>
-            <div class="field"><span>@Ui.T("מספר מוזמנים", "People invited")</span>
+            <label class="field"><span>@Ui.T("תגית", "Tag")</span>
+                <input asp-for="Input.Tag" maxlength="@Guest.TagMax" list="tagList" placeholder="@Ui.T("למשל: משפחת האם של הכלה", "e.g. Bride's mother's family")" />
+                <datalist id="tagList">@foreach (var t in Model.TagOptions) { <option value="@t"></option> }</datalist>
+                <small>@Ui.T("תווית חופשית לארגון הרשימה: אפשר למיין לפיה ולהחיל אותה על כמה אורחים יחד.", "A free label to organise the list: you can sort by it and apply it to several guests at once.")</small>
+                <span asp-validation-for="Input.Tag" class="field-validation-error"></span></label>
+            <div class="field"><span>@Ui.T("מספר מוזמנים מרבי", "Max people invited")</span>
                 <div class="row">
-                    <input asp-for="Input.InvitedCount" id="invitedNumber" type="number" min="0" max="50" style="flex: 0 1 120px" aria-label="@Ui.T("מספר מוזמנים", "People invited")" />
+                    <input asp-for="Input.InvitedCount" id="invitedNumber" type="number" min="0" max="50" style="flex: 0 1 120px" aria-label="@Ui.T("מספר מוזמנים מרבי", "Max people invited")" />
                     <label class="checks"><input asp-for="Input.NoLimit" id="noLimit" /> @Ui.T("ללא הגבלה", "No guest limit")</label>
                 </div>
-                <small>@Ui.T($"הזמנה ללא הגבלה מאפשרת לאורחים לציין כל מספר עד {Guest.UnlimitedCap}. גם הזנת 0 משמעה ללא הגבלה.", $"With no limit the guests can name any number up to {Guest.UnlimitedCap}. Typing 0 means the same.")</small>
+                <small>@Ui.T("המספר המרבי של אנשים שההזמנה כוללת, כולל האורח עצמו. האורחים בוחרים בעצמם כמה מגיעים, עד המספר הזה.", "The most people this invitation covers, the guest included. Guests choose how many are actually coming, up to this number.") @Ui.T($"הזמנה ללא הגבלה מאפשרת לאורחים לציין כל מספר עד {Guest.UnlimitedCap}. גם הזנת 0 משמעה ללא הגבלה.", $"With no limit the guests can name any number up to {Guest.UnlimitedCap}. Typing 0 means the same.")</small>
                 <span asp-validation-for="Input.InvitedCount" class="field-validation-error"></span></div>
             <label class="field"><span>@Ui.T("סטטוס", "Status")</span>
                 <select asp-for="Input.Status">

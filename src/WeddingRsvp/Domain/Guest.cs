@@ -85,6 +85,18 @@ public class Guest : ITenantOwned
     public bool HasDiet => DietVegetarian > 0 || DietVegan > 0 || DietGlutenFree > 0 || !string.IsNullOrWhiteSpace(DietNote);
 
     public string? Notes { get; set; }
+
+    /// <summary>One free-text label the couple gives a guest, e.g. "Bride's mother's family". Always stored through <see cref="CleanTag"/>.</summary>
+    public string? Tag { get; set; }
+    public const int TagMax = 100;
+
+    /// <summary>The stored form of a tag: trimmed, inner whitespace collapsed, cut to <see cref="TagMax"/>; null when nothing is left.</summary>
+    public static string? CleanTag(string? tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag)) return null;
+        var t = string.Join(' ', tag.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return t.Length > TagMax ? t[..TagMax].TrimEnd() : t;
+    }
     public DateTime CreatedAtUtc { get; set; }
 
     public List<MessageLog> Messages { get; set; } = new();

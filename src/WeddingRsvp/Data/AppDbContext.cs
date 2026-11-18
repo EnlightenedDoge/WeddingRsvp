@@ -42,6 +42,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
             e.Ignore(g => g.HasValidPhone);
             e.HasIndex(g => g.GroupLinkId);
             e.HasIndex(g => g.AddedByGuestId);
+            e.Property(g => g.Tag).HasMaxLength(Guest.TagMax);
+            e.HasIndex(g => new { g.CoupleId, g.Tag });
         });
 
         b.Entity<GroupLink>(e =>

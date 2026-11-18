@@ -12,7 +12,7 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
     /// <summary>all | pending | attending | declined | invalid | uninvited | opened</summary>
     [BindProperty(SupportsGet = true)] public string Filter { get; set; } = "all";
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
-    /// <summary>name | surname | family | status | sent | added</summary>
+    /// <summary>name | surname | family | tag | status | sent | added</summary>
     [BindProperty(SupportsGet = true)] public string Sort { get; set; } = "name";
     /// <summary>asc | desc</summary>
     [BindProperty(SupportsGet = true)] public string Dir { get; set; } = "asc";
@@ -71,8 +71,10 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
         if (!string.IsNullOrWhiteSpace(Q))
         {
             var term = Q.Trim();
+            var like = "%" + term.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%"; // tags match case-insensitively
             var groupIds = GroupNames.Where(kv => kv.Value.Contains(term, StringComparison.CurrentCultureIgnoreCase)).Select(kv => (int?)kv.Key).ToList();
-            q = q.Where(g => g.Name.Contains(term) || g.PhoneRaw.Contains(term) || (g.GroupLinkId != null && groupIds.Contains(g.GroupLinkId)));
+            q = q.Where(g => g.Name.Contains(term) || g.PhoneRaw.Contains(term) || (g.Tag != null && EF.Functions.Like(g.Tag, like, "\\"))
+                || (g.GroupLinkId != null && groupIds.Contains(g.GroupLinkId)));
         }
 
         Guests = await Sorted(q).ToListAsync();
@@ -83,6 +85,7 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
             Guests = ordered.ThenBy(g => g.Name, cmp).ThenBy(g => g.Id).ToList();
         }
         FamilyOptions = await families.OptionsAsync();
+        TagOptions = await db.Guests.AsNoTracking().Where(g => g.Tag != null).Select(g => g.Tag!).Distinct().OrderBy(t => t).ToListAsync();
         FamilyCount = await db.Families.CountAsync();
     }
 
@@ -97,6 +100,9 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
             // even when two groups share a name.
             ("family", false) => q.OrderBy(g => g.Family == null).ThenBy(g => g.Family!.Name).ThenBy(g => g.Family!.ExternalId).ThenBy(g => g.FamilyId),
             ("family", true) => q.OrderBy(g => g.Family != null).ThenByDescending(g => g.Family!.Name).ThenByDescending(g => g.Family!.ExternalId).ThenByDescending(g => g.FamilyId),
+            // Tag: guests without one come last when ascending, like the family sort; sorting by tag also groups the list by tag.
+            ("tag", false) => q.OrderBy(g => g.Tag == null).ThenBy(g => g.Tag),
+            ("tag", true) => q.OrderBy(g => g.Tag != null).ThenByDescending(g => g.Tag),
             ("status", false) => q.OrderBy(g => g.Status),
             ("status", true) => q.OrderByDescending(g => g.Status),
             ("sent", false) => q.OrderBy(g => g.InviteSentAtUtc == null).ThenBy(g => g.InviteSentAtUtc),
@@ -110,9 +116,11 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
         return o.ThenBy(g => g.Name).ThenBy(g => g.Id);
     }
     public List<Services.FamilyService.FamilyOption> FamilyOptions { get; private set; } = new();
+    /// <summary>The couple's distinct tags, for the bulk bar and the edit page suggestions.</summary>
+    public List<string> TagOptions { get; private set; } = new();
 
-    /// <summary>The bulk bar on the Guests list: invite | invited | family | unfamily | export | delete, applied to the ticked guests.</summary>
-    public async Task<IActionResult> OnPostBulkAsync(int[] ids, string? action, int familyId, string? familyName, int invited, bool noLimit, string? returnUrl)
+    /// <summary>The bulk bar on the Guests list: invite | invited | family | unfamily | tag | export | delete, applied to the ticked guests.</summary>
+    public async Task<IActionResult> OnPostBulkAsync(int[] ids, string? action, int familyId, string? familyName, int invited, bool noLimit, string? tag, string? returnUrl)
     {
         var back = LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/admin/guests");
         ids = ids.Distinct().ToArray();
@@ -131,8 +139,14 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
                 break;
             case "invited":
                 var n = await bulk.SetInvitedAsync(ids, noLimit ? 0 : invited);
-                TempData["Flash"] = n < 0 ? ui.T("מספר מוזמנים: בין 1 ל-50, או ללא הגבלה", "People invited: 1 to 50, or no limit")
-                    : ui.T($"מספר המוזמנים עודכן ל-{n} אורחים", $"People invited updated for {n} guests");
+                TempData["Flash"] = n < 0 ? ui.T("מספר מוזמנים מרבי: בין 1 ל-50, או ללא הגבלה", "Max people invited: 1 to 50, or no limit")
+                    : ui.T($"המספר המרבי של מוזמנים עודכן ל-{n} אורחים", $"Max people invited updated for {n} guests");
+                break;
+            case "tag":
+                var tagged = await bulk.SetTagAsync(ids, tag);
+                TempData["Flash"] = Domain.Guest.CleanTag(tag) is { } t
+                    ? ui.T($"התגית \"{t}\" הוגדרה ל-{tagged} אורחים", $"Tag \"{t}\" set on {tagged} guests")
+                    : ui.T($"התגית הוסרה מ-{tagged} אורחים", $"Tag cleared on {tagged} guests");
                 break;
             case "family":
             case "unfamily":
@@ -161,7 +175,7 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
         {
             Services.AttendanceEdit.Saved => ui.T("נשמר", "Saved"),
             Services.AttendanceEdit.NotAttending => ui.T("אפשר לעדכן כמות רק לאורח שאישר הגעה", "Only a guest who confirmed can be edited here"),
-            Services.AttendanceEdit.InvalidCount => ui.T("לפחות מבוגר אחד, ובסך הכול לא יותר ממספר המוזמנים", "At least 1 adult, and no more than the number invited in total"),
+            Services.AttendanceEdit.InvalidCount => ui.T("לפחות מבוגר אחד, ובסך הכול לא יותר מהמספר המרבי של מוזמנים", "At least 1 adult, and no more than the maximum people invited in total"),
             Services.AttendanceEdit.InvalidDiet => ui.T($"העדפות תזונה: מספרים בין 0 למספר המגיעים, והערה עד {Guest.DietNoteMax} תווים", $"Dietary needs: numbers from 0 up to the people attending, and a note of at most {Guest.DietNoteMax} characters"),
             _ => ui.T("האורח לא נמצא", "Guest not found"),
         };

@@ -537,6 +537,10 @@ namespace WeddingRsvp.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Tag")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("ThankYouSentAtUtc")
                         .HasColumnType("TEXT");
 
@@ -557,6 +561,8 @@ namespace WeddingRsvp.Migrations
                         .IsUnique();
 
                     b.HasIndex("CoupleId", "PhoneE164");
+
+                    b.HasIndex("CoupleId", "Tag");
 
                     b.ToTable("Guests");
                 });

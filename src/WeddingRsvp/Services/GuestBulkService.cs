@@ -39,6 +39,16 @@ public sealed class GuestBulkService(AppDbContext db, CampaignService campaign, 
         return guests.Count;
     }
 
+    /// <summary>Sets one tag on the selected guests; an empty tag clears it. Returns how many guests were changed.</summary>
+    public async Task<int> SetTagAsync(IReadOnlyCollection<int> ids, string? tag, CancellationToken ct = default)
+    {
+        var clean = Guest.CleanTag(tag);
+        var guests = await db.Guests.Where(g => ids.Contains(g.Id)).ToListAsync(ct);
+        foreach (var g in guests) g.Tag = clean;
+        await db.SaveChangesAsync(ct);
+        return guests.Count;
+    }
+
     /// <summary>
     /// Puts the selected guests in one family (<paramref name="familyId"/> = an existing one, or <see cref="FamilyService.NewFamily"/> with a name),
     /// or takes them out of their families (<see cref="FamilyService.None"/>). When several of them have already answered, the most recent

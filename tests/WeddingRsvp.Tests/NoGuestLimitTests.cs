@@ -93,12 +93,23 @@ public sealed class NoGuestLimitTests : IDisposable
     [InlineData("Unlimited", 0)]
     [InlineData("no limit", 0)]
     [InlineData("∞", 0)]
-    [InlineData("", 1)]
-    [InlineData(null, 1)]
+    [InlineData("", 0)]   // blank = the default for new guests: no limit
+    [InlineData(null, 0)]
     [InlineData("-3", 1)]
     [InlineData("a few", 1)]
     public void The_import_cell_maps_to_a_limit_or_no_limit(string? cell, int expected) =>
         Assert.Equal(expected, ImportService.ParseInvitedCount(cell));
+
+    [Theory]
+    [InlineData("name,phone\nAmy,0503333333\n", 0)]          // no count column: no limit
+    [InlineData("name,phone,invited\nAmy,0503333333,\n", 0)]  // blank cell: no limit
+    [InlineData("name,phone,invited\nAmy,0503333333,3\n", 3)] // an explicit number is kept
+    public async Task Imported_guests_default_to_no_limit(string csv, int expected)
+    {
+        using var db = Db();
+        await new ImportService(db, new IsraelClock(TimeProvider.System), new FamilyService(db)).ImportAsync(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(csv)));
+        Assert.Equal(expected, (await db.Guests.SingleAsync(g => g.Name == "Amy")).InvitedCount);
+    }
 
     public void Dispose() => _conn.Dispose();
 }

@@ -18,12 +18,13 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         public string? Phone { get; set; }
         public int InvitedCount { get; set; } = 1;
         /// <summary>No limit on how many people the invitation covers (stored as InvitedCount 0).</summary>
-        public bool NoLimit { get; set; }
+        public bool NoLimit { get; set; } = true; // a new guest starts with no guest limit; an existing one is mapped from the stored value
         public RsvpStatus Status { get; set; }
         /// <summary>Adults and children attending; they only apply while the status is Attending (default: 1 adult, 0 children).</summary>
         public int AttendingAdults { get; set; } = 1;
         public int AttendingChildren { get; set; }
         public string? Notes { get; set; }
+        [System.ComponentModel.DataAnnotations.StringLength(Guest.TagMax)] public string? Tag { get; set; }
         /// <summary>0 = no family, -1 = a new family named <see cref="FamilyName"/>, otherwise an existing family's id.</summary>
         public int FamilyId { get; set; }
         /// <summary>The new family's name, or a new name for the selected family.</summary>
@@ -49,7 +50,7 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         Input = new GuestInput
         {
             Name = g.Name, Phone = g.PhoneRaw, InvitedCount = g.NoGuestLimit ? 1 : g.InvitedCount, NoLimit = g.NoGuestLimit,
-            Status = g.Status, Notes = g.Notes, FamilyId = g.FamilyId ?? 0, FamilyName = g.Family?.Name,
+            Status = g.Status, Notes = g.Notes, Tag = g.Tag, FamilyId = g.FamilyId ?? 0, FamilyName = g.Family?.Name,
             DietVegetarian = g.DietVegetarian, DietVegan = g.DietVegan, DietGlutenFree = g.DietGlutenFree, DietNote = g.DietNote,
             AttendingAdults = g.Status == RsvpStatus.Attending ? g.AttendingAdults : 1,
             AttendingChildren = g.Status == RsvpStatus.Attending ? g.AttendingChildren : 0,
@@ -87,7 +88,7 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
             if (Input.AttendingAdults + Input.AttendingChildren > maxAttending)
                 ModelState.AddModelError("Input.AttendingAdults", unlimited
                     ? ui.T($"מבוגרים וילדים יחד: עד {Guest.UnlimitedCap}", $"Adults and children together: at most {Guest.UnlimitedCap}")
-                    : ui.T("מבוגרים וילדים יחד לא יכולים לעלות על מספר המוזמנים", "Adults and children together can't exceed the number invited"));
+                    : ui.T("מבוגרים וילדים יחד לא יכולים לעלות על המספר המרבי של מוזמנים", "Adults and children together can't exceed the maximum people invited"));
         }
 
         var phone = PhoneNormalizer.Normalize(Input.Phone);
@@ -106,6 +107,7 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         g.PhoneError = phone.Error;
         g.InvitedCount = unlimited ? 0 : Input.InvitedCount;
         g.Notes = Input.Notes;
+        g.Tag = Guest.CleanTag(Input.Tag);
         g.DietVegetarian = Input.DietVegetarian; g.DietVegan = Input.DietVegan; g.DietGlutenFree = Input.DietGlutenFree;
         g.DietNote = string.IsNullOrWhiteSpace(Input.DietNote) ? null : Input.DietNote.Trim();
 
@@ -159,7 +161,12 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
         return RedirectToPage("Index");
     }
 
-    private async Task LoadFamiliesAsync() => Families = await families.OptionsAsync();
+    public List<string> TagOptions { get; private set; } = new();
+    private async Task LoadFamiliesAsync()
+    {
+        Families = await families.OptionsAsync();
+        TagOptions = await db.Guests.AsNoTracking().Where(g => g.Tag != null).Select(g => g.Tag!).Distinct().OrderBy(t => t).ToListAsync();
+    }
 
     private async Task<bool> LoadAsync(int id)
     {

@@ -25,6 +25,7 @@ public sealed class ImportService(AppDbContext db, IsraelClock clock, FamilyServ
     private static readonly string[] PhoneHeaders = ["phone", "mobile", "טלפון", "נייד", "מספר", "מספר טלפון", "טלפון נייד"];
     private static readonly string[] FamilyNameHeaders = ["family", "family name", "משפחה", "שם משפחה"];
     private static readonly string[] FamilyIdHeaders = ["family id", "family identifier", "family key", "מזהה משפחה", "קוד משפחה"];
+    private static readonly string[] TagHeaders = ["tag", "tags", "תגית", "תגיות"];
     private static readonly string[] CountHeaders = ["count", "invited", "כמות", "מוזמנים", "מספר מוזמנים", "כמה", "מספר אנשים"];
 
     public async Task<ImportReport> ImportAsync(Stream csv, CancellationToken ct = default)
@@ -40,6 +41,7 @@ public sealed class ImportService(AppDbContext db, IsraelClock clock, FamilyServ
         var (nameCol, phoneCol, countCol, hasHeader) = MapColumns(rows[0]);
         var famNameCol = hasHeader ? FindCol(rows[0], FamilyNameHeaders) : -1;
         var famIdCol = hasHeader ? FindCol(rows[0], FamilyIdHeaders) : -1;
+        var tagCol = hasHeader ? FindCol(rows[0], TagHeaders) : -1;
         var existingFamilies = await db.Families.ToListAsync(ct);
         var familyByKey = new Dictionary<string, Family>(StringComparer.OrdinalIgnoreCase); // identifiers seen in this file or already stored
         foreach (var f in existingFamilies.Where(f => f.ExternalId != null)) familyByKey[f.ExternalId!] = f;
@@ -69,7 +71,7 @@ public sealed class ImportService(AppDbContext db, IsraelClock clock, FamilyServ
                 continue;
             }
 
-            var count = countCol >= 0 ? ParseInvitedCount(Cell(r, countCol)) : 1;
+            var count = countCol >= 0 ? ParseInvitedCount(Cell(r, countCol)) : 0; // no count column = no guest limit
 
             string token;
             do token = TokenGenerator.New(); while (!existingTokens.Add(token));
@@ -82,6 +84,7 @@ public sealed class ImportService(AppDbContext db, IsraelClock clock, FamilyServ
                 PhoneE164 = p.E164,
                 PhoneError = p.Error,
                 InvitedCount = count,
+                Tag = Guest.CleanTag(Cell(r, tagCol)),
                 Token = token,
                 CreatedAtUtc = clock.UtcNow,
             };
@@ -129,11 +132,12 @@ public sealed class ImportService(AppDbContext db, IsraelClock clock, FamilyServ
 
     /// <summary>
     /// The "invited" cell: a positive number is the limit; 0 or a word such as "ללא הגבלה" / "unlimited" means no guest limit (stored as 0);
-    /// anything else (empty, text, negative) defaults to 1.
+    /// an empty cell means no limit (the default for new guests); other text or a negative number defaults to 1.
     /// </summary>
     public static int ParseInvitedCount(string? cell)
     {
         var t = (cell ?? "").Trim();
+        if (t.Length == 0) return 0;
         // 0 = no limit; 1..50 is the invitation size (same ceiling the edit page enforces); clamp out-of-range and junk.
         if (int.TryParse(t, out var n)) return n <= 0 ? (n == 0 ? 0 : 1) : Math.Min(n, 50);
         return UnlimitedWords.Contains(t.ToLowerInvariant()) ? 0 : 1;

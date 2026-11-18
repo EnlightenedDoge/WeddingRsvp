@@ -26,7 +26,7 @@
     <div class="tablewrap">
     <table>
         <thead><tr>
-            <th>@Ui.T("משפחה (מזהה)", "Family (id)")</th><th>@Ui.T("בני משפחה", "Members")</th><th>@Ui.T("מוזמנים", "Invited")</th>
+            <th>@Ui.T("משפחה (מזהה)", "Family (id)")</th><th>@Ui.T("בני משפחה", "Members")</th><th>@Ui.T("מוזמנים (מקס׳)", "Max invited")</th>
             <th>@Ui.T("תשובה", "Answer")</th>
         </tr></thead>
         <tbody>
@@ -65,23 +65,25 @@ else
                 <a class="sortlink faint" href="@Model.SortUrl("surname")" title="@Ui.T("מיון לפי שם משפחה (המילה האחרונה בשם)", "Sort by surname (the last word of the name)")">· @Ui.T("שם משפחה", "Surname")@Model.SortMark("surname")</a></th>
             <th><a class="sortlink" href="@Model.SortUrl("family")" title="@Ui.T("מיון לפי קבוצת משפחה: חברי אותה קבוצה יחד", "Sort by family group: members of a group stay together")">@Ui.T("קבוצת משפחה (מזהה)", "Family group (id)")@Model.SortMark("family")</a></th>
             <th>@Ui.T("קישור קבוצתי", "Group name")</th>
-            <th>@Ui.T("טלפון", "Phone")</th><th>@Ui.T("מוזמנים", "Invited")</th>
+            <th><a class="sortlink" href="@Model.SortUrl("tag")" title="@Ui.T("מיון וקיבוץ לפי תגית", "Sort and group by tag")">@Ui.T("תגית", "Tag")@Model.SortMark("tag")</a></th>
+            <th>@Ui.T("טלפון", "Phone")</th><th title="@Ui.T("המספר המרבי של אנשים שההזמנה כוללת", "The most people the invitation covers")">@Ui.T("מוזמנים (מקס׳)", "Max invited")</th>
             <th><a class="sortlink" href="@Model.SortUrl("status")">@Ui.T("סטטוס", "Status")@Model.SortMark("status")</a></th>
             <th><a class="sortlink" href="@Model.SortUrl("sent")">@Ui.T("הזמנה נשלחה", "Invite sent")@Model.SortMark("sent")</a></th>
             <th>@Ui.T("תזכורות", "Reminders")</th>
             <th><a class="sortlink" href="@Model.SortUrl("added")">@Ui.T("נוסף ב", "Added")@Model.SortMark("added")</a></th><th>@Ui.T("פתחו קישור", "Opened link")</th><th aria-hidden="true"></th>
         </tr></thead>
         <tbody>
-        @{ int? prevFamily = null; var first = true; }
+        @{ int? prevFamily = null; string? prevTag = null; var first = true; }
         @foreach (var g in Model.Guests)
         {
-            var newGroup = Model.Sort == "family" && g.FamilyId != prevFamily && !first;
-            prevFamily = g.FamilyId; first = false;
+            var newGroup = !first && ((Model.Sort == "family" && g.FamilyId != prevFamily) || (Model.Sort == "tag" && g.Tag != prevTag));
+            prevFamily = g.FamilyId; prevTag = g.Tag; first = false;
             <tr class="clickrow @(g.PhoneE164 is null ? "bad" : "") @(newGroup ? "famstart" : "")" data-href="/admin/guests/edit/@g.Id">
                 <td class="selcell"><input type="checkbox" name="ids" value="@g.Id" class="selrow" aria-label="@Ui.T("בחירה", "Select") @g.Name" /></td>
                 <td><a href="/admin/guests/edit/@g.Id"><b>@g.Name</b></a>@if (g.GroupLinkId is not null && g.IsChild) { <div class="faint">@Ui.T("ילד/ה", "child")</div> }</td>
                 <td>@if (g.Family is { } fam) { <b>@fam.Name</b> <span class="faint ltr">(@fam.DisplayId)</span> }</td>
                 <td>@if (g.GroupLinkId is int gid) { <a href="/admin/groups/@gid">@(Model.GroupNames.TryGetValue(gid, out var gn) ? gn : Ui.T("קישור קבוצתי", "Group link"))</a> }</td>
+                <td>@g.Tag</td>
                 <td class="ltr">@g.PhoneRaw @if (g.PhoneError is not null) { <div class="faint">@Labels.Problem(g.PhoneError)</div> }</td>
                 <td>@(g.NoGuestLimit ? Ui.T("ללא הגבלה", "No limit") : g.InvitedCount.ToString())</td>
                 <td><span class="pill @Labels.StatusPill(g.Status)">@Labels.Status(g.Status)@(g.Status == RsvpStatus.Attending ? " · " + Labels.Headcount(g.AttendingAdults, g.AttendingChildren) : "")</span>@if (g.HasDiet) { <span class="pill" title="@g.DietNote">@Ui.T("תזונה", "Diet")</span> }@if (g.Status == RsvpStatus.Attending) { <div><button type="button" class="link qe-open" data-id="@g.Id" data-name="@g.Name" data-adults="@g.AttendingAdults" data-children="@g.AttendingChildren" data-veg="@g.DietVegetarian" data-vegan="@g.DietVegan" data-gf="@g.DietGlutenFree" data-note="@g.DietNote" data-family="@(g.FamilyId is null ? "0" : "1")">@Ui.T("עריכת כמות", "Edit headcount")</button></div> }</td>
@@ -102,7 +104,8 @@ else
             <option value="invite">@Ui.T("שליחת הזמנה", "Send invitation")</option>
             <option value="family">@Ui.T("הוספה למשפחה", "Add to a family")</option>
             <option value="unfamily">@Ui.T("הוצאה ממשפחה", "Remove from family")</option>
-            <option value="invited">@Ui.T("שינוי מספר מוזמנים", "Set people invited")</option>
+            <option value="invited">@Ui.T("שינוי מספר מוזמנים מרבי", "Set max people invited")</option>
+            <option value="tag">@Ui.T("הגדרת תגית", "Set tag")</option>
             <option value="export">@Ui.T("ייצוא CSV של הנבחרים", "Export selected (CSV)")</option>
             <option value="delete">@Ui.T("מחיקה", "Delete")</option>
         </select>
@@ -115,8 +118,12 @@ else
             <span class="hint">@Ui.T("אם כבר ענו כמה מהם, התשובה האחרונה תחול על כולם.", "If several have already answered, the most recent answer applies to everyone.")</span>
         </span>
         <span class="bulkopt" data-for="invited">
-            <input name="invited" type="number" min="1" max="50" value="1" style="width: 90px" aria-label="@Ui.T("מוזמנים", "Invited")" />
+            <input name="invited" type="number" min="1" max="50" value="1" style="width: 90px" aria-label="@Ui.T("מספר מוזמנים מרבי", "Max people invited")" />
             <label class="checks"><input type="checkbox" name="noLimit" value="true" /> @Ui.T("ללא הגבלה", "No limit")</label>
+        </span>
+        <span class="bulkopt" data-for="tag">
+            <input name="tag" maxlength="@Guest.TagMax" list="bulkTags" placeholder="@Ui.T("תגית (ריק = הסרה)", "Tag (empty = clear)")" aria-label="@Ui.T("תגית", "Tag")" />
+            <datalist id="bulkTags">@foreach (var t in Model.TagOptions) { <option value="@t"></option> }</datalist>
         </span>
         <button type="submit" class="btn primary" id="bulkgo">@Ui.T("ביצוע", "Apply")</button>
         <button type="button" class="btn" id="bulkclear">@Ui.T("ניקוי בחירה", "Clear")</button>

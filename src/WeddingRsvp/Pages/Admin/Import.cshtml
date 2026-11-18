@@ -7,11 +7,13 @@
     <p>@Ui.T("קובץ CSV מאקסל עם העמודות:", "A CSV file from Excel with the columns:")
         <b>@Ui.T("שם", "Name")</b>, <b>@Ui.T("טלפון", "Phone")</b>,
         @Ui.T("ואופציונלית", "and optionally") <b>@Ui.T("מוזמנים", "Invited")</b>
-        (@Ui.T("כמה אנשים בהזמנה, ברירת מחדל 1. 0 או \"ללא הגבלה\" = בלי הגבלת מספר אורחים", "how many people the invitation covers, default 1. 0 or \"unlimited\" = no limit on guests")).
+        (@Ui.T("המספר המרבי של אנשים שההזמנה כוללת, ברירת מחדל: ללא הגבלה (גם 0 או \"ללא הגבלה\")", "the maximum number of people the invitation covers. Default: no limit (so is 0 or \"unlimited\")")).
         @Ui.T("מספרים שכבר קיימים ברשימה יידלגו.", "Numbers already on the list are skipped.")</p>
     <p>@Ui.T("לקיבוץ למשפחות (תשובה אחת לכל בני המשפחה):", "To group guests into families (one answer for the whole family):")
         <b>@Ui.T("שם משפחה", "Family name")</b> @Ui.T("ו/או", "and/or") <b>@Ui.T("מזהה משפחה", "Family identifier")</b>.
         @Ui.T("שורות עם אותו מזהה הן אותה משפחה, גם אם לשתי משפחות אותו שם. בלי מזהה, שורות עם אותו שם משפחה מקובצות יחד.", "Rows with the same identifier are one family, even when two families share a name. Without an identifier, rows with the same family name are grouped together.")</p>
+    <p>@Ui.T("לתיוג אורחים (למשל \"משפחת האם של הכלה\"):", "To label guests (e.g. \"Bride's mother's family\"):")
+        <b>@Ui.T("תגית", "Tag")</b> @Ui.T("(עמודה אופציונלית, תגית אחת לאורח). התגית חלה רק על אורחים חדשים; למספר שכבר ברשימה אפשר להגדיר תגית בבחירה מרובה ברשימת האורחים.", "(optional column, one tag per guest). It applies only to guests who are added; for numbers already on the list, set the tag with the bulk selection on the Guests page.")</p>
     <form method="post" enctype="multipart/form-data" class="row">
         <input type="file" name="File" accept=".csv,text/csv" />
         <button type="submit" class="btn primary">@Ui.T("ייבוא", "Import")</button>

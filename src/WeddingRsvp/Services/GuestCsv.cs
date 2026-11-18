@@ -9,7 +9,7 @@ public static class GuestCsv
     public static byte[] Build(IEnumerable<Guest> guests)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("שם,משפחה,מזהה משפחה,טלפון,מוזמנים,סטטוס,מגיעים,מבוגרים,ילדים,צמחוניים,טבעוניים,ללא גלוטן,הערות תזונה,הערות");
+        sb.AppendLine("שם,משפחה,מזהה משפחה,תגית,טלפון,מוזמנים,סטטוס,מגיעים,מבוגרים,ילדים,צמחוניים,טבעוניים,ללא גלוטן,הערות תזונה,הערות");
         foreach (var g in guests)
         {
             var status = g.Status switch
@@ -19,7 +19,7 @@ public static class GuestCsv
                 _ => "טרם ענו",
             };
             sb.AppendLine(string.Join(",",
-                CsvReader.EscapeText(g.Name), CsvReader.EscapeText(g.Family?.Name), CsvReader.EscapeText(g.Family?.DisplayId),
+                CsvReader.EscapeText(g.Name), CsvReader.EscapeText(g.Family?.Name), CsvReader.EscapeText(g.Family?.DisplayId), CsvReader.EscapeText(g.Tag),
                 CsvReader.Escape(g.PhoneRaw), g.NoGuestLimit ? CsvReader.Escape("ללא הגבלה") : g.InvitedCount.ToString(),
                 status, g.AttendingCount, g.AttendingAdults, g.AttendingChildren, g.DietVegetarian, g.DietVegan, g.DietGlutenFree,
                 CsvReader.EscapeText(g.DietNote), CsvReader.EscapeText(g.Notes)));
