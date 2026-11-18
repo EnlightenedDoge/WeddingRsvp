@@ -71,6 +71,9 @@ public static class Labels
         "מספר לא תקין" => "Invalid number",
         "חסר שם" => "Missing name",
         "מספר כפול" => "Duplicate number",
+        "חסרה תגית" => "Missing tag",
+        "המספר לא ברשימה" => "Number not on the list",
+        "חסרות עמודות טלפון ותגית" => "The file needs a phone column and a tag column",
         _ => he,
     };
 }

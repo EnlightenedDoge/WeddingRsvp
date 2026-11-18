@@ -10,6 +10,8 @@ public sealed class ImportReport
 {
     public int Rows { get; set; }
     public int Added { get; set; }
+    public int Updated { get; set; }                            // tags-only mode: guests whose tag was set
+    public bool TagsOnly { get; set; }
     public List<ImportIssue> InvalidPhones { get; } = new();   // imported, but need fixing before sending
     public List<ImportIssue> Skipped { get; } = new();         // not imported (duplicates, empty rows)
 }
@@ -28,15 +30,16 @@ public sealed class ImportService(AppDbContext db, IsraelClock clock, FamilyServ
     private static readonly string[] TagHeaders = ["tag", "tags", "תגית", "תגיות"];
     private static readonly string[] CountHeaders = ["count", "invited", "כמות", "מוזמנים", "מספר מוזמנים", "כמה", "מספר אנשים"];
 
-    public async Task<ImportReport> ImportAsync(Stream csv, CancellationToken ct = default)
+    public async Task<ImportReport> ImportAsync(Stream csv, bool tagsOnly = false, CancellationToken ct = default)
     {
         using var ms = new MemoryStream();
         await csv.CopyToAsync(ms, ct);
         var text = CsvReader.Decode(ms.ToArray());
         var rows = CsvReader.Parse(text, CsvReader.DetectDelimiter(text));
 
-        var report = new ImportReport();
+        var report = new ImportReport { TagsOnly = tagsOnly };
         if (rows.Count == 0) return report;
+        if (tagsOnly) return await ImportTagsOnlyAsync(rows, report, ct);
 
         var (nameCol, phoneCol, countCol, hasHeader) = MapColumns(rows[0]);
         var famNameCol = hasHeader ? FindCol(rows[0], FamilyNameHeaders) : -1;
@@ -98,6 +101,43 @@ public sealed class ImportService(AppDbContext db, IsraelClock clock, FamilyServ
             if (!p.IsValid) report.InvalidPhones.Add(new(line, name, phone, p.Error!));
         }
 
+        await db.SaveChangesAsync(ct);
+        return report;
+    }
+
+    /// <summary>
+    /// Tags-only mode: needs a header row with a phone and a tag column. Each row finds the existing guest by normalized phone and sets
+    /// only the tag; nothing is added and no other field changes. A blank tag cell leaves the guest as it is (it never clears a tag);
+    /// rows whose phone is missing, invalid or not on the list are reported, never imported.
+    /// </summary>
+    private async Task<ImportReport> ImportTagsOnlyAsync(List<List<string>> rows, ImportReport report, CancellationToken ct)
+    {
+        var phoneCol = FindCol(rows[0], PhoneHeaders);
+        var tagCol = FindCol(rows[0], TagHeaders);
+        var nameCol = FindCol(rows[0], NameHeaders);
+        if (phoneCol < 0 || tagCol < 0)
+        {
+            report.Skipped.Add(new(1, "", "", "חסרות עמודות טלפון ותגית"));
+            return report;
+        }
+        var byPhone = new Dictionary<string, Guest>();
+        foreach (var g in await db.Guests.Where(g => g.PhoneE164 != null).ToListAsync(ct)) byPhone[g.PhoneE164!] = g;
+
+        for (var i = 1; i < rows.Count; i++)
+        {
+            var r = rows[i];
+            var line = i + 1;
+            var name = Cell(r, nameCol);
+            var phone = Cell(r, phoneCol);
+            report.Rows++;
+            var tag = Guest.CleanTag(Cell(r, tagCol));
+            if (tag is null) { report.Skipped.Add(new(line, name, phone, "חסרה תגית")); continue; }
+            var p = PhoneNormalizer.Normalize(phone);
+            if (!p.IsValid) { report.Skipped.Add(new(line, name, phone, p.Error ?? "מספר לא תקין")); continue; }
+            if (!byPhone.TryGetValue(p.E164!, out var guest)) { report.Skipped.Add(new(line, name, phone, "המספר לא ברשימה")); continue; }
+            guest.Tag = tag;
+            report.Updated++;
+        }
         await db.SaveChangesAsync(ct);
         return report;
     }

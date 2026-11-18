@@ -7,6 +7,7 @@ namespace WeddingRsvp.Pages.Admin;
 public class ImportModel(ImportService importer, Ui ui) : PageModel
 {
     [BindProperty] public IFormFile? File { get; set; }
+    [BindProperty] public bool TagsOnly { get; set; }
     public ImportReport? Report { get; private set; }
     public string? Error { get; private set; }
 
@@ -26,7 +27,7 @@ public class ImportModel(ImportService importer, Ui ui) : PageModel
         }
 
         await using var stream = File.OpenReadStream();
-        Report = await importer.ImportAsync(stream);
+        Report = await importer.ImportAsync(stream, TagsOnly);
         return Page();
     }
 }

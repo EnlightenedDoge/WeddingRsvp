@@ -13,9 +13,10 @@
         <b>@Ui.T("שם משפחה", "Family name")</b> @Ui.T("ו/או", "and/or") <b>@Ui.T("מזהה משפחה", "Family identifier")</b>.
         @Ui.T("שורות עם אותו מזהה הן אותה משפחה, גם אם לשתי משפחות אותו שם. בלי מזהה, שורות עם אותו שם משפחה מקובצות יחד.", "Rows with the same identifier are one family, even when two families share a name. Without an identifier, rows with the same family name are grouped together.")</p>
     <p>@Ui.T("לתיוג אורחים (למשל \"משפחת האם של הכלה\"):", "To label guests (e.g. \"Bride's mother's family\"):")
-        <b>@Ui.T("תגית", "Tag")</b> @Ui.T("(עמודה אופציונלית, תגית אחת לאורח). התגית חלה רק על אורחים חדשים; למספר שכבר ברשימה אפשר להגדיר תגית בבחירה מרובה ברשימת האורחים.", "(optional column, one tag per guest). It applies only to guests who are added; for numbers already on the list, set the tag with the bulk selection on the Guests page.")</p>
+        <b>@Ui.T("תגית", "Tag")</b> @Ui.T("(עמודה אופציונלית, תגית אחת לאורח). בדרך כלל התגית חלה רק על אורחים חדשים; לעדכון תגיות של אורחים קיימים סמנו \"עדכון תגיות בלבד\" (נדרשות עמודות טלפון ותגית).", "(optional column, one tag per guest). It normally applies only to guests who are added; to set tags on guests already on the list, tick \"Update tags only\" (needs a phone and a tag column).")</p>
     <form method="post" enctype="multipart/form-data" class="row">
         <input type="file" name="File" accept=".csv,text/csv" />
+        <label class="row"><input type="checkbox" name="TagsOnly" value="true" /> @Ui.T("עדכון תגיות בלבד (לפי טלפון, בלי להוסיף אורחים)", "Update tags only (matched by phone, no guests added)")</label>
         <button type="submit" class="btn primary">@Ui.T("ייבוא", "Import")</button>
     </form>
     @if (Model.Error is not null)
@@ -28,7 +29,14 @@
 {
     <section class="card">
         <h2>@Ui.T("תוצאה", "Result")</h2>
-        <p>@Ui.T($"{r.Rows} שורות, נוספו {r.Added} אורחים.", $"{r.Rows} rows, {r.Added} guests added.")</p>
+        @if (r.TagsOnly)
+        {
+            <p>@Ui.T($"{r.Rows} שורות, עודכנו תגיות ל-{r.Updated} אורחים.", $"{r.Rows} rows, tags updated for {r.Updated} guests.")</p>
+        }
+        else
+        {
+            <p>@Ui.T($"{r.Rows} שורות, נוספו {r.Added} אורחים.", $"{r.Rows} rows, {r.Added} guests added.")</p>
+        }
 
         @if (r.InvalidPhones.Count > 0)
         {

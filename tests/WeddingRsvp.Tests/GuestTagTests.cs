@@ -29,10 +29,10 @@ public sealed class GuestTagTests : IDisposable
 
     private AppDbContext Db(int? couple = null) { var t = new TenantContext(); t.Use(couple ?? _couple); return new AppDbContext(_options, t); }
 
-    private async Task<ImportReport> ImportAsync(string csv)
+    private async Task<ImportReport> ImportAsync(string csv, bool tagsOnly = false)
     {
         using var db = Db();
-        return await new ImportService(db, new IsraelClock(TimeProvider.System), new FamilyService(db)).ImportAsync(new MemoryStream(Encoding.UTF8.GetBytes(csv)));
+        return await new ImportService(db, new IsraelClock(TimeProvider.System), new FamilyService(db)).ImportAsync(new MemoryStream(Encoding.UTF8.GetBytes(csv)), tagsOnly);
     }
 
     private async Task<Dictionary<string, string?>> TagsAsync() { using var db = Db(); return await db.Guests.ToDictionaryAsync(g => g.Name, g => g.Tag); }
@@ -209,4 +209,51 @@ public sealed class GuestTagTests : IDisposable
     }
 
     public void Dispose() => _conn.Dispose();
+
+    // ---- tags-only import
+    [Fact]
+    public async Task TagsOnly_sets_the_tag_by_phone_and_changes_nothing_else()
+    {
+        await ImportAsync("name,phone,invited,tag\nAmy,0501111111,3,Old\nBob,0502222222,2,\n");
+        var r = await ImportAsync("name,phone,tag\nWhatever,050-111-1111,New\nBob,+972502222222,Friends\n", tagsOnly: true);
+        Assert.Equal(2, r.Updated);
+        Assert.Equal(0, r.Added);
+        using var db = Db();
+        var amy = await db.Guests.SingleAsync(g => g.PhoneE164 == "+972501111111");
+        Assert.Equal("New", amy.Tag);
+        Assert.Equal("Amy", amy.Name);
+        Assert.Equal(3, amy.InvitedCount);
+        Assert.Equal("Friends", (await db.Guests.SingleAsync(g => g.Name == "Bob")).Tag);
+    }
+
+    [Fact]
+    public async Task TagsOnly_never_adds_guests_and_reports_unknown_and_blank_rows()
+    {
+        await ImportAsync("name,phone,tag\nAmy,0501111111,Keep\n");
+        var r = await ImportAsync("phone,tag\n0509999999,X\n0501111111,\nbad,Y\n", tagsOnly: true);
+        Assert.Equal(0, r.Updated);
+        Assert.Equal(3, r.Skipped.Count);
+        using var db = Db();
+        Assert.Equal(1, await db.Guests.CountAsync());
+        Assert.Equal("Keep", (await db.Guests.SingleAsync()).Tag);   // a blank cell does not clear
+    }
+
+    [Fact]
+    public async Task TagsOnly_needs_phone_and_tag_columns()
+    {
+        await ImportAsync("name,phone\nAmy,0501111111\n");
+        var r = await ImportAsync("name,phone\nAmy,0501111111\n", tagsOnly: true);
+        Assert.Equal(0, r.Updated);
+        Assert.Single(r.Skipped);
+    }
+
+    [Fact]
+    public async Task TagsOnly_does_not_touch_another_couples_guest()
+    {
+        using (var other = Db(_other)) { other.Guests.Add(new Guest { Name = "Zed", PhoneE164 = "+972503333333", PhoneRaw = "0503333333", Token = "ZZZZZZZZZZ", CoupleId = _other }); other.SaveChanges(); }
+        var r = await ImportAsync("phone,tag\n0503333333,Hijack\n", tagsOnly: true);
+        Assert.Equal(0, r.Updated);
+        using var db = Db(_other);
+        Assert.Null((await db.Guests.SingleAsync()).Tag);
+    }
 }
