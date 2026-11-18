@@ -352,3 +352,50 @@ public sealed class GuestSortTests
     [Fact] public async Task Surname_sort_descending_keeps_name_order_within_a_surname() =>
         Assert.Equal(new[] { "Abe Cohen", "Dan Cohen", "Dina Cohen", "Beni", "Zoe Adams" }, await OrderAltAsync("surname", "desc")); // ties keep the name order
 }
+
+public sealed class GuestGroupLinkFilterTests
+{
+    private static async Task<(string[] names, Dictionary<int, string> groups)> RunAsync(string filter, string? q)
+    {
+        using var conn = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        conn.Open();
+        var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<WeddingRsvp.Data.AppDbContext>().UseSqlite(conn).Options;
+        using var setup = new WeddingRsvp.Data.AppDbContext(options, new WeddingRsvp.Tenancy.TenantContext());
+        setup.Database.EnsureCreated();
+        var a = new WeddingRsvp.Domain.Couple { DisplayName = "A" };
+        var b = new WeddingRsvp.Domain.Couple { DisplayName = "B" };
+        setup.Couples.AddRange(a, b);
+        setup.SaveChanges();
+        var other = new WeddingRsvp.Tenancy.TenantContext(); other.Use(b.Id);
+        using (var dbB = new WeddingRsvp.Data.AppDbContext(options, other))
+        {
+            var gb = new WeddingRsvp.Domain.GroupLink { Name = "Neighbours", Code = "ZZZZZ2" };
+            dbB.GroupLinks.Add(gb); dbB.SaveChanges();
+            dbB.Guests.Add(new WeddingRsvp.Domain.Guest { Name = "Other", Token = "TokenOTHR2", GroupLinkId = gb.Id });
+            dbB.SaveChanges();
+        }
+        var tenant = new WeddingRsvp.Tenancy.TenantContext(); tenant.Use(a.Id);
+        using var db = new WeddingRsvp.Data.AppDbContext(options, tenant);
+        var work = new WeddingRsvp.Domain.GroupLink { Name = "Work friends", Code = "AAAAA2" };
+        var club = new WeddingRsvp.Domain.GroupLink { Name = "Club", Code = "BBBBB2" };
+        db.GroupLinks.AddRange(work, club); db.SaveChanges();
+        db.Guests.AddRange(
+            new WeddingRsvp.Domain.Guest { Name = "Amy", Token = "TokenAAAA2", GroupLinkId = work.Id, Status = RsvpStatus.Attending },
+            new WeddingRsvp.Domain.Guest { Name = "Bob", Token = "TokenBBBB2", GroupLinkId = club.Id },
+            new WeddingRsvp.Domain.Guest { Name = "Cat", Token = "TokenCCCC2" });
+        db.SaveChanges();
+        var page = new WeddingRsvp.Pages.Admin.Guests.IndexModel(db, new WeddingRsvp.Services.Ui(), new FamilyService(db), new IsraelClock(TimeProvider.System), null!) { Filter = filter, Q = q };
+        await page.OnGetAsync();
+        return (page.Guests.Select(g => g.Name).ToArray(), page.GroupNames);
+    }
+
+    [Fact] public async Task Group_link_filter_keeps_only_group_guests() => Assert.Equal(new[] { "Amy", "Bob" }, (await RunAsync("grouplink", null)).names);
+    [Fact] public async Task Search_matches_the_group_name() => Assert.Equal(new[] { "Amy" }, (await RunAsync("all", "work")).names);
+    [Fact] public async Task Filter_and_search_intersect() => Assert.Empty((await RunAsync("grouplink", "Cat")).names);
+    [Fact] public async Task Group_names_cover_only_this_couple()
+    {
+        var (_, groups) = await RunAsync("all", null);
+        Assert.Equal(new[] { "Club", "Work friends" }, groups.Values.OrderBy(v => v).ToArray());
+    }
+    [Fact] public async Task Another_couples_group_guests_never_appear() => Assert.DoesNotContain("Other", (await RunAsync("grouplink", null)).names);
+}

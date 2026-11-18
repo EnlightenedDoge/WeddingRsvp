@@ -12,7 +12,7 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
     /// <summary>all | pending | attending | declined | invalid | uninvited | opened</summary>
     [BindProperty(SupportsGet = true)] public string Filter { get; set; } = "all";
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
-    /// <summary>name | surname | family | status | sent</summary>
+    /// <summary>name | surname | family | status | sent | added</summary>
     [BindProperty(SupportsGet = true)] public string Sort { get; set; } = "name";
     /// <summary>asc | desc</summary>
     [BindProperty(SupportsGet = true)] public string Dir { get; set; } = "asc";
@@ -46,7 +46,11 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
         new(ui.T("פתחו ולא ענו", "Opened, not answered"), "opened"),
         new(ui.T("מגיעים", "Attending"), "attending"), new(ui.T("לא מגיעים", "Declined"), "declined"),
         new(ui.T("לא נשלחה הזמנה", "Not invited yet"), "uninvited"), new(ui.T("מספר לא תקין", "Invalid number"), "invalid"),
+        new(ui.T("דרך קישור קבוצתי", "Via a group link"), "grouplink"),
     ];
+
+    /// <summary>Group link id -> name, for the "Group name" column and for searching by group name.</summary>
+    public Dictionary<int, string> GroupNames { get; private set; } = new();
 
     public async Task OnGetAsync()
     {
@@ -60,10 +64,16 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
             "invalid" => q.Where(g => g.PhoneE164 == null && g.PhoneError != null),
             "uninvited" => q.Where(g => g.InviteSentAtUtc == null && g.GroupLinkId == null),
             "opened" => q.Where(g => g.Status == RsvpStatus.Pending && g.FirstOpenedAtUtc != null),
+            "grouplink" => q.Where(g => g.GroupLinkId != null),
             _ => q,
         };
+        GroupNames = await db.GroupLinks.AsNoTracking().ToDictionaryAsync(l => l.Id, l => l.Name);
         if (!string.IsNullOrWhiteSpace(Q))
-            q = q.Where(g => g.Name.Contains(Q) || g.PhoneRaw.Contains(Q));
+        {
+            var term = Q.Trim();
+            var groupIds = GroupNames.Where(kv => kv.Value.Contains(term, StringComparison.CurrentCultureIgnoreCase)).Select(kv => (int?)kv.Key).ToList();
+            q = q.Where(g => g.Name.Contains(term) || g.PhoneRaw.Contains(term) || (g.GroupLinkId != null && groupIds.Contains(g.GroupLinkId)));
+        }
 
         Guests = await Sorted(q).ToListAsync();
         if (Sort == "surname") // the last word of the name: sorted here because it cannot be expressed in the query
@@ -91,6 +101,9 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
             ("status", true) => q.OrderByDescending(g => g.Status),
             ("sent", false) => q.OrderBy(g => g.InviteSentAtUtc == null).ThenBy(g => g.InviteSentAtUtc),
             ("sent", true) => q.OrderBy(g => g.InviteSentAtUtc != null).ThenByDescending(g => g.InviteSentAtUtc),
+            // Date added: ties (a whole import is stamped together) keep their import order via the id.
+            ("added", false) => q.OrderBy(g => g.CreatedAtUtc).ThenBy(g => g.Id),
+            ("added", true) => q.OrderByDescending(g => g.CreatedAtUtc).ThenByDescending(g => g.Id),
             (_, true) => q.OrderByDescending(g => g.Name),
             _ => q.OrderBy(g => g.Name),
         };
