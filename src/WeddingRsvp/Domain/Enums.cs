@@ -1,6 +1,11 @@
 namespace WeddingRsvp.Domain;
 
-public enum RsvpStatus { Pending = 0, Attending = 1, Declined = 2 }
+/// <summary>
+/// <see cref="CountedByOther"/> = coming, but already counted in another guest's headcount: answered (no reminders, thank-you like an attendee),
+/// adds no people to the totals (<c>AttendingCount</c> is 0). Set only by the couple (Edit page, bulk action), never by the guest page.
+/// The integer values are stored: only ever append.
+/// </summary>
+public enum RsvpStatus { Pending = 0, Attending = 1, Declined = 2, CountedByOther = 3 }
 
 /// <summary>Where the current answer came from.</summary>
 public enum RsvpSource { None = 0, Web = 1, Manual = 2 }

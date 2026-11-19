@@ -18,6 +18,7 @@ public sealed record DashboardStats(
     int DietGlutenFree,
     IReadOnlyList<Guest> DietNotes,
     int Declined,
+    int CountedByOther,
     int Pending,
     int PendingButOpened,
     int InvitesNotSent,
@@ -53,6 +54,7 @@ public sealed class DashboardService(AppDbContext db)
             DietGlutenFree: answers.Sum(g => g.DietGlutenFree),
             DietNotes: answers.Where(g => !string.IsNullOrWhiteSpace(g.DietNote)).ToList(),
             Declined: guests.Count(g => g.Status == RsvpStatus.Declined),
+            CountedByOther: guests.Count(g => g.Status == RsvpStatus.CountedByOther), // coming, already in another guest's headcount: 0 people here
             Pending: pending.Count,
             PendingButOpened: pending.Count(g => g.FirstOpenedAtUtc != null),
             InvitesNotSent: guests.Count(g => g.InviteSentAtUtc == null && g.GroupLinkId == null),

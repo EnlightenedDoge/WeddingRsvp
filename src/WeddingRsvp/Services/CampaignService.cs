@@ -166,7 +166,7 @@ public sealed class CampaignService(
         var queued = await QueuedGuestIdsAsync(MessageKind.ThankYou, ct);
         var q = db.Guests.Include(g => g.Family).Where(g => g.PhoneE164 != null && g.ThankYouSentAtUtc == null);
         q = s.ThankYouAudience == ThankYouAudience.AttendingOnly
-            ? q.Where(g => g.Status == RsvpStatus.Attending)
+            ? q.Where(g => g.Status == RsvpStatus.Attending || g.Status == RsvpStatus.CountedByOther)
             : q.Where(g => g.InviteSentAtUtc != null);
 
         var n = 0;

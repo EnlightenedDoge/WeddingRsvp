@@ -43,7 +43,7 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
 
     public async Task<IActionResult> OnGetAsync(int? id)
     {
-        if (id is null) return Page();
+        if (id is null) { await LoadFamiliesAsync(); return Page(); } // the Add form needs the family and tag suggestions too
         if (!await LoadAsync(id.Value)) return NotFound();
 
         var g = Existing!;
@@ -170,7 +170,7 @@ public class EditModel(AppDbContext db, CampaignService campaign, IsraelClock cl
 
     private async Task<bool> LoadAsync(int id)
     {
-        Families = await families.OptionsAsync();
+        await LoadFamiliesAsync();
         Existing = await db.Guests.Include(x => x.Family).FirstOrDefaultAsync(x => x.Id == id);
         if (Existing is null) return false;
         RsvpLink = MessageTemplates.GuestLink(app.Value.PublicBaseUrl, Existing.Token);

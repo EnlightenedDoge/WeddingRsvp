@@ -43,6 +43,7 @@
                 <select asp-for="Input.Status">
                     <option value="@RsvpStatus.Pending">@Labels.Status(RsvpStatus.Pending)</option>
                     <option value="@RsvpStatus.Attending">@Labels.Status(RsvpStatus.Attending)</option>
+                    <option value="@RsvpStatus.CountedByOther">@Labels.Status(RsvpStatus.CountedByOther)</option>
                     <option value="@RsvpStatus.Declined">@Labels.Status(RsvpStatus.Declined)</option>
                 </select></label>
             <label class="field"><span>@Ui.T("מבוגרים שמגיעים", "Adults attending")</span><input asp-for="Input.AttendingAdults" type="number" min="1" />

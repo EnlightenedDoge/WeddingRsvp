@@ -16,6 +16,7 @@ public static class GuestCsv
             {
                 RsvpStatus.Attending => "מגיעים",
                 RsvpStatus.Declined => "לא מגיעים",
+                RsvpStatus.CountedByOther => "מגיעים (נספרו אצל אחר)",
                 _ => "טרם ענו",
             };
             sb.AppendLine(string.Join(",",

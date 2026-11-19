@@ -13,6 +13,7 @@ public static class Labels
     {
         RsvpStatus.Attending => T("מגיעים", "Attending"),
         RsvpStatus.Declined => T("לא מגיעים", "Declined"),
+        RsvpStatus.CountedByOther => T("מגיעים (נספרו אצל אחר)", "Arriving (counted by another)"),
         _ => T("טרם ענו", "Awaiting"),
     };
 
@@ -28,7 +29,7 @@ public static class Labels
 
     public static string StatusPill(RsvpStatus s) => s switch
     {
-        RsvpStatus.Attending => "ok",
+        RsvpStatus.Attending or RsvpStatus.CountedByOther => "ok",
         RsvpStatus.Declined => "no",
         _ => "wait",
     };

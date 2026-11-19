@@ -44,7 +44,8 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
     [
         new(ui.T("הכול", "All"), "all"), new(ui.T("טרם ענו", "Awaiting"), "pending"),
         new(ui.T("פתחו ולא ענו", "Opened, not answered"), "opened"),
-        new(ui.T("מגיעים", "Attending"), "attending"), new(ui.T("לא מגיעים", "Declined"), "declined"),
+        new(ui.T("מגיעים", "Attending"), "attending"), new(ui.T("נספרו אצל אחר", "Counted by another"), "counted"),
+        new(ui.T("לא מגיעים", "Declined"), "declined"),
         new(ui.T("לא נשלחה הזמנה", "Not invited yet"), "uninvited"), new(ui.T("מספר לא תקין", "Invalid number"), "invalid"),
         new(ui.T("דרך קישור קבוצתי", "Via a group link"), "grouplink"),
     ];
@@ -60,6 +61,7 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
         {
             "pending" => q.Where(g => g.Status == RsvpStatus.Pending),
             "attending" => q.Where(g => g.Status == RsvpStatus.Attending),
+            "counted" => q.Where(g => g.Status == RsvpStatus.CountedByOther),
             "declined" => q.Where(g => g.Status == RsvpStatus.Declined),
             "invalid" => q.Where(g => g.PhoneE164 == null && g.PhoneError != null),
             "uninvited" => q.Where(g => g.InviteSentAtUtc == null && g.GroupLinkId == null),
@@ -119,8 +121,8 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
     /// <summary>The couple's distinct tags, for the bulk bar and the edit page suggestions.</summary>
     public List<string> TagOptions { get; private set; } = new();
 
-    /// <summary>The bulk bar on the Guests list: invite | invited | family | unfamily | tag | export | delete, applied to the ticked guests.</summary>
-    public async Task<IActionResult> OnPostBulkAsync(int[] ids, string? action, int familyId, string? familyName, int invited, bool noLimit, string? tag, string? returnUrl)
+    /// <summary>The bulk bar on the Guests list: invite | invited | status | family | unfamily | tag | export | delete, applied to the ticked guests.</summary>
+    public async Task<IActionResult> OnPostBulkAsync(int[] ids, string? action, int familyId, string? familyName, int invited, bool noLimit, string? tag, RsvpStatus? newStatus, int adults, int children, string? returnUrl)
     {
         var back = LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/admin/guests");
         ids = ids.Distinct().ToArray();
@@ -141,6 +143,13 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
                 var n = await bulk.SetInvitedAsync(ids, noLimit ? 0 : invited);
                 TempData["Flash"] = n < 0 ? ui.T("מספר מוזמנים מרבי: בין 1 ל-50, או ללא הגבלה", "Max people invited: 1 to 50, or no limit")
                     : ui.T($"המספר המרבי של מוזמנים עודכן ל-{n} אורחים", $"Max people invited updated for {n} guests");
+                break;
+            case "status":
+                if (newStatus is not { } st) { TempData["Flash"] = ui.T("נא לבחור סטטוס", "Choose a status"); break; }
+                var (changed, skipped) = await bulk.SetStatusAsync(ids, st, adults, children);
+                TempData["Flash"] = changed < 0 ? ui.T("מספר המבוגרים חייב להיות לפחות 1, והילדים לא שליליים", "Adults must be at least 1, and children can't be negative")
+                    : ui.T($"הסטטוס עודכן ל-{changed} אורחים" + (skipped > 0 ? $". דולגו {skipped} שהמספר חורג מההזמנה שלהם" : ""),
+                           $"Status updated for {changed} guests" + (skipped > 0 ? $". Skipped {skipped} where the headcount exceeds their invitation" : ""));
                 break;
             case "tag":
                 var tagged = await bulk.SetTagAsync(ids, tag);

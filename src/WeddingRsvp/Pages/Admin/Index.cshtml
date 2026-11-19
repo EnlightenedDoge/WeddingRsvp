@@ -37,11 +37,13 @@
     <div style="flex: 1 1 300px; min-width: 0">
         <div class="bar">
             <div style="width: @W(s.AttendingInvitations); background: var(--accent)"></div>
+            <div style="width: @W(s.CountedByOther); background: #7FB5A8"></div>
             <div style="width: @W(s.Declined); background: var(--danger)"></div>
             <div style="width: @W(s.Pending); background: #D6C79A"></div>
         </div>
         <div class="legend">
             <span><i style="background: var(--accent)"></i>@Ui.T("מגיעים", "Attending") · @s.AttendingInvitations</span>
+            @if (s.CountedByOther > 0) { <span><i style="background: #7FB5A8"></i>@Ui.T("נספרו אצל אחר", "Counted by another") · @s.CountedByOther</span> }
             <span><i style="background: var(--danger)"></i>@Ui.T("לא מגיעים", "Declined") · @s.Declined</span>
             <span><i style="background: #D6C79A"></i>@Ui.T("ממתינים", "Awaiting") · @s.Pending</span>
         </div>

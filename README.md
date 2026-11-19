@@ -181,7 +181,7 @@ Nothing about your wedding is pre-filled. Whatever the site admin left blank, yo
 3. **Messages** (`/admin/messages`): send yourselves a test SMS, then send the invitations
    (or set an automatic send time in event details).
 4. Reminders and the thank-you message go out on their own. Use **pause sending** on holidays or if anything looks wrong.
-5. Follow responses on the dashboard; record phone-call answers by editing the guest.
+5. Follow responses on the dashboard; record phone-call answers by editing the guest, or set the arrival status of several guests at once from the Guests list (bulk bar). "Arriving (counted by another)" marks a guest who is coming but already inside another guest's headcount: no people added, no reminders, still thanked.
 
 Messages are only sent 09:00–21:00, Fridays until 13:00, and never on Saturday.
 

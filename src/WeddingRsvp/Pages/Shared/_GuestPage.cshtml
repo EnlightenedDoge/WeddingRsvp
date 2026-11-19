@@ -6,7 +6,11 @@
     var showForm = !Model.IsClosed && !Model.JustSaved;
     var saved = Model.JustSaved;
     var chipMax = Math.Min(g.MaxHeadcount, 12);
-    string Answer() => g.Status == RsvpStatus.Attending
+    // Set by the couple only: this guest is coming but is already in someone else's headcount, so there is nothing for them to answer.
+    var counted = g.Status == RsvpStatus.CountedByOther && !saved;
+    string Answer() => g.Status == RsvpStatus.CountedByOther
+        ? Model.T("התשובה שלכם: מגיעים (נספרים יחד עם אורח אחר)", "Your answer: coming (counted with another guest)")
+        : g.Status == RsvpStatus.Attending
         ? Model.T($"התשובה שלכם: מגיעים · {Model.People(g.AttendingAdults, g.AttendingChildren)}", $"Your answer: attending · {Model.People(g.AttendingAdults, g.AttendingChildren)}")
         : Model.T("התשובה שלכם: לא מגיעים", "Your answer: not attending");
     string Link(string lang) => $"{Model.BasePath}?lang={lang}";
@@ -90,10 +94,21 @@
                 </div>
             }
 
+            @if (showForm && counted)
+            {
+                <div class="card saved" role="status">
+                    <div class="tick"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+                    <b>@Model.T("הכול מסודר!", "You're all set!")</b>
+                    <div>@Model.T("אתם נספרים יחד עם אורח אחר, ואין צורך לענות.", "You're counted with another guest, so there's no need to answer.")</div>
+                </div>
+            }
+
             @if (showForm)
             {
+                <details open="@(!counted || Model.Error is not null)" class="change">
+                <summary class="linkbtn" style="@(counted ? "" : "display: none")">@Model.T("שינוי תשובה", "Change my answer")</summary>
                 <form method="post" action="@Link(Model.IsHe ? "he" : "en")" asp-antiforgery="true" class="card" role="group" aria-labelledby="ask">
-                    @if (answered && Model.Error is null) { <div class="summary">@Answer()</div> }
+                    @if (answered && !counted && Model.Error is null) { <div class="summary">@Answer()</div> }
                     <div>
                         <h2 id="ask">@Model.T("מגיעים לחתונה?", "Will you be joining us?")</h2>
                         <div class="hint">@Model.T("אפשר לשנות את התשובה עד תחילת האירוע.", "You can change your answer until the event starts.")</div>
@@ -163,6 +178,7 @@
                     </div>
                     <div class="submit"><button type="submit">@(answered ? Model.T("עדכון תשובה", "Update answer") : Model.T("שליחת תשובה", "Send answer"))</button></div>
                 </form>
+                </details>
             }
 
             <div class="links">

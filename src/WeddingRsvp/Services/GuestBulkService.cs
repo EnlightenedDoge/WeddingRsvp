@@ -50,6 +50,45 @@ public sealed class GuestBulkService(AppDbContext db, CampaignService campaign, 
     }
 
     /// <summary>
+    /// Records a manual answer for the selected guests: Pending clears the answer, Declined and CountedByOther store 0 people, Attending stores
+    /// <paramref name="adults"/> + <paramref name="children"/> (a guest the number does not fit within their invitation is skipped). A family's
+    /// members share the answer and their queued reminders are cancelled. Returns how many were changed and how many skipped; Changed is -1
+    /// for a headcount that makes no sense.
+    /// </summary>
+    public async Task<(int Changed, int Skipped)> SetStatusAsync(IReadOnlyCollection<int> ids, RsvpStatus status, int adults, int children, CancellationToken ct = default)
+    {
+        if (!Enum.IsDefined(status)) return (-1, 0);
+        if (status == RsvpStatus.Attending && (adults < 1 || children < 0 || (long)adults + children > Guest.UnlimitedCap)) return (-1, 0);
+        int changed = 0, skipped = 0;
+        foreach (var g in await db.Guests.Where(g => ids.Contains(g.Id)).ToListAsync(ct))
+        {
+            // The family's total invitation is the limit (EffectiveInvited), as on the Edit page.
+            if (g.FamilyId is { } fid) g.FamilyInvited = await families.InvitedAsync(fid, ct);
+            var people = status == RsvpStatus.Attending ? adults + children : 0;
+            if (status == RsvpStatus.Attending && people > g.MaxHeadcount) { skipped++; continue; }
+            g.Status = status;
+            g.AttendingCount = people;
+            g.AttendingChildren = status == RsvpStatus.Attending ? children : 0;
+            g.Source = status == RsvpStatus.Pending ? RsvpSource.None : RsvpSource.Manual;
+            g.RespondedAtUtc = status == RsvpStatus.Pending ? null : clock.UtcNow;
+            await families.ShareAnswerAsync(g, ct);
+            if (status != RsvpStatus.Pending)
+            {
+                var who = g.FamilyId is { } f ? await families.MemberIdsAsync(f, ct) : [g.Id];
+                foreach (var m in await db.Messages.Where(m => m.GuestId != null && who.Contains(m.GuestId!.Value)
+                    && m.Kind == MessageKind.Reminder && m.Status == MessageStatus.Queued).ToListAsync(ct))
+                {
+                    m.Status = MessageStatus.Cancelled;
+                    m.Error = "Guest responded";
+                }
+            }
+            await db.SaveChangesAsync(ct);
+            changed++;
+        }
+        return (changed, skipped);
+    }
+
+    /// <summary>
     /// Puts the selected guests in one family (<paramref name="familyId"/> = an existing one, or <see cref="FamilyService.NewFamily"/> with a name),
     /// or takes them out of their families (<see cref="FamilyService.None"/>). When several of them have already answered, the most recent
     /// answer is the one the family keeps. Returns how many guests were handled, or -1 when a new family has no name or the family is unknown.

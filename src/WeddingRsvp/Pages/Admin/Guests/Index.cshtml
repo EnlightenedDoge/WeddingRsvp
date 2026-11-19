@@ -102,6 +102,7 @@ else
         <select name="action" id="bulkaction" aria-label="@Ui.T("פעולה", "Action")">
             <option value="">@Ui.T("בחרו פעולה…", "Choose an action…")</option>
             <option value="invite">@Ui.T("שליחת הזמנה", "Send invitation")</option>
+            <option value="status">@Ui.T("שינוי סטטוס הגעה", "Set arrival status")</option>
             <option value="family">@Ui.T("הוספה למשפחה", "Add to a family")</option>
             <option value="unfamily">@Ui.T("הוצאה ממשפחה", "Remove from family")</option>
             <option value="invited">@Ui.T("שינוי מספר מוזמנים מרבי", "Set max people invited")</option>
@@ -120,6 +121,18 @@ else
         <span class="bulkopt" data-for="invited">
             <input name="invited" type="number" min="1" max="50" value="1" style="width: 90px" aria-label="@Ui.T("מספר מוזמנים מרבי", "Max people invited")" />
             <label class="checks"><input type="checkbox" name="noLimit" value="true" /> @Ui.T("ללא הגבלה", "No limit")</label>
+        </span>
+        <span class="bulkopt" data-for="status">
+            <select name="newStatus" id="bulkstatus" aria-label="@Ui.T("סטטוס", "Status")">
+                <option value="@RsvpStatus.Pending">@Labels.Status(RsvpStatus.Pending)</option>
+                <option value="@RsvpStatus.Attending">@Labels.Status(RsvpStatus.Attending)</option>
+                <option value="@RsvpStatus.CountedByOther" selected>@Labels.Status(RsvpStatus.CountedByOther)</option>
+                <option value="@RsvpStatus.Declined">@Labels.Status(RsvpStatus.Declined)</option>
+            </select>
+            <span id="bulkheads" hidden>
+                <input name="adults" type="number" min="1" max="99" value="1" style="width: 80px" aria-label="@Ui.T("מבוגרים", "Adults")" />
+                <input name="children" type="number" min="0" max="99" value="0" style="width: 80px" aria-label="@Ui.T("ילדים", "Children")" />
+            </span>
         </span>
         <span class="bulkopt" data-for="tag">
             <input name="tag" maxlength="@Guest.TagMax" list="bulkTags" placeholder="@Ui.T("תגית (ריק = הסרה)", "Tag (empty = clear)")" aria-label="@Ui.T("תגית", "Tag")" />
@@ -153,6 +166,8 @@ else
         rows.forEach(function (r) { r.addEventListener('change', sync); });
         all.addEventListener('change', function () { rows.forEach(function (r) { r.checked = all.checked; }); sync(); });
         action.addEventListener('change', sync);
+        var st = document.getElementById('bulkstatus'), heads = document.getElementById('bulkheads');
+        if (st) st.addEventListener('change', function () { heads.hidden = st.value !== '@((int)RsvpStatus.Attending)' && st.value !== '@RsvpStatus.Attending'; });
         if (fam) fam.addEventListener('change', sync);
         document.getElementById('bulkclear').addEventListener('click', function () { rows.forEach(function (r) { r.checked = false; }); sync(); });
         form.addEventListener('submit', function (e) {
