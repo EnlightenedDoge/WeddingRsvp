@@ -72,6 +72,23 @@ public sealed class CampaignService(
         return true;
     }
 
+    /// <summary>
+    /// Queues one reminder now, on the couple's request (the bulk bar): the automatic interval and the reminder cap do not apply, but the
+    /// rules that protect the guest do. Returns false when the guest has answered, was never invited, has no valid number, or a template
+    /// field is missing; true when a reminder is queued (or one already was).
+    /// </summary>
+    public async Task<bool> QueueReminderAsync(int guestId, CancellationToken ct = default)
+    {
+        var g = await db.Guests.Include(x => x.Family).FirstOrDefaultAsync(x => x.Id == guestId, ct);
+        if (g is null || !g.HasValidPhone || g.GroupLinkId != null || g.Status != RsvpStatus.Pending || g.InviteSentAtUtc == null) return false;
+        var s = await settings.GetAsync(ct);
+        if (MessageTemplates.MissingFields(s, MessageKind.Reminder).Count > 0) return false;
+        if ((await QueuedGuestIdsAsync(MessageKind.Reminder, ct)).Contains(g.Id)) return true;
+        Enqueue(g, MessageKind.Reminder, s);
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
+
     /// <summary>Sends a rendered template to an arbitrary number so the couple can see the real thing.</summary>
     public async Task<bool> QueueTestAsync(string phone, MessageKind template, CancellationToken ct = default)
     {

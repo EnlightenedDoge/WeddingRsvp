@@ -103,6 +103,7 @@ else
             <option value="">@Ui.T("בחרו פעולה…", "Choose an action…")</option>
             <option value="invite">@Ui.T("שליחת הזמנה", "Send invitation")</option>
             <option value="status">@Ui.T("שינוי סטטוס הגעה", "Set arrival status")</option>
+            <option value="remind">@Ui.T("שליחת תזכורת", "Send a reminder")</option>
             <option value="family">@Ui.T("הוספה למשפחה", "Add to a family")</option>
             <option value="unfamily">@Ui.T("הוצאה ממשפחה", "Remove from family")</option>
             <option value="invited">@Ui.T("שינוי מספר מוזמנים מרבי", "Set max people invited")</option>
@@ -173,7 +174,7 @@ else
         form.addEventListener('submit', function (e) {
             if (!action.value) { e.preventDefault(); action.focus(); return; }
             var n = rows.filter(function (r) { return r.checked; }).length;
-            var msgs = { delete: '@Ui.T("למחוק את האורחים שנבחרו?", "Delete the selected guests?")', invite: '@Ui.T("לשלוח הזמנה לאורחים שנבחרו שעוד לא הוזמנו?", "Send the invitation to the selected guests who are not invited yet?")' };
+            var msgs = { remind: '@Ui.T("לשלוח תזכורת לאורחים שנבחרו שהוזמנו ועוד לא ענו?", "Send a reminder to the selected guests who were invited and have not answered?")', delete: '@Ui.T("למחוק את האורחים שנבחרו?", "Delete the selected guests?")', invite: '@Ui.T("לשלוח הזמנה לאורחים שנבחרו שעוד לא הוזמנו?", "Send the invitation to the selected guests who are not invited yet?")' };
             if (msgs[action.value] && !confirm(msgs[action.value] + ' (' + n + ')')) e.preventDefault();
         });
         sync();

@@ -6,6 +6,8 @@ namespace WeddingRsvp.Services;
 
 public sealed record BulkInviteResult(int Queued, int NoPhone, int AlreadyInvited, int GroupLink, IReadOnlyList<string> MissingFields);
 
+public sealed record BulkReminderResult(int Queued, int NotInvited, int Answered, int NoPhone, int GroupLink, IReadOnlyList<string> MissingFields);
+
 /// <summary>Actions on several selected guests at once (the Guests list). Everything is scoped to the signed-in couple by the query filters.</summary>
 public sealed class GuestBulkService(AppDbContext db, CampaignService campaign, FamilyService families, IsraelClock clock)
 {
@@ -27,6 +29,27 @@ public sealed class GuestBulkService(AppDbContext db, CampaignService campaign, 
             else if (await campaign.QueueInviteAsync(g.Id, ct)) queued++;
         }
         return new(queued, noPhone, already, group, []);
+    }
+
+    /// <summary>
+    /// Queues a reminder now for the selected guests who were invited and have not answered. Skipped: guests never invited (send the invitation
+    /// first), guests who answered (any answer), guests without a valid number and group-link guests. The automatic reminder interval and cap
+    /// are bypassed on purpose; a guest who already has a queued reminder is not queued twice. Nothing is queued while a field the reminder uses is missing.
+    /// </summary>
+    public async Task<BulkReminderResult> SendRemindersAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default)
+    {
+        var missing = await campaign.MissingFieldsAsync(MessageKind.Reminder, ct);
+        if (missing.Count > 0) return new(0, 0, 0, 0, 0, missing);
+        int queued = 0, notInvited = 0, answered = 0, noPhone = 0, group = 0;
+        foreach (var g in await db.Guests.AsNoTracking().Where(g => ids.Contains(g.Id)).ToListAsync(ct))
+        {
+            if (g.GroupLinkId != null) group++;
+            else if (g.Status != RsvpStatus.Pending) answered++;
+            else if (!g.HasValidPhone) noPhone++;
+            else if (g.InviteSentAtUtc == null) notInvited++;
+            else if (await campaign.QueueReminderAsync(g.Id, ct)) queued++;
+        }
+        return new(queued, notInvited, answered, noPhone, group, []);
     }
 
     /// <summary>Sets how many people the selected invitations cover: 1..50, or 0 for no limit. Returns how many guests changed.</summary>

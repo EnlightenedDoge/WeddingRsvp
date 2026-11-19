@@ -121,7 +121,7 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
     /// <summary>The couple's distinct tags, for the bulk bar and the edit page suggestions.</summary>
     public List<string> TagOptions { get; private set; } = new();
 
-    /// <summary>The bulk bar on the Guests list: invite | invited | status | family | unfamily | tag | export | delete, applied to the ticked guests.</summary>
+    /// <summary>The bulk bar on the Guests list: invite | remind | invited | status | family | unfamily | tag | export | delete, applied to the ticked guests.</summary>
     public async Task<IActionResult> OnPostBulkAsync(int[] ids, string? action, int familyId, string? familyName, int invited, bool noLimit, string? tag, RsvpStatus? newStatus, int adults, int children, string? returnUrl)
     {
         var back = LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/admin/guests");
@@ -138,6 +138,13 @@ public class IndexModel(AppDbContext db, Services.Ui ui, Services.FamilyService 
                     ? ui.T("אי אפשר לשלוח: חסרים פרטים באירוע (", "Can't send: event details are missing (") + string.Join(" ", r.MissingFields) + ")"
                     : ui.T($"{r.Queued} הזמנות נכנסו לתור. דולגו: {r.AlreadyInvited} כבר הוזמנו, {r.NoPhone} בלי מספר תקין, {r.GroupLink} דרך קישור קבוצתי.",
                            $"{r.Queued} invitations queued. Skipped: {r.AlreadyInvited} already invited, {r.NoPhone} without a valid number, {r.GroupLink} via group link.");
+                break;
+            case "remind":
+                var rr = await bulk.SendRemindersAsync(ids);
+                TempData["Flash"] = rr.MissingFields.Count > 0
+                    ? ui.T("אי אפשר לשלוח: חסרים פרטים באירוע (", "Can't send: event details are missing (") + string.Join(" ", rr.MissingFields) + ")"
+                    : ui.T($"{rr.Queued} תזכורות נכנסו לתור. דולגו: {rr.Answered} כבר ענו, {rr.NotInvited} עוד לא הוזמנו, {rr.NoPhone} בלי מספר תקין, {rr.GroupLink} דרך קישור קבוצתי.",
+                           $"{rr.Queued} reminders queued. Skipped: {rr.Answered} already answered, {rr.NotInvited} not invited yet, {rr.NoPhone} without a valid number, {rr.GroupLink} via group link.");
                 break;
             case "invited":
                 var n = await bulk.SetInvitedAsync(ids, noLimit ? 0 : invited);
