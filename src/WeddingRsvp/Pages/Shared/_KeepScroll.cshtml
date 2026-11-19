@@ -1,0 +1,18 @@
+@* A form post redirects back to the same page, which would open scrolled to the top. Remember where the page was when a POST form
+   is submitted and put it back if the next page load is the same path (within 15 s). Plain storage, nothing sent anywhere. *@
+<script>
+(function () {
+    var KEY = 'keepScroll';
+    try {
+        var saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+        sessionStorage.removeItem(KEY);
+        if (saved && saved.path === location.pathname && Date.now() - saved.at < 15000 && saved.y > 0)
+            window.scrollTo(0, saved.y);
+    } catch (e) { }
+    document.addEventListener('submit', function (e) {
+        var f = e.target;
+        if (e.defaultPrevented || !f || (f.method || '').toLowerCase() !== 'post') return;
+        try { sessionStorage.setItem(KEY, JSON.stringify({ path: location.pathname, y: window.scrollY, at: Date.now() })); } catch (x) { }
+    });
+})();
+</script>
